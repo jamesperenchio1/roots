@@ -7,10 +7,11 @@ export default function PlantQRPage() {
   const { plantId } = useParams<{ plantId: string }>();
   getProvenanceChain(plantId || '');
 
+  const speciesId = plantId?.replace('p-', 'sp-') || 'sp-1';
   // Mock data for demo
   const plantData = {
     id: plantId || 'demo-plant',
-    species: getSpeciesById('sp-1'),
+    species: getSpeciesById(speciesId),
     origin_date: '2023-06-15',
     total_owners: 3,
     total_sales_value: 39500,
@@ -43,7 +44,7 @@ export default function PlantQRPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-8">
           <div className="flex flex-col sm:flex-row items-start gap-6">
             <div className="w-32 h-32 rounded-xl overflow-hidden bg-zinc-800 shrink-0">
-              <img src={PLANT_IMAGES['sp-1']} alt="" className="w-full h-full object-cover" />
+              <img src={PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">

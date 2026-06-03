@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Heart, Share2, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,12 +8,23 @@ import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { toggleWatch } from '@/lib/api';
+import { generateQR } from '@/lib/promptpay';
 
 export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
   const listing = getListingById(id || '');
   const { user } = useAuth();
   const [watched, setWatched] = useState(false);
+  const [qrUrl, setQrUrl] = useState('');
+  const [activeImage, setActiveImage] = useState(1); // default to plant photo (index 1) if available
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    if (listing) {
+      const plantId = listing.plant_id || listing.id;
+      generateQR(`${window.location.origin}/#/p/${plantId}`, 400).then(setQrUrl).catch(() => setQrUrl(''));
+    }
+  }, [listing, id]);
 
   const handleWatch = async () => {
     if (!user) { toast.info('Log in to save plants to your watchlist.'); return; }
@@ -55,8 +66,11 @@ export default function ListingPage() {
   }
 
   const speciesId = listing.plant_id?.replace('p-', 'sp-') || '';
-  const coverImg = listing.photos?.[0]?.storage_path || PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg';
-  const gallery = (listing.photos && listing.photos.length ? listing.photos.map(p => p.storage_path) : [coverImg, coverImg, coverImg, coverImg]);
+  const plantPhotos = listing.photos && listing.photos.length
+    ? [...new Set(listing.photos.map(p => p.storage_path))]
+    : [PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'];
+  const gallery = qrUrl ? [qrUrl, ...plantPhotos] : plantPhotos;
+  const mainImage = gallery[activeImage] || gallery[0] || '';
   const priceData = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 90).map(ps => ({
     date: ps.snapshot_date,
     price: ps.median_price_thb,
@@ -74,18 +88,30 @@ export default function ListingPage() {
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           {/* Image */}
           <div className="space-y-4">
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900">
+            <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900 relative">
               <img
-                src={coverImg}
+                src={mainImage}
                 alt={listing.species?.scientific_name}
                 className="w-full h-full object-cover"
               />
+              {activeImage === 0 && qrUrl && (
+                <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
+                  <p className="text-xs text-purple-300 font-medium">Verified Provenance — Scan to check history</p>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-4 gap-2">
               {gallery.slice(0, 4).map((src, i) => (
-                <div key={i} className="aspect-square rounded-lg overflow-hidden bg-zinc-800 opacity-80">
+                <button
+                  key={i}
+                  onClick={() => setActiveImage(i)}
+                  className={`relative aspect-square rounded-lg overflow-hidden bg-zinc-800 transition-all ${activeImage === i ? 'ring-2 ring-emerald-500 opacity-100' : 'opacity-70 hover:opacity-100'}`}
+                >
                   <img src={src} alt="" className="w-full h-full object-cover" />
-                </div>
+                  {i === 0 && qrUrl && (
+                    <span className="absolute bottom-1 left-1 bg-purple-500/80 text-[9px] text-white px-1 rounded">QR</span>
+                  )}
+                </button>
               ))}
             </div>
           </div>

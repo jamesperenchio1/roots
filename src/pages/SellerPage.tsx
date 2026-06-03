@@ -26,8 +26,12 @@ export default function SellerPage() {
         {/* Seller Profile */}
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-8">
           <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center text-2xl font-light shrink-0">
-              {seller.display_name.charAt(0)}
+            <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center text-2xl font-light shrink-0 overflow-hidden">
+              {seller.avatar_url ? (
+                <img src={seller.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                seller.display_name.charAt(0)
+              )}
             </div>
             <div>
               <h1 className="text-2xl font-light tracking-tight mb-1">{seller.display_name}</h1>
@@ -52,7 +56,7 @@ export default function SellerPage() {
               <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all group">
                 <div className="aspect-[3/4] overflow-hidden">
                   <img
-                    src={PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                    src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
                     alt=""
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />

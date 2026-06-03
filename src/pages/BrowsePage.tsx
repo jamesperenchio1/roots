@@ -172,6 +172,7 @@ export default function BrowsePage() {
                 <img
                   src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
                   alt={listing.species?.scientific_name}
+                  loading="lazy"
                   className="w-full object-cover group-hover:scale-105 transition-transform duration-700"
                   style={{ aspectRatio: '3/4' }}
                 />

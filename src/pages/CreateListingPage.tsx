@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, QrCode, CheckCircle, Tag, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,10 +36,23 @@ export default function CreateListingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Listing | null>(null);
   const [provenanceQR, setProvenanceQR] = useState('');
+  const [qrDownloaded, setQrDownloaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isLocalAdmin } = useAuth();
   const navigate = useNavigate();
   const photoCount = photos.length;
+
+  useEffect(() => {
+    if (provenanceQR && created && !qrDownloaded) {
+      setQrDownloaded(true);
+      const a = document.createElement('a');
+      a.href = provenanceQR;
+      a.download = `root-provenance-${created.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  }, [provenanceQR, created, qrDownloaded]);
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -146,6 +159,9 @@ export default function CreateListingPage() {
                 ? <img src={provenanceQR} alt="Provenance QR" className="w-full h-full object-contain" />
                 : <QrCode className="w-28 h-28 text-zinc-900" />}
             </div>
+            <p className="text-xs text-emerald-400 mb-2">
+              Auto-downloaded to your device.
+            </p>
             <p className="text-xs text-zinc-500 mb-4">
               Print and attach this QR tag to the plant pot. Every future owner can scan it to see its full history.
             </p>
@@ -155,9 +171,22 @@ export default function CreateListingPage() {
                 download={`root-provenance-${created?.id || 'qr'}.png`}
                 className="inline-flex items-center bg-emerald-500 hover:bg-emerald-600 text-black text-sm px-4 py-2 rounded-md font-medium"
               >
-                Download QR
+                Download Again
               </a>
               <Button type="button" variant="outline" className="border-white/10 text-sm" onClick={() => window.print()}>Print Tag</Button>
+            </div>
+          </div>
+
+          {/* Print-only QR tag template */}
+          <div className="hidden print:block">
+            <div className="text-center py-10">
+              <h1 className="text-2xl font-bold mb-2">Root Provenance Tag</h1>
+              <p className="text-sm mb-6">{species?.common_name_en || speciesQuery}</p>
+              <div className="w-64 h-64 bg-white rounded-xl mx-auto p-4 mb-4">
+                <img src={provenanceQR} alt="" className="w-full h-full object-contain" />
+              </div>
+              <p className="text-xs text-zinc-500">Scan to verify authenticity and view full history</p>
+              <p className="text-xs text-zinc-500 mt-1">{window.location.origin}/#/p/{created?.id}</p>
             </div>
           </div>
 

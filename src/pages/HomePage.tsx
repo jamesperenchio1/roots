@@ -84,7 +84,7 @@ export default function HomePage() {
             {listings.map(listing => (
               <Link to={`/listing/${listing.id}`} key={listing.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
                 <div className="aspect-[3/4] overflow-hidden bg-zinc-800">
-                  <img src={PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <img src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 </div>
                 <div className="p-4">
                   <p className="text-xs text-zinc-500 mb-1 truncate">{listing.species?.scientific_name}</p>

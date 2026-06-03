@@ -121,7 +121,7 @@ export default function SellerDashboardPage() {
                   <div key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                        <img src={PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || ''} alt="" className="w-full h-full object-cover" />
+                        <img src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
@@ -548,8 +548,12 @@ export default function SellerDashboardPage() {
         {/* Seller Header */}
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center text-xl font-medium">
-              {me?.display_name?.charAt(0) || 'S'}
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center text-xl font-medium overflow-hidden">
+              {me?.avatar_url ? (
+                <img src={me.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                me?.display_name?.charAt(0) || 'S'
+              )}
             </div>
             <div className="flex-1">
               <h1 className="text-xl font-light">{me?.display_name || 'Seller Dashboard'}</h1>

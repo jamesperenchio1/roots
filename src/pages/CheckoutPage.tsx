@@ -150,7 +150,7 @@ export default function CheckoutPage() {
                   : <QrCode className="w-12 h-12 text-zinc-400" />}
               </div>
               <p className="text-sm text-zinc-300 mb-1">Scan with your banking app to pay {total.toLocaleString()} THB</p>
-              <p className="text-xs text-zinc-500">Pays {listing.seller?.display_name || 'the seller'} directly · all Thai banks</p>
+              <p className="text-xs text-zinc-500">Pays {listing.seller?.display_name || 'the seller'} directly via any Thai bank</p>
               <p className="text-[11px] text-zinc-600 mt-1">After paying, tap the button below to confirm.</p>
               <div className="flex items-center justify-center gap-3 mt-3">
                 {['Krungthai', 'SCB', 'KBank', 'BBL'].map(bank => (
