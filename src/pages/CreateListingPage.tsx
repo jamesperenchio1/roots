@@ -1,10 +1,17 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Camera, QrCode, CheckCircle, Tag, Info } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Camera, QrCode, CheckCircle, Tag, Info, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { getSpeciesPriceStats } from '@/data/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { createListing, uploadListingPhoto } from '@/lib/api';
+import { generateQR } from '@/lib/promptpay';
+import type { Listing, Category } from '@/types';
+
+interface PhotoItem { file: File; preview: string; }
 
 const SIZES = ['S', 'M', 'L', 'XL'] as const;
 const SIZE_LABELS: Record<string, string> = {
@@ -25,7 +32,27 @@ export default function CreateListingPage() {
   const [delivery, setDelivery] = useState<string[]>([]);
   const [province, setProvince] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [photoCount, setPhotoCount] = useState(0);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [created, setCreated] = useState<Listing | null>(null);
+  const [provenanceQR, setProvenanceQR] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, isLocalAdmin } = useAuth();
+  const navigate = useNavigate();
+  const photoCount = photos.length;
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files) return;
+    const next = Array.from(files).slice(0, 10 - photos.length).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setPhotos(prev => [...prev, ...next].slice(0, 10));
+  };
+
+  const removePhoto = (i: number) => {
+    setPhotos(prev => prev.filter((_, idx) => idx !== i));
+  };
 
   const marketStats = species && price
     ? getSpeciesPriceStats(species.id, 30)
@@ -56,9 +83,44 @@ export default function CreateListingPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) setStep('qr');
+    if (!validate()) return;
+    if (!user || isLocalAdmin) {
+      toast.error('Please sign up as a seller to create a real listing.');
+      navigate('/signup');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const urls: string[] = [];
+      for (const p of photos) {
+        urls.push(await uploadListingPhoto(p.file, user.id));
+      }
+      const listing = await createListing({
+        species_id: species?.id,
+        species_scientific: species?.scientific_name || speciesQuery,
+        species_common_en: species?.common_name_en || speciesQuery,
+        species_common_th: species?.common_name_th,
+        category: (species?.category as Category) || 'other',
+        price_thb: parseInt(price),
+        size_category: size,
+        pot_size_cm: potSize ? parseInt(potSize) : undefined,
+        description,
+        delivery_options: delivery,
+        pickup_province: province || undefined,
+        photos: urls,
+      }, user);
+      const qr = await generateQR(`${window.location.origin}/#/p/${listing.id}`, 220);
+      setCreated(listing);
+      setProvenanceQR(qr);
+      setStep('qr');
+      toast.success('Listing published to the market!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not create listing');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (step === 'qr') {
@@ -79,17 +141,23 @@ export default function CreateListingPage() {
               <QrCode className="w-4 h-4 text-purple-400" />
               Provenance QR Code
             </h3>
-            <div className="w-48 h-48 bg-white rounded-xl mx-auto mb-3 p-3">
-              <div className="w-full h-full bg-zinc-900 rounded-lg flex items-center justify-center">
-                <QrCode className="w-28 h-28 text-white" />
-              </div>
+            <div className="w-48 h-48 bg-white rounded-xl mx-auto mb-3 p-3 flex items-center justify-center">
+              {provenanceQR
+                ? <img src={provenanceQR} alt="Provenance QR" className="w-full h-full object-contain" />
+                : <QrCode className="w-28 h-28 text-zinc-900" />}
             </div>
             <p className="text-xs text-zinc-500 mb-4">
               Print and attach this QR tag to the plant pot. Every future owner can scan it to see its full history.
             </p>
             <div className="flex gap-2 justify-center">
-              <Button className="bg-emerald-500 hover:bg-emerald-600 text-black text-sm">Download QR</Button>
-              <Button variant="outline" className="border-white/10 text-sm">Print Tag</Button>
+              <a
+                href={provenanceQR || '#'}
+                download={`root-provenance-${created?.id || 'qr'}.png`}
+                className="inline-flex items-center bg-emerald-500 hover:bg-emerald-600 text-black text-sm px-4 py-2 rounded-md font-medium"
+              >
+                Download QR
+              </a>
+              <Button type="button" variant="outline" className="border-white/10 text-sm" onClick={() => window.print()}>Print Tag</Button>
             </div>
           </div>
 
@@ -107,7 +175,7 @@ export default function CreateListingPage() {
             <Link to="/seller-dashboard" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
               Go to Dashboard
             </Link>
-            <Link to="/browse" className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
+            <Link to={created ? `/listing/${created.id}` : '/browse'} className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
               View Listing
             </Link>
           </div>
@@ -135,25 +203,45 @@ export default function CreateListingPage() {
           {/* Photos */}
           <div>
             <label className="text-sm font-medium mb-2 block">Photos <span className="text-zinc-500 font-normal">(1-10)</span></label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
+            />
             <div className="grid grid-cols-5 gap-2">
-              {[0, 1, 2, 3, 4].map(i => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setPhotoCount(Math.max(photoCount, i + 1))}
-                  className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-colors ${
-                    i < photoCount ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  {i < photoCount ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-400" />
-                  ) : (
-                    <Camera className="w-5 h-5 text-zinc-600" />
-                  )}
-                  <span className="text-[10px] text-zinc-600">{i === 0 ? 'Main' : `#${i + 1}`}</span>
-                </button>
+              {photos.map((p, i) => (
+                <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-2 border-emerald-500/50 group">
+                  <img src={p.preview} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove photo"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                  {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-emerald-400 py-0.5">Main</span>}
+                </div>
               ))}
+              {photos.length < 10 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-white/20 flex flex-col items-center justify-center gap-1 transition-colors"
+                >
+                  <Camera className="w-5 h-5 text-zinc-600" />
+                  <span className="text-[10px] text-zinc-600">Add</span>
+                </button>
+              )}
             </div>
+            {photoCount > 0 && (
+              <p className="text-xs text-emerald-400/80 mt-1 inline-flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" /> {photoCount} photo{photoCount > 1 ? 's' : ''} ready
+              </p>
+            )}
             {errors.photos && <p className="text-xs text-red-400 mt-1">{errors.photos}</p>}
           </div>
 
@@ -306,8 +394,8 @@ export default function CreateListingPage() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base">
-            Create Listing & Generate QR
+          <Button type="submit" disabled={submitting} className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base">
+            {submitting ? 'Publishing…' : 'Create Listing & Generate QR'}
           </Button>
         </form>
       </div>

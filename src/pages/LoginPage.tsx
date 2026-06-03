@@ -18,7 +18,7 @@ export default function LoginPage() {
     if (success) {
       navigate('/');
     } else {
-      setError('Invalid credentials. Try any username@root.market / password, or admin@local / admin');
+      setError('Invalid email or password. New here? Create an account.');
     }
   };
 

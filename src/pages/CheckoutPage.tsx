@@ -1,15 +1,34 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, CreditCard, QrCode, Truck, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { getListingById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { createOrder } from '@/lib/api';
+import { generatePromptPayQR } from '@/lib/promptpay';
+
+// Platform fallback PromptPay (used only if a seller has not set their own).
+const PLATFORM_PROMPTPAY = '0812345678';
 
 export default function CheckoutPage() {
   const { listingId } = useParams<{ listingId: string }>();
   const listing = getListingById(listingId || '');
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [method, setMethod] = useState<'promptpay' | 'card'>('promptpay');
   const [address, setAddress] = useState({ name: '', address: '', district: '', province: '', postal: '', phone: '' });
   const [paying, setPaying] = useState(false);
+  const [qr, setQr] = useState('');
+
+  const total = listing?.price_thb || 0;
+  const sellerPromptPay = listing?.seller?.promptpay_id || PLATFORM_PROMPTPAY;
+
+  useEffect(() => {
+    if (listing && method === 'promptpay') {
+      generatePromptPayQR(sellerPromptPay, total).then(setQr).catch(() => setQr(''));
+    }
+  }, [listing, method, sellerPromptPay, total]);
 
   if (!listing) {
     return (
@@ -20,13 +39,33 @@ export default function CheckoutPage() {
     );
   }
 
-  const total = listing.price_thb;
-
-  const handlePay = () => {
+  const handlePay = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (method === 'card') {
+      toast.info('Card payments are coming soon — please use PromptPay.');
+      return;
+    }
+    if (!address.name || !address.address || !address.phone) {
+      toast.error('Please fill in your shipping name, address and phone.');
+      return;
+    }
     setPaying(true);
-    setTimeout(() => {
-      window.location.href = `/#/order/t-new-${Date.now()}`;
-    }, 2000);
+    try {
+      const tx = await createOrder({
+        listing,
+        buyer: user,
+        delivery_method: listing.delivery_options?.includes('ship') ? 'ship' : 'pickup',
+        shipping_address: address,
+      });
+      toast.success('Payment confirmed — your order is protected by escrow.');
+      navigate(`/order/${tx.id}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not place the order.');
+      setPaying(false);
+    }
   };
 
   return (
@@ -42,7 +81,7 @@ export default function CheckoutPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || ''} alt="" className="w-full h-full object-cover" />
+              <img src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium">{listing.species?.common_name_en}</p>
@@ -105,19 +144,14 @@ export default function CheckoutPage() {
           {/* PromptPay Panel */}
           {method === 'promptpay' && (
             <div className="text-center py-6 bg-zinc-800/30 rounded-lg border border-white/5">
-              <div className="w-40 h-40 bg-white rounded-xl mx-auto mb-4 p-3 shadow-lg">
-                <div className="w-full h-full bg-zinc-900 rounded-lg flex items-center justify-center relative overflow-hidden">
-                  {/* Simulated QR pattern */}
-                  <div className="absolute inset-2 grid grid-cols-8 grid-rows-8 gap-px">
-                    {Array.from({ length: 64 }).map((_, i) => (
-                      <div key={i} className={`${Math.random() > 0.5 ? 'bg-black' : 'bg-white'}`} />
-                    ))}
-                  </div>
-                  <QrCode className="w-12 h-12 text-emerald-400 relative z-10" />
-                </div>
+              <div className="w-44 h-44 bg-white rounded-xl mx-auto mb-4 p-2 shadow-lg flex items-center justify-center">
+                {qr
+                  ? <img src={qr} alt="PromptPay QR" className="w-full h-full object-contain" />
+                  : <QrCode className="w-12 h-12 text-zinc-400" />}
               </div>
-              <p className="text-sm text-zinc-300 mb-1">Scan with your banking app</p>
-              <p className="text-xs text-zinc-500">Krungthai, SCB, KBank, Bangkok Bank, and all Thai banks</p>
+              <p className="text-sm text-zinc-300 mb-1">Scan with your banking app to pay {total.toLocaleString()} THB</p>
+              <p className="text-xs text-zinc-500">Pays {listing.seller?.display_name || 'the seller'} directly · all Thai banks</p>
+              <p className="text-[11px] text-zinc-600 mt-1">After paying, tap the button below to confirm.</p>
               <div className="flex items-center justify-center gap-3 mt-3">
                 {['Krungthai', 'SCB', 'KBank', 'BBL'].map(bank => (
                   <span key={bank} className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-500">{bank}</span>
@@ -167,7 +201,7 @@ export default function CheckoutPage() {
           disabled={paying}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
         >
-          {paying ? 'Processing...' : `Pay ${total.toLocaleString()} THB`}
+          {paying ? 'Confirming…' : method === 'promptpay' ? `I've paid ${total.toLocaleString()} THB` : `Pay ${total.toLocaleString()} THB`}
         </Button>
 
         <p className="text-xs text-zinc-600 text-center mt-3">

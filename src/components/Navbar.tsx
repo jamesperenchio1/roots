@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store } from 'lucide-react';
 
@@ -7,9 +7,17 @@ export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate(query.trim() ? `/browse?q=${encodeURIComponent(query.trim())}` : '/browse');
+    setSearchOpen(false);
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
@@ -77,17 +85,19 @@ export default function Navbar() {
         </div>
 
         {searchOpen && (
-          <div className="pb-4 border-t border-white/10 pt-4">
+          <form onSubmit={submitSearch} className="pb-4 border-t border-white/10 pt-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search plants, species, sellers..."
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
                 autoFocus
               />
             </div>
-          </div>
+          </form>
         )}
       </div>
 

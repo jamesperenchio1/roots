@@ -17,8 +17,8 @@ export default function Footer() {
               variegated monsters. Permanent QR provenance. Transparent price history.
             </p>
             <div className="flex items-center gap-3">
-              <a href="#" className="text-zinc-500 hover:text-white transition-colors"><Instagram className="w-4 h-4" /></a>
-              <a href="#" className="text-zinc-500 hover:text-white transition-colors"><MessageCircle className="w-4 h-4" /></a>
+              <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="text-zinc-500 hover:text-white transition-colors"><Instagram className="w-4 h-4" /></a>
+              <Link to="/contact" aria-label="Contact" className="text-zinc-500 hover:text-white transition-colors"><MessageCircle className="w-4 h-4" /></Link>
             </div>
           </div>
 

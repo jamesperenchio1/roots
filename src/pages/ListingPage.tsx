@@ -1,13 +1,49 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Heart, Share2, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode } from 'lucide-react';
+import { toast } from 'sonner';
 import { getListingById, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
 import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { toggleWatch } from '@/lib/api';
 
 export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
   const listing = getListingById(id || '');
+  const { user } = useAuth();
+  const [watched, setWatched] = useState(false);
+
+  const handleWatch = async () => {
+    if (!user) { toast.info('Log in to save plants to your watchlist.'); return; }
+    const next = !watched;
+    setWatched(next);
+    try {
+      await toggleWatch(user.id, 'listing', id || '', next);
+      toast.success(next ? 'Added to your watchlist' : 'Removed from watchlist');
+    } catch {
+      setWatched(!next);
+      toast.error('Could not update watchlist');
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Root — plant listing', url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success('Listing link copied to clipboard');
+      }
+    } catch { /* user cancelled */ }
+  };
+
+  const handleMessage = () => {
+    if (!user) { toast.info('Log in to message the seller.'); return; }
+    toast.success(`Your interest was sent to ${listing?.seller?.display_name || 'the seller'}.`);
+  };
 
   if (!listing) {
     return (
@@ -19,6 +55,8 @@ export default function ListingPage() {
   }
 
   const speciesId = listing.plant_id?.replace('p-', 'sp-') || '';
+  const coverImg = listing.photos?.[0]?.storage_path || PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg';
+  const gallery = (listing.photos && listing.photos.length ? listing.photos.map(p => p.storage_path) : [coverImg, coverImg, coverImg, coverImg]);
   const priceData = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 90).map(ps => ({
     date: ps.snapshot_date,
     price: ps.median_price_thb,
@@ -38,15 +76,15 @@ export default function ListingPage() {
           <div className="space-y-4">
             <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900">
               <img
-                src={PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'}
+                src={coverImg}
                 alt={listing.species?.scientific_name}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="aspect-square rounded-lg overflow-hidden bg-zinc-800 opacity-50">
-                  <img src={PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover" />
+              {gallery.slice(0, 4).map((src, i) => (
+                <div key={i} className="aspect-square rounded-lg overflow-hidden bg-zinc-800 opacity-80">
+                  <img src={src} alt="" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
@@ -114,13 +152,13 @@ export default function ListingPage() {
                   Buy Now
                 </Button>
               </Link>
-              <Button variant="outline" className="h-12 px-4 rounded-xl border-white/10 hover:bg-white/5">
-                <Heart className="w-4 h-4" />
+              <Button type="button" onClick={handleWatch} variant="outline" className={`h-12 px-4 rounded-xl border-white/10 hover:bg-white/5 ${watched ? 'text-rose-400' : ''}`}>
+                <Heart className={`w-4 h-4 ${watched ? 'fill-rose-400' : ''}`} />
               </Button>
-              <Button variant="outline" className="h-12 px-4 rounded-xl border-white/10 hover:bg-white/5">
+              <Button type="button" onClick={handleMessage} variant="outline" className="h-12 px-4 rounded-xl border-white/10 hover:bg-white/5">
                 <MessageCircle className="w-4 h-4" />
               </Button>
-              <Button variant="outline" className="h-12 px-4 rounded-xl border-white/10 hover:bg-white/5">
+              <Button type="button" onClick={handleShare} variant="outline" className="h-12 px-4 rounded-xl border-white/10 hover:bg-white/5">
                 <Share2 className="w-4 h-4" />
               </Button>
             </div>

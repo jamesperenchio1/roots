@@ -351,17 +351,18 @@ export function getProvenanceChain(plantId: string): ProvenanceChain | null {
 export function getListingsWithDetails(): Listing[] {
   return LISTINGS.map(l => ({
     ...l,
-    species: SPECIES.find(s => s.id === l.plant_id?.replace('p-', 'sp-') || ''),
-    seller: USERS.find(u => u.id === l.seller_id),
-    photos: [{ id: `lp-${l.id}`, listing_id: l.id, storage_path: PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg', order_index: 0, created_at: l.created_at }]
+    species: l.species || SPECIES.find(s => s.id === l.plant_id?.replace('p-', 'sp-') || ''),
+    seller: l.seller || USERS.find(u => u.id === l.seller_id),
+    photos: l.photos && l.photos.length ? l.photos : [{ id: `lp-${l.id}`, listing_id: l.id, storage_path: PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg', order_index: 0, created_at: l.created_at }]
   }));
 }
 
 export function getTransactionsWithDetails(): Transaction[] {
   return TRANSACTIONS.map(t => ({
     ...t,
-    buyer: USERS.find(u => u.id === t.buyer_id),
-    seller: USERS.find(u => u.id === t.seller_id)
+    buyer: t.buyer || USERS.find(u => u.id === t.buyer_id),
+    seller: t.seller || USERS.find(u => u.id === t.seller_id),
+    listing: t.listing,
   }));
 }
 

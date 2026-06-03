@@ -5,20 +5,7 @@ import { Button } from '@/components/ui/button';
 
 export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
-  const tx = transactionId?.startsWith('t-new') ? {
-    id: transactionId,
-    sale_price_thb: 8500,
-    platform_fee_thb: 680,
-    seller_payout_thb: 7820,
-    status: 'paid_in_escrow' as const,
-    delivery_method: 'ship' as const,
-    tracking_number: 'TH123456789',
-    courier: 'Kerry Express',
-    seller: { display_name: 'PlantKrit' },
-    buyer: { display_name: 'You' },
-    listing: { id: 'l-1', plant_id: 'p-1' },
-    created_at: new Date().toISOString(),
-  } : getTransactionById(transactionId || '');
+  const tx = getTransactionById(transactionId || '');
 
   if (!tx) {
     return (
@@ -73,10 +60,10 @@ export default function OrderPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} alt="" className="w-full h-full object-cover" />
+              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} alt="" className="w-full h-full object-cover" />
             </div>
             <div>
-              <p className="text-sm font-medium">Monstera Thai Constellation</p>
+              <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || 'Your plant'}</p>
               <p className="text-xs text-zinc-500">Order total: {tx.sale_price_thb.toLocaleString()} THB</p>
               <p className="text-xs text-zinc-500">Seller: {tx.seller?.display_name}</p>
             </div>

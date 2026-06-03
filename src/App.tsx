@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { hydratePublicData } from '@/lib/api';
+import { Leaf } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -92,10 +95,28 @@ function AppContent() {
   );
 }
 
+function BootGate({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    hydratePublicData().finally(() => setReady(true));
+  }, []);
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3">
+        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
+        <p className="text-sm text-zinc-500">Loading the market…</p>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BootGate>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BootGate>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
 import { Sparkline } from '@/components/PriceChart';
@@ -34,6 +34,8 @@ export default function BrowsePage() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
+  const [searchParams] = useSearchParams();
+  const q = (searchParams.get('q') || '').toLowerCase().trim();
 
   const listings = useMemo(() => {
     let result = getActiveListings({
@@ -44,20 +46,34 @@ export default function BrowsePage() {
       maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
     });
 
+    if (q) {
+      result = result.filter((l) => {
+        const hay = [
+          l.species?.common_name_en,
+          l.species?.common_name_th,
+          l.species?.scientific_name,
+          l.description,
+          l.seller?.display_name,
+          l.pickup_province,
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
     switch (sortBy) {
       case 'price-low': result = [...result].sort((a, b) => a.price_thb - b.price_thb); break;
       case 'price-high': result = [...result].sort((a, b) => b.price_thb - a.price_thb); break;
       default: result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return result;
-  }, [category, size, province, minPrice, maxPrice, sortBy]);
+  }, [category, size, province, minPrice, maxPrice, sortBy, q]);
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">All Plants</h1>
+            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{q ? `Results for “${q}”` : 'All Plants'}</h1>
             <p className="text-zinc-500">{listings.length} listings — herbs to rare aroids</p>
           </div>
           <div className="flex items-center gap-2">
@@ -154,7 +170,7 @@ export default function BrowsePage() {
             >
               <div className="overflow-hidden">
                 <img
-                  src={PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                  src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
                   alt={listing.species?.scientific_name}
                   className="w-full object-cover group-hover:scale-105 transition-transform duration-700"
                   style={{ aspectRatio: '3/4' }}

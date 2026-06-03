@@ -1,73 +1,43 @@
-# React + TypeScript + Vite
+# Root — Thailand's Plant Marketplace 🌿
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A marketplace for trading plants (herbs to rare aroids) with permanent QR
+provenance, transparent price history, and PromptPay payments. Built for Thai
+nurseries and collectors.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Frontend:** React 19 + Vite + TypeScript + Tailwind + shadcn/ui (HashRouter SPA)
+- **Backend:** Supabase (Postgres + Auth + Storage + Row Level Security) — free tier
+- **Payments:** Dynamic **PromptPay** QR generated client-side (EMVCo standard).
+  Any Thai banking app scans it and pays the seller directly. No gateway or
+  business registration required. A payment gateway can be added later.
 
-## React Compiler
+## How it works
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Sign up** — creates a real Supabase auth user + profile (display name,
+   PromptPay ID, province). New accounts are auto-confirmed for the pilot.
+2. **List a plant** — upload photos (Supabase Storage), pick a species, set a
+   price. A unique **provenance QR** is generated for the plant tag.
+3. **Buy** — checkout renders a real PromptPay QR for the exact amount, payable
+   to the seller. Confirming creates an escrow-protected order.
+4. **Track** — orders move through paid → shipped → delivered → completed.
 
-## Expanding the ESLint configuration
+The rich market price-history and trend analytics are seeded demo data so the
+marketplace looks alive while you onboard real nurseries.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Local development
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # type-check + production build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Supabase credentials ship with safe public defaults (see `.env.example`); access
+is gated by Row Level Security. Override via env vars if you fork the backend.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Database
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Schema lives in Supabase (tables: `profiles`, `listings`, `transactions`,
+`messages`, `watchlist`) with RLS policies and a `listing-photos` storage bucket.
+A trigger auto-creates a profile on signup.
