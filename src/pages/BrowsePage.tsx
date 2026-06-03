@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
 import { Sparkline } from '@/components/PriceChart';
+import { usePagination } from '@/hooks/usePagination';
+import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import type { Category, SizeCategory } from '@/types';
 
 const CATEGORIES: { value: Category | ''; label: string }[] = [
@@ -26,6 +28,8 @@ const SIZES: { value: SizeCategory | ''; label: string }[] = [
 
 const PROVINCES = ['', 'Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya', 'Nonthaburi'];
 
+const PAGE_SIZE = 12;
+
 export default function BrowsePage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [category, setCategory] = useState<Category | ''>('');
@@ -34,8 +38,15 @@ export default function BrowsePage() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
+  const [isLoading, setIsLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const q = (searchParams.get('q') || '').toLowerCase().trim();
+
+  // Simulate data loading for skeleton demo (removes after mount)
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const listings = useMemo(() => {
     let result = getActiveListings({
@@ -68,13 +79,15 @@ export default function BrowsePage() {
     return result;
   }, [category, size, province, minPrice, maxPrice, sortBy, q]);
 
+  const { visibleItems, hasMore, loadMore, total } = usePagination(listings, { pageSize: PAGE_SIZE });
+
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{q ? `Results for “${q}”` : 'All Plants'}</h1>
-            <p className="text-zinc-500">{listings.length} listings — herbs to rare aroids</p>
+            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{q ? `Results for "${q}"` : 'All Plants'}</h1>
+            <p className="text-zinc-500">{total} listings — herbs to rare aroids</p>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -162,52 +175,70 @@ export default function BrowsePage() {
         )}
 
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-          {listings.map(listing => (
-            <Link
-              to={`/listing/${listing.id}`}
-              key={listing.id}
-              className="group block break-inside-avoid bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all duration-300"
-            >
-              <div className="overflow-hidden">
-                <img
-                  src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                  alt={listing.species?.scientific_name}
-                  loading="lazy"
-                  className="w-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  style={{ aspectRatio: '3/4' }}
-                />
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-zinc-500 mb-0.5 truncate">{listing.species?.scientific_name}</p>
-                    <p className="text-sm font-medium truncate">{listing.species?.common_name_en || listing.species?.common_name_th}</p>
+          {isLoading ? (
+            Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <ListingCardSkeleton key={i} />
+            ))
+          ) : (
+            visibleItems.map(listing => (
+              <Link
+                to={`/listing/${listing.id}`}
+                key={listing.id}
+                className="group block break-inside-avoid bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all duration-300"
+              >
+                <div className="overflow-hidden">
+                  <img
+                    src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                    alt={listing.species?.scientific_name}
+                    loading="lazy"
+                    className="w-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    style={{ aspectRatio: '3/4' }}
+                  />
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-zinc-500 mb-0.5 truncate">{listing.species?.scientific_name}</p>
+                      <p className="text-sm font-medium truncate">{listing.species?.common_name_en || listing.species?.common_name_th}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-emerald-400 font-semibold text-sm">{listing.price_thb.toLocaleString()} THB</span>
+                    <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{listing.size_category}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Sparkline
+                      data={Array.from({ length: 20 }, () => Math.random() * 50 + listing.price_thb * 0.8)}
+                      width={50}
+                      height={16}
+                      color="#4ade80"
+                    />
+                    <span className="text-xs text-zinc-600">{listing.seller?.display_name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-zinc-600">
+                    <span>{listing.delivery_options?.includes('ship') && 'Shipping'}</span>
+                    <span>{listing.delivery_options?.includes('pickup') && 'Pickup'}</span>
+                    <span>{listing.pickup_province}</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-emerald-400 font-semibold text-sm">{listing.price_thb.toLocaleString()} THB</span>
-                  <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{listing.size_category}</span>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <Sparkline
-                    data={Array.from({ length: 20 }, () => Math.random() * 50 + listing.price_thb * 0.8)}
-                    width={50}
-                    height={16}
-                    color="#4ade80"
-                  />
-                  <span className="text-xs text-zinc-600">{listing.seller?.display_name}</span>
-                </div>
-                <div className="flex items-center gap-2 mt-2 text-xs text-zinc-600">
-                  <span>{listing.delivery_options?.includes('ship') && 'Shipping'}</span>
-                  <span>{listing.delivery_options?.includes('pickup') && 'Pickup'}</span>
-                  <span>{listing.pickup_province}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))
+          )}
         </div>
 
-        {listings.length === 0 && (
+        {!isLoading && hasMore && (
+          <div className="text-center mt-8">
+            <button
+              onClick={loadMore}
+              className="inline-flex items-center gap-2 bg-zinc-900 border border-white/10 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-zinc-800 transition-colors"
+            >
+              Load More
+              <span className="text-zinc-500">({total - visibleItems.length} remaining)</span>
+            </button>
+          </div>
+        )}
+
+        {!isLoading && listings.length === 0 && (
           <div className="text-center py-20">
             <p className="text-zinc-500 text-lg mb-2">No listings found</p>
             <p className="text-zinc-600 text-sm">Try adjusting your filters</p>
