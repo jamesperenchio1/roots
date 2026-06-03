@@ -11,6 +11,8 @@ import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
+import { updateOrderStatus } from '@/lib/api';
+import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 
@@ -188,7 +190,18 @@ export default function SellerDashboardPage() {
                       <div className="text-right">
                         <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-full">{s.status}</span>
                         {s.status === 'paid_in_escrow' && (
-                          <button className="block mt-2 text-xs text-emerald-400 hover:underline">Mark as Shipped</button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await updateOrderStatus(s.id, { status: 'shipped', shipped_at: new Date().toISOString() });
+                                toast.success('Marked as shipped.');
+                                window.location.reload();
+                              } catch (err: any) {
+                                toast.error(err?.message || 'Failed to update status.');
+                              }
+                            }}
+                            className="block mt-2 text-xs text-emerald-400 hover:underline"
+                          >Mark as Shipped</button>
                         )}
                         {s.status === 'shipped' && (
                           <p className="text-xs text-zinc-600 mt-1">Tracking: {s.tracking_number || 'N/A'}</p>

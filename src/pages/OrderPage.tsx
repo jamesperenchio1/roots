@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2 } from 'lucide-react';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
+import { updateOrderStatus, uploadDisputeEvidence } from '@/lib/api';
+import { toast } from 'sonner';
 
 export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
   const tx = getTransactionById(transactionId || '');
+  const [confirming, setConfirming] = useState(false);
+  const [status, setStatus] = useState(tx?.status || 'paid_in_escrow');
 
   if (!tx) {
     return (
@@ -23,8 +28,35 @@ export default function OrderPage() {
     { key: 'completed', label: 'Completed', icon: CheckCircle },
   ];
 
-  const currentStep = statusSteps.findIndex(s => s.key === tx.status);
-  const effectiveStep = currentStep >= 0 ? currentStep : tx.status === 'completed' ? 3 : 0;
+  const currentStep = statusSteps.findIndex(s => s.key === status);
+  const effectiveStep = currentStep >= 0 ? currentStep : status === 'completed' ? 3 : 0;
+
+  const handleConfirmReceipt = async (file: File, method: 'qr' | 'photo') => {
+    setConfirming(true);
+    try {
+      // Upload evidence photo
+      await uploadDisputeEvidence(file, tx.buyer_id || 'anonymous');
+
+      // Mark transaction as completed
+      await updateOrderStatus(tx.id, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      });
+      setStatus('completed');
+      toast.success(method === 'qr' ? 'QR verified — escrow released to seller.' : 'Receipt confirmed — escrow released to seller.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to confirm receipt. Please try again.');
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleFileSelect = (method: 'qr' | 'photo') => async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await handleConfirmReceipt(file, method);
+    e.target.value = '';
+  };
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -36,10 +68,10 @@ export default function OrderPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-light tracking-tight">Order #{tx.id.slice(-6)}</h1>
           <span className={`text-xs px-3 py-1 rounded-full ${
-            tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
-            tx.status === 'disputed' ? 'bg-red-500/10 text-red-400' :
+            status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
+            status === 'disputed' ? 'bg-red-500/10 text-red-400' :
             'bg-amber-500/10 text-amber-400'
-          }`}>{tx.status.replace(/_/g, ' ')}</span>
+          }`}>{status.replace(/_/g, ' ')}</span>
         </div>
 
         {/* Progress */}
@@ -81,7 +113,7 @@ export default function OrderPage() {
         </div>
 
         {/* Actions */}
-        {tx.status === 'delivered' && (
+        {status === 'delivered' && (
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <QrCode className="w-4 h-4 text-emerald-400" />
@@ -92,30 +124,64 @@ export default function OrderPage() {
               This will release funds to the seller.
             </p>
             <div className="flex gap-3">
-              <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black">
-                Scan QR Code
-              </Button>
-              <Button variant="outline" className="border-white/10 hover:bg-white/5">
-                Upload Photo
-              </Button>
+              <label className="flex-1 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFileSelect('qr')}
+                  disabled={confirming}
+                />
+                <Button asChild className="w-full bg-emerald-500 hover:bg-emerald-600 text-black" disabled={confirming}>
+                  <span className="flex items-center justify-center gap-2">
+                    {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                    Scan QR Code
+                  </span>
+                </Button>
+              </label>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect('photo')}
+                  disabled={confirming}
+                />
+                <Button asChild variant="outline" className="border-white/10 hover:bg-white/5" disabled={confirming}>
+                  <span className="flex items-center justify-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Upload Photo
+                  </span>
+                </Button>
+              </label>
             </div>
           </div>
         )}
 
-        {tx.status === 'shipped' && (
+        {status === 'shipped' && (
           <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 mb-6">
             <p className="text-sm text-blue-400">Your plant is on the way! You'll be able to confirm receipt once it arrives.</p>
           </div>
         )}
 
-        {tx.status === 'paid_in_escrow' && (
+        {status === 'paid_in_escrow' && (
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 mb-6">
             <p className="text-sm text-amber-400">Waiting for seller to ship. You'll receive tracking info once shipped.</p>
           </div>
         )}
 
+        {status === 'completed' && (
+          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
+            <p className="text-sm text-emerald-400 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Order completed — escrow released to seller. Enjoy your plant!
+            </p>
+          </div>
+        )}
+
         {/* Dispute Button */}
-        {(tx.status === 'shipped' || tx.status === 'delivered' || tx.status === 'paid_in_escrow') && (
+        {(status === 'shipped' || status === 'delivered' || status === 'paid_in_escrow') && (
           <Link to={`/order/${tx.id}/dispute`}>
             <Button variant="outline" className="w-full border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300">
               <AlertTriangle className="w-4 h-4 mr-2" />

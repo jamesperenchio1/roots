@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getTransactionsWithDetails, WATCHLIST, MESSAGES, DISPUTES } from '@/data/mockData';
+import { updateProfile } from '@/lib/api';
+import { toast } from 'sonner';
 
 const TABS = [
   { id: 'purchases', label: 'Purchases', icon: ShoppingBag },
@@ -14,9 +16,15 @@ const TABS = [
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { tab } = useParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState(tab && TABS.some(t => t.id === tab) ? tab : 'purchases');
+  const [saving, setSaving] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    display_name: user?.display_name || '',
+    promptpay_id: user?.promptpay_id || '',
+    language_preference: user?.language_preference || 'en',
+  });
 
   useEffect(() => {
     if (tab && TABS.some(t => t.id === tab)) {
@@ -24,7 +32,37 @@ export default function DashboardPage() {
     }
   }, [tab]);
 
+  // Keep form in sync when user loads
+  useEffect(() => {
+    if (user) {
+      setSettingsForm({
+        display_name: user.display_name || '',
+        promptpay_id: user.promptpay_id || '',
+        language_preference: user.language_preference || 'en',
+      });
+    }
+  }, [user?.id]);
+
   const transactions = getTransactionsWithDetails().filter(t => t.buyer_id === user?.id);
+
+  const handleSaveSettings = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await updateProfile(user.id, {
+        display_name: settingsForm.display_name,
+        promptpay_id: settingsForm.promptpay_id || null,
+        language_preference: settingsForm.language_preference as 'th' | 'en',
+        updated_at: new Date().toISOString(),
+      });
+      await refreshProfile();
+      toast.success('Settings saved.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -138,21 +176,40 @@ export default function DashboardPage() {
           <div className="space-y-4 max-w-md">
             <div>
               <label className="text-sm text-zinc-400 mb-1.5 block">Display Name</label>
-              <input type="text" defaultValue={user?.display_name} className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50" />
+              <input
+                type="text"
+                value={settingsForm.display_name}
+                onChange={e => setSettingsForm({ ...settingsForm, display_name: e.target.value })}
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+              />
             </div>
             <div>
               <label className="text-sm text-zinc-400 mb-1.5 block">PromptPay ID</label>
-              <input type="text" defaultValue={user?.promptpay_id || ''} placeholder="Phone or National ID" className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50" />
+              <input
+                type="text"
+                value={settingsForm.promptpay_id}
+                onChange={e => setSettingsForm({ ...settingsForm, promptpay_id: e.target.value })}
+                placeholder="Phone or National ID"
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              />
             </div>
             <div>
               <label className="text-sm text-zinc-400 mb-1.5 block">Language</label>
-              <select defaultValue={user?.language_preference} className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50">
+              <select
+                value={settingsForm.language_preference}
+                onChange={e => setSettingsForm({ ...settingsForm, language_preference: e.target.value as 'th' | 'en' })}
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+              >
                 <option value="th">Thai</option>
                 <option value="en">English</option>
               </select>
             </div>
-            <button className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
-              Save Changes
+            <button
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         );

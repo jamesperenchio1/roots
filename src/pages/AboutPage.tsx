@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Shield, TrendingUp, Truck, QrCode, Zap, Heart } from 'lucide-react';
 
 const STATS = [
@@ -117,8 +118,8 @@ export default function AboutPage() {
             Root gives you the tools to sell with transparency and confidence.
           </p>
           <div className="flex justify-center gap-3">
-            <a href="/signup" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">Create Account</a>
-            <a href="/seller-dashboard" className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">Seller Dashboard</a>
+            <Link to="/signup" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">Create Account</Link>
+            <Link to="/seller-dashboard" className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">Seller Dashboard</Link>
           </div>
         </div>
       </div>

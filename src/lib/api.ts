@@ -3,7 +3,7 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES } from '@/data/mockData';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, getListingByPlantId } from '@/data/mockData';
 import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption } from '@/types';
 
 const FALLBACK_IMG = '/images/plants/monstera-thai.jpg';
@@ -200,7 +200,20 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
   return listing;
 }
 
+export async function ensurePhotoBucket(): Promise<void> {
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some(b => b.name === PHOTO_BUCKET);
+    if (!exists) {
+      await supabase.storage.createBucket(PHOTO_BUCKET, { public: true, fileSizeLimit: 10485760 });
+    }
+  } catch (e) {
+    console.warn('ensurePhotoBucket:', e);
+  }
+}
+
 export async function uploadListingPhoto(file: File, userId: string): Promise<string> {
+  await ensurePhotoBucket();
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, { upsert: false });
@@ -250,6 +263,72 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
   await supabase.from('transactions').update(patch).eq('id', id);
   const tx = TRANSACTIONS.find((t) => t.id === id);
   if (tx) Object.assign(tx, patch);
+}
+
+export async function fetchProvenance(plantId: string): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[] }> {
+  const listing = getListingByPlantId(plantId) || null;
+  const mockTransfers = TRANSFERS.filter(t => t.plant_id === plantId);
+  if (mockTransfers.length > 0) {
+    return { listing, transfers: mockTransfers };
+  }
+  try {
+    const { data } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('plant_id', plantId)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: true });
+    const transfers = (data || []).map((r, i) => ({
+      id: `live-tr-${i}`,
+      plant_id: plantId,
+      from_user_id: r.seller_id,
+      to_user_id: r.buyer_id,
+      transaction_id: r.id,
+      sale_price_thb: r.sale_price_thb,
+      transferred_at: r.completed_at || r.created_at,
+    }));
+    return { listing, transfers };
+  } catch (e) {
+    return { listing, transfers: [] };
+  }
+}
+
+export async function uploadDisputeEvidence(file: File, userId: string): Promise<string> {
+  const bucket = 'dispute-evidence';
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  let uploadError = await supabase.storage.from(bucket).upload(path, file, { upsert: false }).then(r => r.error);
+  if (uploadError && (uploadError.message?.includes('Bucket') || uploadError.message?.includes('not found'))) {
+    await supabase.storage.createBucket(bucket, { public: true, fileSizeLimit: 10485760 });
+    uploadError = await supabase.storage.from(bucket).upload(path, file, { upsert: false }).then(r => r.error);
+  }
+  if (uploadError) throw uploadError;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+export async function createDispute(input: {
+  transaction_id: string;
+  opened_by: 'buyer' | 'seller';
+  reason: string;
+  description: string;
+  evidence_urls: string[];
+}): Promise<void> {
+  const { error } = await supabase.from('disputes').insert({
+    transaction_id: input.transaction_id,
+    opened_by: input.opened_by,
+    reason: input.reason,
+    description: input.description,
+    evidence_urls: input.evidence_urls,
+    status: 'open',
+  });
+  if (error) throw error;
+}
+
+export async function updateProfile(userId: string, patch: Partial<Profile>): Promise<void> {
+  const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
+  if (error) throw error;
+  const user = USERS.find(u => u.id === userId);
+  if (user) Object.assign(user, patch);
 }
 
 export async function toggleWatch(

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { QrCode, ShoppingCart, Truck, ScanLine, Shield, TrendingUp } from 'lucide-react';
 
 const STEPS = [
@@ -73,12 +74,12 @@ export default function HowItWorksPage() {
             Create an account to browse, buy, sell, and start building your plant's provenance history.
           </p>
           <div className="flex justify-center gap-3">
-            <a href="/signup" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
+            <Link to="/signup" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
               Sign Up
-            </a>
-            <a href="/browse" className="border border-white/20 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
+            </Link>
+            <Link to="/browse" className="border border-white/20 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
               Browse Plants
-            </a>
+            </Link>
           </div>
         </div>
       </div>

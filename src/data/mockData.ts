@@ -382,6 +382,10 @@ export function getTransactionById(id: string): Transaction | undefined {
   return getTransactionsWithDetails().find(t => t.id === id);
 }
 
+export function getListingByPlantId(plantId: string): Listing | undefined {
+  return getListingsWithDetails().find(l => l.plant_id === plantId);
+}
+
 export function getActiveListings(filters?: { speciesId?: string; category?: string; minPrice?: number; maxPrice?: number; size?: string; province?: string }): Listing[] {
   let listings = getListingsWithDetails().filter(l => l.status === 'active');
   if (filters?.speciesId) listings = listings.filter(l => l.plant_id?.replace('p-', 'sp-') === filters.speciesId);

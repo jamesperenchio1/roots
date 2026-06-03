@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, Upload, Camera } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Upload, Camera, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { createDispute, uploadDisputeEvidence } from '@/lib/api';
+import { toast } from 'sonner';
 
 const REASONS = [
   { value: 'DOA', label: 'Dead on Arrival' },
@@ -18,12 +20,57 @@ export default function DisputePage() {
   const navigate = useNavigate();
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
+  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (evidenceUrls.length >= 5) {
+      toast.error('Maximum 5 evidence photos allowed.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadDisputeEvidence(file, 'buyer');
+      setEvidenceUrls(prev => [...prev, url]);
+      toast.success('Evidence uploaded.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeEvidence = (idx: number) => {
+    setEvidenceUrls(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => navigate(`/order/${transactionId}`), 2000);
+    if (!reason || !description) {
+      toast.error('Please fill in all required fields.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createDispute({
+        transaction_id: transactionId || '',
+        opened_by: 'buyer',
+        reason,
+        description,
+        evidence_urls: evidenceUrls,
+      });
+      setSubmitted(true);
+      setTimeout(() => navigate(`/order/${transactionId}`), 2000);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to submit dispute.');
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -86,17 +133,56 @@ export default function DisputePage() {
 
           <div>
             <label className="text-sm text-zinc-400 mb-1.5 block">Evidence</label>
-            <div className="flex gap-3">
-              <button type="button" className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors text-sm">
-                <Camera className="w-4 h-4" /> Take Photo
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleUpload}
+              disabled={uploading}
+            />
+            <div className="flex gap-3 mb-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors text-sm disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                Take Photo
               </button>
-              <button type="button" className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors text-sm">
-                <Upload className="w-4 h-4" /> Upload
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors text-sm disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                Upload
               </button>
             </div>
+
+            {/* Evidence previews */}
+            {evidenceUrls.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {evidenceUrls.map((url, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-zinc-800">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeEvidence(i)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white hover:bg-red-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <Button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white font-medium h-11 rounded-lg">
+          <Button type="submit" disabled={submitting} className="w-full bg-red-500 hover:bg-red-600 text-white font-medium h-11 rounded-lg">
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Submit Dispute
           </Button>
         </form>
