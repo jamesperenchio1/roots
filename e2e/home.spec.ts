@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-async function waitForAppReady(page: any) {
+async function waitForAppReady(page: Page) {
   // Wait for the BootGate loading screen to disappear
   await page.waitForFunction(() => {
     return !document.body.innerText.includes('Loading the market');
@@ -21,7 +21,7 @@ test.describe('Homepage', () => {
     await waitForAppReady(page);
     await page.getByRole('link', { name: /browse plants/i }).first().click();
     await expect(page).toHaveURL(/.*#\/browse/);
-    await expect(page.getByRole('heading', { name: /browse plants/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /all plants/i })).toBeVisible();
   });
 
   test('navigation to /market works', async ({ page }) => {
@@ -29,6 +29,6 @@ test.describe('Homepage', () => {
     await waitForAppReady(page);
     await page.getByRole('link', { name: /market prices/i }).first().click();
     await expect(page).toHaveURL(/.*#\/market/);
-    await expect(page.getByRole('heading', { name: /market pulse/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /market overview/i })).toBeVisible();
   });
 });
