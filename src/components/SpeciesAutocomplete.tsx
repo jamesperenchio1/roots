@@ -81,14 +81,32 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Se
   };
 
   const highlightMatch = (text: string, queryTerms: string[]) => {
-      // Simple bold highlighting
-    let highlighted = text;
-    for (const term of queryTerms) {
-      if (term.length < 2) continue;
-      const regex = new RegExp(`(${term})`, 'gi');
-      highlighted = highlighted.replace(regex, '<mark>$1</mark>');
+    // Escape HTML to prevent XSS, then highlight matches with React-safe segments
+    const escapeHtml = (str: string) =>
+      str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const escaped = escapeHtml(text);
+    const terms = queryTerms.filter(t => t.length >= 2);
+    if (terms.length === 0) return escaped;
+
+    // Build regex from all terms
+    const pattern = new RegExp(`(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+
+    const parts: (string | { type: 'mark'; text: string })[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(escaped)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(escaped.slice(lastIndex, match.index));
+      }
+      parts.push({ type: 'mark', text: match[1] });
+      lastIndex = pattern.lastIndex;
     }
-    return highlighted;
+    if (lastIndex < escaped.length) {
+      parts.push(escaped.slice(lastIndex));
+    }
+    return parts;
   };
 
   const queryTerms = query.split(' ').filter(t => t.length >= 2).map(t => t.toLowerCase());
@@ -132,7 +150,17 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Se
                 <Leaf className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(species.scientific_name, queryTerms) }} />
+                <p className="text-sm font-medium truncate">
+                  {(() => {
+                    const parts = highlightMatch(species.scientific_name, queryTerms);
+                    if (typeof parts === 'string') return parts;
+                    return parts.map((part, idx) =>
+                      typeof part === 'string'
+                        ? <span key={idx}>{part}</span>
+                        : <mark key={idx} className="bg-emerald-500/30 text-emerald-300 rounded px-0.5">{part.text}</mark>
+                    );
+                  })()}
+                </p>
                 <p className="text-xs text-zinc-500 truncate">
                   {species.common_name_en} {species.common_name_th && `· ${species.common_name_th}`}
                 </p>

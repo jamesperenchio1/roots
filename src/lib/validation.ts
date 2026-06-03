@@ -1,7 +1,13 @@
 /** Sanitize user input to prevent XSS and injection */
 export function sanitizeText(input: string, maxLength = 5000): string {
   return input
-    .replace(/[<>]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+=/gi, '')
     .trim()
     .slice(0, maxLength);
 }

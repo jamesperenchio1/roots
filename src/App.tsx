@@ -1,6 +1,6 @@
 import { useEffect, useState, Suspense, lazy } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { Routes, Route } from 'react-router-dom';
+import { AuthProvider } from '@/hooks/useAuth';
 import { hydratePublicData } from '@/lib/api';
 import { Leaf } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
@@ -8,6 +8,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ScrollToTop from '@/components/ScrollToTop';
+import AuthGuard from '@/components/AuthGuard';
+import AdminGuard from '@/components/AdminGuard';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const BrowsePage = lazy(() => import('@/pages/BrowsePage'));
@@ -34,22 +36,6 @@ const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const ContactPage = lazy(() => import('@/pages/ContactPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
-
-function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const location = useLocation();
-  if (!user) {
-    // Preserve intended destination so we can redirect back after login
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
-  }
-  return <>{children}</>;
-}
 
 function PageLoader() {
   return (

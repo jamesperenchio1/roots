@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { mapProfile, hydrateUserTransactions } from '@/lib/api';
@@ -50,6 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // Restore an existing session on load and react to auth changes.
+  const isLocalAdminRef = useRef(isLocalAdmin);
+  isLocalAdminRef.current = isLocalAdmin;
+
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(async ({ data }) => {
@@ -66,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         const p = await fetchProfile(session.user.id);
         if (p) setUser(p);
-      } else if (!isLocalAdmin) {
+      } else if (!isLocalAdminRef.current) {
         setUser(null);
       }
     });
@@ -74,7 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
@@ -160,20 +162,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, isLocalAdmin]);
 
+  const value = useMemo(() => ({
+    user,
+    isAdmin: user?.is_admin || false,
+    isLocalAdmin,
+    login,
+    signup,
+    loginAsLocalAdmin,
+    logout,
+    refreshProfile,
+    resetPassword,
+    updatePassword,
+    isLoading,
+  }), [user, isLocalAdmin, login, signup, loginAsLocalAdmin, logout, refreshProfile, resetPassword, updatePassword, isLoading]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAdmin: user?.is_admin || false,
-      isLocalAdmin,
-      login,
-      signup,
-      loginAsLocalAdmin,
-      logout,
-      refreshProfile,
-      resetPassword,
-      updatePassword,
-      isLoading,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

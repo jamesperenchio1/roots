@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 
 interface UsePaginationOptions {
   pageSize?: number;
@@ -8,6 +8,11 @@ interface UsePaginationOptions {
 export function usePagination<T>(items: T[], options: UsePaginationOptions = {}) {
   const { pageSize = 12, initialPage = 1 } = options;
   const [page, setPage] = useState(initialPage);
+
+  // Reset page when items array changes (e.g., filter applied)
+  useEffect(() => {
+    setPage(initialPage);
+  }, [items.length, initialPage]);
 
   const visibleItems = useMemo(() => {
     return items.slice(0, page * pageSize);
