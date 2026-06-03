@@ -2,6 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
+
+function seededRandom(seed: string, index: number): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  return Math.abs(Math.sin(hash + index) * 10000 % 1);
+}
 import { Sparkline } from '@/components/PriceChart';
 import { usePagination } from '@/hooks/usePagination';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
@@ -206,7 +212,7 @@ export default function BrowsePage() {
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <Sparkline
-                      data={Array.from({ length: 20 }, () => Math.random() * 50 + listing.price_thb * 0.8)}
+                      data={Array.from({ length: 20 }, (_, i) => seededRandom(listing.id, i) * 50 + listing.price_thb * 0.8)}
                       width={50}
                       height={16}
                       color="#4ade80"

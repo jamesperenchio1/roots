@@ -1,4 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
+
+function seededRandom(seed: string, index: number): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  return Math.abs(Math.sin(hash + index) * 10000 % 1);
+}
 import { ArrowLeft, Leaf } from 'lucide-react';
 import { getSpeciesById, getActiveListings, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
 import { PriceChart } from '@/components/PriceChart';
@@ -110,7 +116,7 @@ export default function SpeciesPage() {
                     <span>{l.seller?.display_name}</span>
                     <span>{l.pickup_province}</span>
                   </div>
-                  <Sparkline data={Array.from({ length: 20 }, () => Math.random() * 50 + l.price_thb * 0.8)} width={200} height={30} />
+                  <Sparkline data={Array.from({ length: 20 }, (_, i) => seededRandom(l.id, i) * 50 + l.price_thb * 0.8)} width={200} height={30} />
                 </Link>
               ))}
             </div>

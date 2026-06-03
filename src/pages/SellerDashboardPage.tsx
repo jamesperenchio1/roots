@@ -1,4 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+
+function seededRandom(seed: string, index: number): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  return Math.abs(Math.sin(hash + index) * 10000 % 1);
+}
 import { Link, useParams } from 'react-router-dom';
 import {
   Package, DollarSign, TrendingUp, Plus, Eye, Heart,
@@ -583,7 +589,7 @@ function AnalyticsTab({ listings, allSales }: { listings: ReturnType<typeof getA
               <p className="text-sm font-medium truncate">{l.species?.common_name_en}</p>
               <p className="text-xs text-zinc-500">{l.price_thb.toLocaleString()} THB · {l.view_count || 0} views · {l.watch_count || 0} watches</p>
             </div>
-            <Sparkline data={Array.from({ length: 20 }, () => Math.random() * 100 + 50)} width={80} height={24} />
+            <Sparkline data={Array.from({ length: 20 }, (_, i) => seededRandom(l.id, i) * 100 + 50)} width={80} height={24} />
           </div>
         )) : <p className="text-zinc-600 text-sm py-4 text-center">No listings yet</p>}
       </div>

@@ -228,8 +228,9 @@ export async function uploadListingPhoto(file: File, userId: string): Promise<st
   const validation = validateImageFile(file, 5);
   if (!validation.ok) throw new Error(validation.error);
   await ensurePhotoBucket();
-  const ext = file.name.split('.').pop() || 'jpg';
-  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  // Derive extension from MIME type (trusted) rather than filename (spoofable)
+  const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
+  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, { upsert: false });
   if (error) throw error;
   return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
@@ -311,8 +312,8 @@ export async function uploadDisputeEvidence(file: File, userId: string): Promise
   const validation = validateImageFile(file, 5);
   if (!validation.ok) throw new Error(validation.error);
   const bucket = 'dispute-evidence';
-  const ext = file.name.split('.').pop() || 'jpg';
-  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
+  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
   let uploadError = await supabase.storage.from(bucket).upload(path, file, { upsert: false }).then(r => r.error);
   if (uploadError && (uploadError.message?.includes('Bucket') || uploadError.message?.includes('not found'))) {
     await supabase.storage.createBucket(bucket, { public: true, fileSizeLimit: 10485760 });

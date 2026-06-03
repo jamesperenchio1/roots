@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, TrendingUp, Shield, Search, CreditCard } from 'lucide-react';
 import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
@@ -14,11 +14,15 @@ export default function HomePage() {
     date: ps.snapshot_date,
     price: ps.median_price_thb,
   }));
-  const chartData = thaiConstellationData.length > 0 ? thaiConstellationData : Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (30 - i));
-    return { date: d.toISOString().split('T')[0], price: 4000 + Math.sin(i / 5) * 1000 + (Math.random() - 0.5) * 500 };
-  });
+  const fallbackChartData = useMemo(() =>
+    Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (30 - i));
+      return { date: d.toISOString().split('T')[0], price: 4000 + Math.sin(i / 5) * 1000 + ((i * 37) % 100 - 50) };
+    }),
+    []
+  );
+  const chartData = thaiConstellationData.length > 0 ? thaiConstellationData : fallbackChartData;
 
   useEffect(() => {
     const timer = setTimeout(() => setHeroLoaded(true), 300);

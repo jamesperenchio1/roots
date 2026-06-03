@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Search, Check, Leaf } from 'lucide-react';
 import { searchSpecies, normalizeSpeciesName, type SpeciesEntry } from '@/data/speciesDatabase';
 
@@ -11,6 +12,7 @@ interface SpeciesAutocompleteProps {
 
 export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Search plants...', label }: SpeciesAutocompleteProps) {
   const [query, setQuery] = useState(value);
+  const debouncedQuery = useDebounce(query, 150);
   const [results, setResults] = useState<SpeciesEntry[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -32,27 +34,29 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Se
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleInputChange = useCallback((val: string) => {
-    setQuery(val);
+  // Perform search on debounced query
+  useEffect(() => {
     setIsOpen(true);
     setSelectedIndex(-1);
 
-    if (val.length >= 2) {
-      const matches = searchSpecies(val, 8);
+    if (debouncedQuery.length >= 2) {
+      const matches = searchSpecies(debouncedQuery, 8);
       setResults(matches);
-      // Check if this is a new/unlisted species
-      const norm = normalizeSpeciesName(val);
+      const norm = normalizeSpeciesName(debouncedQuery);
       const exactMatch = matches.some(m =>
         normalizeSpeciesName(m.scientific_name) === norm ||
         normalizeSpeciesName(m.common_name_en) === norm ||
         normalizeSpeciesName(m.common_name_th) === norm
       );
-      setIsNewSpecies(!exactMatch && val.length > 3);
+      setIsNewSpecies(!exactMatch && debouncedQuery.length > 3);
     } else {
       setResults([]);
       setIsNewSpecies(false);
     }
+  }, [debouncedQuery]);
 
+  const handleInputChange = useCallback((val: string) => {
+    setQuery(val);
     onChange(val);
   }, [onChange]);
 
