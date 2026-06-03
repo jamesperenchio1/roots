@@ -60,8 +60,8 @@ export default function DashboardPage() {
       });
       await refreshProfile();
       toast.success('Settings saved.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save settings.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save settings.');
     } finally {
       setSaving(false);
     }

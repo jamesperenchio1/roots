@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 
 // The anon/publishable key is designed to be public — access is gated by
 // Postgres Row Level Security. We fall back to the project defaults so the
@@ -10,7 +11,7 @@ const SUPABASE_ANON_KEY =
 
 // Warn if using fallback credentials in production-like environments
 if (import.meta.env.PROD && !import.meta.env.VITE_SUPABASE_URL) {
-  console.warn('Using fallback Supabase credentials. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for production.');
+  logger.warn('Using fallback Supabase credentials. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for production.');
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

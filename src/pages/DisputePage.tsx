@@ -38,8 +38,8 @@ export default function DisputePage() {
       const url = await uploadDisputeEvidence(file, 'buyer');
       setEvidenceUrls(prev => [...prev, url]);
       toast.success('Evidence uploaded.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Upload failed.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -67,8 +67,8 @@ export default function DisputePage() {
       });
       setSubmitted(true);
       setTimeout(() => navigate(`/order/${transactionId}`), 2000);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to submit dispute.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to submit dispute.');
       setSubmitting(false);
     }
   };
@@ -167,7 +167,7 @@ export default function DisputePage() {
               <div className="flex gap-2 flex-wrap">
                 {evidenceUrls.map((url, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-zinc-800">
-                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <img src={url} alt="Dispute evidence" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeEvidence(i)}

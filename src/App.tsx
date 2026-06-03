@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { hydratePublicData } from '@/lib/api';
@@ -8,31 +8,32 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ScrollToTop from '@/components/ScrollToTop';
-import HomePage from '@/pages/HomePage';
-import BrowsePage from '@/pages/BrowsePage';
-import MarketPage from '@/pages/MarketPage';
-import ListingPage from '@/pages/ListingPage';
-import SpeciesPage from '@/pages/SpeciesPage';
-import PlantQRPage from '@/pages/PlantQRPage';
-import SellerPage from '@/pages/SellerPage';
-import LoginPage from '@/pages/LoginPage';
-import SignupPage from '@/pages/SignupPage';
-import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
-import ResetPasswordPage from '@/pages/ResetPasswordPage';
-import DashboardPage from '@/pages/DashboardPage';
-import SellerDashboardPage from '@/pages/SellerDashboardPage';
-import AdminPage from '@/pages/AdminPage';
-import CheckoutPage from '@/pages/CheckoutPage';
-import OrderPage from '@/pages/OrderPage';
-import DisputePage from '@/pages/DisputePage';
-import CreateListingPage from '@/pages/CreateListingPage';
-import HowItWorksPage from '@/pages/HowItWorksPage';
-import FeesPage from '@/pages/FeesPage';
-import AboutPage from '@/pages/AboutPage';
-import TermsPage from '@/pages/TermsPage';
-import PrivacyPage from '@/pages/PrivacyPage';
-import ContactPage from '@/pages/ContactPage';
-import NotFoundPage from '@/pages/NotFoundPage';
+
+const HomePage = lazy(() => import('@/pages/HomePage'));
+const BrowsePage = lazy(() => import('@/pages/BrowsePage'));
+const MarketPage = lazy(() => import('@/pages/MarketPage'));
+const ListingPage = lazy(() => import('@/pages/ListingPage'));
+const SpeciesPage = lazy(() => import('@/pages/SpeciesPage'));
+const PlantQRPage = lazy(() => import('@/pages/PlantQRPage'));
+const SellerPage = lazy(() => import('@/pages/SellerPage'));
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const SignupPage = lazy(() => import('@/pages/SignupPage'));
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const SellerDashboardPage = lazy(() => import('@/pages/SellerDashboardPage'));
+const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+const OrderPage = lazy(() => import('@/pages/OrderPage'));
+const DisputePage = lazy(() => import('@/pages/DisputePage'));
+const CreateListingPage = lazy(() => import('@/pages/CreateListingPage'));
+const HowItWorksPage = lazy(() => import('@/pages/HowItWorksPage'));
+const FeesPage = lazy(() => import('@/pages/FeesPage'));
+const AboutPage = lazy(() => import('@/pages/AboutPage'));
+const TermsPage = lazy(() => import('@/pages/TermsPage'));
+const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
+const ContactPage = lazy(() => import('@/pages/ContactPage'));
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -50,54 +51,65 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-black text-white">
+      <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
+      <p className="text-sm text-zinc-500">Loading…</p>
+    </div>
+  );
+}
+
 function AppContent() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
       <main className="min-h-[60vh]">
-        <Routes>
-          {/* Public Pages */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/browse" element={<BrowsePage />} />
-          <Route path="/browse/:category" element={<BrowsePage />} />
-          <Route path="/market" element={<MarketPage />} />
-          <Route path="/listing/:id" element={<ListingPage />} />
-          <Route path="/species/:id" element={<SpeciesPage />} />
-          <Route path="/p/:plantId" element={<PlantQRPage />} />
-          <Route path="/seller/:id" element={<SellerPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/fees" element={<FeesPage />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public Pages */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/browse/:category" element={<BrowsePage />} />
+            <Route path="/market" element={<MarketPage />} />
+            <Route path="/listing/:id" element={<ListingPage />} />
+            <Route path="/species/:id" element={<SpeciesPage />} />
+            <Route path="/p/:plantId" element={<PlantQRPage />} />
+            <Route path="/seller/:id" element={<SellerPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/how-it-works" element={<HowItWorksPage />} />
+            <Route path="/fees" element={<FeesPage />} />
 
-          {/* Auth Pages */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+            {/* Auth Pages */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Authenticated User Pages */}
-          <Route path="/dashboard" element={<AuthGuard><DashboardPage /></AuthGuard>} />
-          <Route path="/dashboard/:tab" element={<AuthGuard><DashboardPage /></AuthGuard>} />
+            {/* Authenticated User Pages */}
+            <Route path="/dashboard" element={<AuthGuard><DashboardPage /></AuthGuard>} />
+            <Route path="/dashboard/:tab" element={<AuthGuard><DashboardPage /></AuthGuard>} />
 
-          {/* Seller Pages */}
-          <Route path="/seller-dashboard/listings/new" element={<AuthGuard><CreateListingPage /></AuthGuard>} />
-          <Route path="/seller-dashboard/:tab" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
-          <Route path="/seller-dashboard" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
+            {/* Seller Pages */}
+            <Route path="/seller-dashboard/listings/new" element={<AuthGuard><CreateListingPage /></AuthGuard>} />
+            <Route path="/seller-dashboard/:tab" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
+            <Route path="/seller-dashboard" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
 
-          {/* Transaction Flows */}
-          <Route path="/checkout/:listingId" element={<AuthGuard><CheckoutPage /></AuthGuard>} />
-          <Route path="/order/:transactionId" element={<AuthGuard><OrderPage /></AuthGuard>} />
-          <Route path="/order/:transactionId/dispute" element={<AuthGuard><DisputePage /></AuthGuard>} />
+            {/* Transaction Flows */}
+            <Route path="/checkout/:listingId" element={<AuthGuard><CheckoutPage /></AuthGuard>} />
+            <Route path="/order/:transactionId" element={<AuthGuard><OrderPage /></AuthGuard>} />
+            <Route path="/order/:transactionId/dispute" element={<AuthGuard><DisputePage /></AuthGuard>} />
 
-          {/* Admin */}
-          <Route path="/admin/*" element={<AdminGuard><AdminPage /></AdminGuard>} />
+            {/* Admin */}
+            <Route path="/admin/*" element={<AdminGuard><AdminPage /></AdminGuard>} />
 
-          {/* 404 */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            {/* 404 */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
       <Toaster />

@@ -135,7 +135,7 @@ export default function PlantQRPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-8">
           <div className="flex flex-col sm:flex-row items-start gap-6">
             <div className="w-32 h-32 rounded-xl overflow-hidden bg-zinc-800 shrink-0">
-              <img src={coverImage} alt="" className="w-full h-full object-cover" />
+              <img src={coverImage} alt={species?.scientific_name || 'Plant photo'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
@@ -155,7 +155,7 @@ export default function PlantQRPage() {
             <div className="sm:text-right">
               <div className="w-24 h-24 bg-white rounded-xl p-2">
                 {qrUrl ? (
-                  <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
+                  <img src={qrUrl} alt="QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-full h-full bg-zinc-900 rounded-lg flex items-center justify-center">
                     <QrCode className="w-12 h-12 text-white" />

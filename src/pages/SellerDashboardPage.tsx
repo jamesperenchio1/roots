@@ -127,7 +127,7 @@ export default function SellerDashboardPage() {
                   <div key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                        <img src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover" />
+                        <img src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt={l.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
@@ -200,8 +200,8 @@ export default function SellerDashboardPage() {
                                 await updateOrderStatus(s.id, { status: 'shipped', shipped_at: new Date().toISOString() });
                                 toast.success('Marked as shipped.');
                                 refresh();
-                              } catch (err: any) {
-                                toast.error(err?.message || 'Failed to update status.');
+                              } catch (err) {
+                                toast.error(err instanceof Error ? err.message : 'Failed to update status.');
                               }
                             }}
                             className="block mt-2 text-xs text-emerald-400 hover:underline"
@@ -404,7 +404,7 @@ export default function SellerDashboardPage() {
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center text-xl font-medium overflow-hidden">
               {me?.avatar_url ? (
-                <img src={me.avatar_url} alt="" className="w-full h-full object-cover" />
+                <img src={me.avatar_url} alt={`${me?.display_name || 'Seller'} avatar`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 me?.display_name?.charAt(0) || 'S'
               )}
@@ -460,8 +460,8 @@ function SellerSettings({ me }: { me?: typeof USERS[0] }) {
       });
       await refreshProfile();
       toast.success('Settings saved.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save settings.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save settings.');
     } finally {
       setSaving(false);
     }

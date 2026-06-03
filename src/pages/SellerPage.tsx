@@ -28,7 +28,7 @@ export default function SellerPage() {
           <div className="flex items-start gap-4">
             <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center text-2xl font-light shrink-0 overflow-hidden">
               {seller.avatar_url ? (
-                <img src={seller.avatar_url} alt="" className="w-full h-full object-cover" />
+                <img src={seller.avatar_url} alt={`${seller.display_name} avatar`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 seller.display_name.charAt(0)
               )}
@@ -57,7 +57,9 @@ export default function SellerPage() {
                 <div className="aspect-[3/4] overflow-hidden">
                   <img
                     src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                    alt=""
+                    alt={l.species?.scientific_name || 'Plant listing'}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>

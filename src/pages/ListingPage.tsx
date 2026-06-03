@@ -91,7 +91,7 @@ export default function ListingPage() {
             <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900 relative">
               <img
                 src={mainImage}
-                alt={listing.species?.scientific_name}
+                alt={listing.species?.scientific_name || 'Plant listing'}
                 className="w-full h-full object-cover"
               />
               {activeImage === 0 && qrUrl && (
@@ -107,7 +107,7 @@ export default function ListingPage() {
                   onClick={() => setActiveImage(i)}
                   className={`relative aspect-square rounded-lg overflow-hidden bg-zinc-800 transition-all ${activeImage === i ? 'ring-2 ring-emerald-500 opacity-100' : 'opacity-70 hover:opacity-100'}`}
                 >
-                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <img src={src} alt={`Gallery image ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   {i === 0 && qrUrl && (
                     <span className="absolute bottom-1 left-1 bg-purple-500/80 text-[9px] text-white px-1 rounded">QR</span>
                   )}

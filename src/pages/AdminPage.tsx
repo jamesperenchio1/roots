@@ -98,8 +98,8 @@ function Disputes() {
           : d
       ));
       toast.success(`Dispute resolved in favor of ${resolution === 'buyer' ? 'buyer' : resolution === 'seller' ? 'seller' : 'partial'}`);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to resolve dispute');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to resolve dispute');
     }
   };
 
@@ -117,7 +117,7 @@ function Disputes() {
             <div className="flex gap-2 mb-3">
               {d.evidence_urls.map((url, i) => (
                 <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <img src={url} alt="Dispute evidence" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 </a>
               ))}
             </div>

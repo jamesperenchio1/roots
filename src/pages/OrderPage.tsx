@@ -35,10 +35,47 @@ export default function OrderPage() {
 
   useEffect(() => {
     refreshTx();
-    // Poll every 10s for status updates while viewing the order
-    const interval = setInterval(refreshTx, 10000);
-    return () => clearInterval(interval);
   }, [refreshTx]);
+
+  useEffect(() => {
+    if (!transactionId) return;
+
+    // Subscribe to realtime updates for this transaction
+    const channel = supabase
+      .channel(`transaction-${transactionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `id=eq.${transactionId}`,
+        },
+        (payload) => {
+          const newData = payload.new as Record<string, unknown>;
+          if (!newData) return;
+          const local = getTransactionById(transactionId);
+          const updatedTx = { ...local, ...newData, status: newData.status } as Transaction;
+          setTx((prev) => {
+            const prevStatus = prev?.status;
+            const nextStatus = updatedTx.status;
+            if (prevStatus && nextStatus && prevStatus !== nextStatus) {
+              toast.info(`Order status updated: ${(nextStatus as string).replace(/_/g, ' ')}`);
+            }
+            return updatedTx;
+          });
+        }
+      )
+      .subscribe();
+
+    // Fallback polling every 30s
+    const interval = setInterval(refreshTx, 30000);
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [transactionId, refreshTx]);
 
   if (!tx) {
     return (
@@ -72,8 +109,8 @@ export default function OrderPage() {
       await refreshTx();
       toast.success(method === 'qr' ? 'QR verified — escrow released to seller.' : 'Receipt confirmed — escrow released to seller.');
       setTimeout(() => navigate('/dashboard'), 1500);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to confirm receipt. Please try again.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to confirm receipt. Please try again.');
     } finally {
       setConfirming(false);
     }
@@ -120,7 +157,7 @@ export default function OrderPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} alt="" className="w-full h-full object-cover" />
+              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} alt={tx.listing?.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || 'Your plant'}</p>

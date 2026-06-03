@@ -135,8 +135,8 @@ export default function CreateListingPage() {
       setProvenanceQR(qr);
       setStep('qr');
       toast.success('Listing published to the market!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Could not create listing');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create listing');
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +162,7 @@ export default function CreateListingPage() {
             </h3>
             <div className="w-48 h-48 bg-white rounded-xl mx-auto mb-3 p-3 flex items-center justify-center">
               {provenanceQR
-                ? <img src={provenanceQR} alt="Provenance QR" className="w-full h-full object-contain" />
+                ? <img src={provenanceQR} alt="Provenance QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
                 : <QrCode className="w-28 h-28 text-zinc-900" />}
             </div>
             <p className="text-xs text-emerald-400 mb-2">
@@ -189,7 +189,7 @@ export default function CreateListingPage() {
               <h1 className="text-2xl font-bold mb-2">Root Provenance Tag</h1>
               <p className="text-sm mb-6">{species?.common_name_en || speciesQuery}</p>
               <div className="w-64 h-64 bg-white rounded-xl mx-auto p-4 mb-4">
-                <img src={provenanceQR} alt="" className="w-full h-full object-contain" />
+                <img src={provenanceQR} alt="Provenance QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
               </div>
               <p className="text-xs text-zinc-500">Scan to verify authenticity and view full history</p>
               <p className="text-xs text-zinc-500 mt-1">{window.location.origin}/#/p/{created?.id}</p>
@@ -249,7 +249,7 @@ export default function CreateListingPage() {
             <div className="grid grid-cols-5 gap-2">
               {photos.map((p, i) => (
                 <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-2 border-emerald-500/50 group">
-                  <img src={p.preview} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <img src={p.preview} alt={`Photo ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removePhoto(i)}

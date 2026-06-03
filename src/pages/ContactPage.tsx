@@ -2,6 +2,7 @@ import { Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -21,11 +22,10 @@ export default function ContactPage() {
     setSubmitted(true);
     toast.success('Message sent! We will reply within 24 hours.');
     // In production, integrate with Supabase Edge Function or email service
-    console.log('Contact form submitted:', {
+    logger.info('Contact form submitted', {
       name: sanitizeText(form.name, 100),
       email: sanitizeText(form.email, 100),
       topic: form.topic,
-      message: sanitizeText(form.message, 2000),
     });
   };
 

@@ -66,8 +66,8 @@ export default function CheckoutPage() {
       });
       toast.success('Payment confirmed — your order is protected by escrow.');
       navigate(`/order/${tx.id}`);
-    } catch (err: any) {
-      toast.error(err?.message || 'Could not place the order.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not place the order.');
       setPaying(false);
     }
   };
@@ -85,7 +85,7 @@ export default function CheckoutPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt="" className="w-full h-full object-cover" />
+              <img src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt={listing.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium">{listing.species?.common_name_en}</p>
@@ -159,7 +159,7 @@ export default function CheckoutPage() {
             <div className="text-center py-6 bg-zinc-800/30 rounded-lg border border-white/5">
               <div className="w-44 h-44 bg-white rounded-xl mx-auto mb-4 p-2 shadow-lg flex items-center justify-center">
                 {qr
-                  ? <img src={qr} alt="PromptPay QR" className="w-full h-full object-contain" />
+                  ? <img src={qr} alt="PromptPay QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
                   : <QrCode className="w-12 h-12 text-zinc-400" />}
               </div>
               <p className="text-sm text-zinc-300 mb-1">Scan with your banking app to pay {total.toLocaleString()} THB</p>

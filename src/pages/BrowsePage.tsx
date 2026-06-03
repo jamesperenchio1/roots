@@ -5,6 +5,7 @@ import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
 import { Sparkline } from '@/components/PriceChart';
 import { usePagination } from '@/hooks/usePagination';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
+import { LazyImage } from '@/components/LazyImage';
 import type { Category, SizeCategory } from '@/types';
 
 const CATEGORIES: { value: Category | ''; label: string }[] = [
@@ -186,15 +187,12 @@ export default function BrowsePage() {
                 key={listing.id}
                 className="group block break-inside-avoid bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all duration-300"
               >
-                <div className="overflow-hidden">
-                  <img
-                    src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                    alt={listing.species?.scientific_name}
-                    loading="lazy"
-                    className="w-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    style={{ aspectRatio: '3/4' }}
-                  />
-                </div>
+                <LazyImage
+                  src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                  alt={listing.species?.scientific_name || 'Plant listing'}
+                  aspectRatio="3/4"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

@@ -6,6 +6,7 @@ import { supabase, PHOTO_BUCKET } from './supabase';
 import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, getListingByPlantId } from '@/data/mockData';
 import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
+import { logger } from './logger';
 
 const FALLBACK_IMG = '/images/plants/monstera-thai.jpg';
 
@@ -16,108 +17,118 @@ function upsertById<T extends { id: string }>(arr: T[], row: T) {
 }
 
 // ---------- mappers ----------
-export function mapProfile(r: any): Profile {
+type DbRow = Record<string, unknown>;
+
+export function mapProfile(r: DbRow): Profile {
   return {
-    id: r.id,
-    display_name: r.display_name ?? 'Plant Lover',
-    promptpay_id: r.promptpay_id ?? null,
+    id: r.id as string,
+    display_name: (r.display_name as string | undefined) ?? 'Plant Lover',
+    promptpay_id: (r.promptpay_id as string | undefined) ?? null,
     is_admin: !!r.is_admin,
-    strike_count: r.strike_count ?? 0,
+    strike_count: (r.strike_count as number | undefined) ?? 0,
     is_banned: !!r.is_banned,
-    language_preference: (r.language_preference as 'th' | 'en') ?? 'en',
-    created_at: r.created_at,
-    updated_at: r.updated_at ?? r.created_at,
-    avatar_url: r.avatar_url ?? undefined,
-    location: r.location ?? undefined,
-    rating: r.rating ?? undefined,
-    sales_count: r.sales_count ?? 0,
+    language_preference: (r.language_preference as 'th' | 'en' | undefined) ?? 'en',
+    created_at: r.created_at as string,
+    updated_at: (r.updated_at as string | undefined) ?? (r.created_at as string),
+    avatar_url: (r.avatar_url as string | undefined) ?? undefined,
+    location: (r.location as string | undefined) ?? undefined,
+    rating: (r.rating as number | undefined) ?? undefined,
+    sales_count: (r.sales_count as number | undefined) ?? 0,
   };
 }
 
-function speciesFromRow(r: any): Species {
+function speciesFromRow(r: DbRow): Species {
   return {
-    id: r.species_id || `live-${r.id}`,
-    scientific_name: r.species_scientific || r.species_common_en || 'Plant',
-    common_name_th: r.species_common_th || undefined,
-    common_name_en: r.species_common_en || r.species_scientific || 'Plant',
+    id: (r.species_id as string | undefined) || `live-${r.id as string}`,
+    scientific_name: (r.species_scientific as string | undefined) || (r.species_common_en as string | undefined) || 'Plant',
+    common_name_th: (r.species_common_th as string | undefined) || undefined,
+    common_name_en: (r.species_common_en as string | undefined) || (r.species_scientific as string | undefined) || 'Plant',
     synonyms: [],
-    category: (r.category as Category) || 'other',
-    created_at: r.created_at,
+    category: (r.category as Category | undefined) || 'other',
+    created_at: r.created_at as string,
   };
 }
 
-export function mapListing(r: any, profiles: Record<string, Profile>): Listing {
-  const photos = (r.photos && r.photos.length ? r.photos : [r.image_url].filter(Boolean)) as string[];
-  const cover = photos[0] || (r.species_id ? PLANT_IMAGES[r.species_id] : '') || FALLBACK_IMG;
+export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing {
+  const photosArr = r.photos as string[] | undefined;
+  const imageUrl = r.image_url as string | undefined;
+  const photos = (photosArr && photosArr.length ? photosArr : [imageUrl].filter(Boolean)) as string[];
+  const speciesId = r.species_id as string | undefined;
+  const cover = photos[0] || (speciesId ? PLANT_IMAGES[speciesId] : '') || FALLBACK_IMG;
+  const sellerId = r.seller_id as string;
   return {
-    id: r.id,
-    plant_id: r.id,
-    seller_id: r.seller_id,
-    price_thb: r.price_thb,
-    size_category: (r.size_category as SizeCategory) || 'M',
-    size_cm_range: r.size_cm_range || undefined,
-    pot_size_cm: r.pot_size_cm || undefined,
-    description: r.description || '',
-    delivery_options: (r.delivery_options as DeliveryOption[]) || ['ship'],
-    pickup_province: r.pickup_province || undefined,
-    status: r.status || 'active',
-    created_at: r.created_at,
-    last_photo_update_at: r.last_photo_update_at || r.created_at,
-    view_count: r.view_count ?? 0,
-    watch_count: r.watch_count ?? 0,
+    id: r.id as string,
+    plant_id: r.id as string,
+    seller_id: sellerId,
+    price_thb: r.price_thb as number,
+    size_category: (r.size_category as SizeCategory | undefined) || 'M',
+    size_cm_range: (r.size_cm_range as string | undefined) || undefined,
+    pot_size_cm: (r.pot_size_cm as number | undefined) || undefined,
+    description: (r.description as string | undefined) || '',
+    delivery_options: (r.delivery_options as DeliveryOption[] | undefined) || ['ship'],
+    pickup_province: (r.pickup_province as string | undefined) || undefined,
+    status: (r.status as Listing['status'] | undefined) || 'active',
+    created_at: r.created_at as string,
+    last_photo_update_at: (r.last_photo_update_at as string | undefined) || (r.created_at as string),
+    view_count: (r.view_count as number | undefined) ?? 0,
+    watch_count: (r.watch_count as number | undefined) ?? 0,
     species: speciesFromRow(r),
-    seller: profiles[r.seller_id],
+    seller: profiles[sellerId],
     photos: photos.map((url, i) => ({
-      id: `lp-${r.id}-${i}`,
-      listing_id: r.id,
+      id: `lp-${r.id as string}-${i}`,
+      listing_id: r.id as string,
       storage_path: url || cover,
       order_index: i,
-      created_at: r.created_at,
+      created_at: r.created_at as string,
     })),
   };
 }
 
-function mapTransaction(r: any, profiles: Record<string, Profile>): Transaction {
+function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transaction {
+  const buyerId = r.buyer_id as string;
+  const sellerId = r.seller_id as string;
+  const listingId = r.listing_id as string;
+  const id = r.id as string;
   return {
-    id: r.id,
-    listing_id: r.listing_id,
-    buyer_id: r.buyer_id,
-    seller_id: r.seller_id,
-    plant_id: r.listing_id,
-    sale_price_thb: r.sale_price_thb,
-    platform_fee_thb: r.platform_fee_thb ?? 0,
-    seller_payout_thb: r.seller_payout_thb ?? 0,
-    status: r.status,
-    delivery_method: r.delivery_method || 'ship',
-    tracking_number: r.tracking_number || undefined,
-    courier: r.courier || undefined,
-    created_at: r.created_at,
-    shipped_at: r.shipped_at || undefined,
-    delivered_at: r.delivered_at || undefined,
-    completed_at: r.completed_at || undefined,
-    buyer: profiles[r.buyer_id],
-    seller: profiles[r.seller_id],
+    id,
+    listing_id: listingId,
+    buyer_id: buyerId,
+    seller_id: sellerId,
+    plant_id: listingId,
+    sale_price_thb: r.sale_price_thb as number,
+    platform_fee_thb: (r.platform_fee_thb as number | undefined) ?? 0,
+    seller_payout_thb: (r.seller_payout_thb as number | undefined) ?? 0,
+    status: r.status as Transaction['status'],
+    delivery_method: (r.delivery_method as DeliveryOption | undefined) || 'ship',
+    tracking_number: (r.tracking_number as string | undefined) || undefined,
+    courier: (r.courier as string | undefined) || undefined,
+    created_at: r.created_at as string,
+    shipped_at: (r.shipped_at as string | undefined) || undefined,
+    delivered_at: (r.delivered_at as string | undefined) || undefined,
+    completed_at: (r.completed_at as string | undefined) || undefined,
+    buyer: profiles[buyerId],
+    seller: profiles[sellerId],
     listing: {
-      id: r.listing_id || r.id,
-      plant_id: r.listing_id || r.id,
-      seller_id: r.seller_id,
-      price_thb: r.sale_price_thb,
+      id: listingId || id,
+      plant_id: listingId || id,
+      seller_id: sellerId,
+      price_thb: r.sale_price_thb as number,
       size_category: 'M',
       description: '',
-      delivery_options: [r.delivery_method || 'ship'],
+      delivery_options: [(r.delivery_method as DeliveryOption | undefined) || 'ship'],
       status: 'sold',
-      created_at: r.created_at,
-      last_photo_update_at: r.created_at,
+      created_at: r.created_at as string,
+      last_photo_update_at: r.created_at as string,
       species: {
         id: 'live',
-        scientific_name: r.species_label || 'Plant',
-        common_name_en: r.species_label || 'Plant',
+        scientific_name: (r.species_label as string | undefined) || 'Plant',
+        common_name_en: (r.species_label as string | undefined) || 'Plant',
         synonyms: [],
         category: 'other',
-        created_at: r.created_at,
+        created_at: r.created_at as string,
       },
       photos: r.image_url
-        ? [{ id: `t-${r.id}`, listing_id: r.listing_id || r.id, storage_path: r.image_url, order_index: 0, created_at: r.created_at }]
+        ? [{ id: `t-${id}`, listing_id: listingId || id, storage_path: r.image_url as string, order_index: 0, created_at: r.created_at as string }]
         : [],
     } as Listing,
   };
@@ -141,7 +152,7 @@ export async function hydratePublicData(): Promise<void> {
     (rows || []).forEach((r) => upsertById(LISTINGS, mapListing(r, profileCache)));
   } catch (e) {
     // Offline / not configured — fall back to seed-only catalog.
-    console.warn('hydratePublicData failed, using seed data only', e);
+    logger.warn('hydratePublicData failed, using seed data only', { error: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -153,7 +164,7 @@ export async function hydrateUserTransactions(): Promise<void> {
       .order('created_at', { ascending: false });
     (data || []).forEach((r) => upsertById(TRANSACTIONS, mapTransaction(r, profileCache)));
   } catch (e) {
-    console.warn('hydrateUserTransactions failed', e);
+    logger.warn('hydrateUserTransactions failed', { error: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -209,7 +220,7 @@ export async function ensurePhotoBucket(): Promise<void> {
       await supabase.storage.createBucket(PHOTO_BUCKET, { public: true, fileSizeLimit: 10485760 });
     }
   } catch (e) {
-    console.warn('ensurePhotoBucket:', e);
+    logger.warn('ensurePhotoBucket failed', { error: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -262,7 +273,7 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   return tx;
 }
 
-export async function updateOrderStatus(id: string, patch: Partial<Record<string, any>>): Promise<void> {
+export async function updateOrderStatus(id: string, patch: Partial<Record<string, unknown>>): Promise<void> {
   await supabase.from('transactions').update(patch).eq('id', id);
   const tx = TRANSACTIONS.find((t) => t.id === id);
   if (tx) Object.assign(tx, patch);
