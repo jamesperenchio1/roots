@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Package, DollarSign, TrendingUp, Plus, Eye, Heart,
@@ -11,7 +11,7 @@ import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
-import { updateOrderStatus } from '@/lib/api';
+import { updateOrderStatus, updateProfile } from '@/lib/api';
 import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
@@ -85,13 +85,17 @@ export default function SellerDashboardPage() {
   const { tab } = useParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState(tab && TABS_DEF.some(t => t.id === tab) ? tab : 'listings');
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const currentUserId = user?.id || 'u-1';
+
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
   useEffect(() => {
     if (tab && TABS_DEF.some(t => t.id === tab)) {
       setActiveTab(tab);
     }
   }, [tab]);
+
   const me = USERS.find(u => u.id === currentUserId);
   const listings = getActiveListings().filter(l => l.seller_id === currentUserId);
   const allSales = getTransactionsWithDetails().filter(t => t.seller_id === currentUserId);
@@ -176,7 +180,7 @@ export default function SellerDashboardPage() {
               <p className="text-xs text-zinc-500 mb-3">Orders awaiting shipping or delivery</p>
               <div className="space-y-2">
                 {pendingSales.length > 0 ? pendingSales.map(s => (
-                  <div key={s.id} className="bg-zinc-900/30 border border-amber-500/10 rounded-xl p-4">
+                  <div key={`${s.id}-${refreshKey}`} className="bg-zinc-900/30 border border-amber-500/10 rounded-xl p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
@@ -195,7 +199,7 @@ export default function SellerDashboardPage() {
                               try {
                                 await updateOrderStatus(s.id, { status: 'shipped', shipped_at: new Date().toISOString() });
                                 toast.success('Marked as shipped.');
-                                window.location.reload();
+                                refresh();
                               } catch (err: any) {
                                 toast.error(err?.message || 'Failed to update status.');
                               }
@@ -499,56 +503,7 @@ export default function SellerDashboardPage() {
         );
 
       case 'settings':
-        return (
-          <div className="max-w-lg space-y-6">
-            <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
-              <h3 className="font-medium mb-4">Payout Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1.5 block">PromptPay ID</label>
-                  <input type="text" defaultValue={me?.promptpay_id || ''} placeholder="Phone number or National ID" className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
-                  <p className="text-xs text-zinc-600 mt-1">This is where all payouts are sent</p>
-                </div>
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1.5 block">Auto-payout threshold</label>
-                  <select className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50">
-                    <option>Daily (automatic)</option>
-                    <option>Weekly (every Monday)</option>
-                    <option>Monthly (1st of month)</option>
-                    <option>Manual only</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
-              <h3 className="font-medium mb-4">Shipping Defaults</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1.5 block">Default Courier</label>
-                  <select className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50">
-                    <option>Kerry Express</option>
-                    <option>Flash Express</option>
-                    <option>J&T Express</option>
-                    <option>Thailand Post (EMS)</option>
-                    <option>Grab Express</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1.5 block">Default Shipping From</label>
-                  <input type="text" defaultValue={me?.location || ''} placeholder="Province" className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
-              <h3 className="font-medium mb-4 text-red-400">Danger Zone</h3>
-              <button className="text-sm text-red-400 border border-red-500/20 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors">
-                Pause All Listings
-              </button>
-            </div>
-          </div>
-        );
+        return <SellerSettings me={me} />;
 
       default:
         return null;
@@ -597,6 +552,102 @@ export default function SellerDashboardPage() {
         </div>
 
         {renderContent()}
+      </div>
+    </div>
+  );
+}
+
+function SellerSettings({ me }: { me?: typeof USERS[0] }) {
+  const [promptpayId, setPromptpayId] = useState(me?.promptpay_id ?? '');
+  const [location, setLocation] = useState(me?.location ?? '');
+  const [saving, setSaving] = useState(false);
+  const { user, refreshProfile } = useAuth();
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await updateProfile(user.id, {
+        promptpay_id: promptpayId || undefined,
+        location: location || undefined,
+        updated_at: new Date().toISOString(),
+      });
+      await refreshProfile();
+      toast.success('Settings saved.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-lg space-y-6">
+      <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
+        <h3 className="font-medium mb-4">Payout Settings</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm text-zinc-400 mb-1.5 block">PromptPay ID</label>
+            <input
+              type="text"
+              value={promptpayId}
+              onChange={e => setPromptpayId(e.target.value)}
+              placeholder="Phone number or National ID"
+              className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50"
+            />
+            <p className="text-xs text-zinc-600 mt-1">This is where all payouts are sent</p>
+          </div>
+          <div>
+            <label className="text-sm text-zinc-400 mb-1.5 block">Auto-payout threshold</label>
+            <select className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50">
+              <option>Daily (automatic)</option>
+              <option>Weekly (every Monday)</option>
+              <option>Monthly (1st of month)</option>
+              <option>Manual only</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
+        <h3 className="font-medium mb-4">Shipping Defaults</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm text-zinc-400 mb-1.5 block">Default Courier</label>
+            <select className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50">
+              <option>Kerry Express</option>
+              <option>Flash Express</option>
+              <option>J&T Express</option>
+              <option>Thailand Post (EMS)</option>
+              <option>Grab Express</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm text-zinc-400 mb-1.5 block">Default Shipping From</label>
+            <input
+              type="text"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="Province"
+              className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50"
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50"
+      >
+        {saving ? 'Saving…' : 'Save Changes'}
+      </button>
+
+      <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
+        <h3 className="font-medium mb-4 text-red-400">Danger Zone</h3>
+        <button className="text-sm text-red-400 border border-red-500/20 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors">
+          Pause All Listings
+        </button>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@
 import { supabase, PHOTO_BUCKET } from './supabase';
 import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, getListingByPlantId } from '@/data/mockData';
 import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption } from '@/types';
+import { validateImageFile, sanitizeText } from './validation';
 
 const FALLBACK_IMG = '/images/plants/monstera-thai.jpg';
 
@@ -37,8 +38,8 @@ function speciesFromRow(r: any): Species {
   return {
     id: r.species_id || `live-${r.id}`,
     scientific_name: r.species_scientific || r.species_common_en || 'Plant',
-    common_name_en: r.species_common_en || r.species_scientific || 'Plant',
     common_name_th: r.species_common_th || undefined,
+    common_name_en: r.species_common_en || r.species_scientific || 'Plant',
     synonyms: [],
     category: (r.category as Category) || 'other',
     created_at: r.created_at,
@@ -185,7 +186,7 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
       price_thb: input.price_thb,
       size_category: input.size_category,
       pot_size_cm: input.pot_size_cm,
-      description: input.description,
+      description: sanitizeText(input.description, 2000),
       delivery_options: input.delivery_options,
       pickup_province: input.pickup_province,
       image_url: input.photos[0] || null,
@@ -213,6 +214,8 @@ export async function ensurePhotoBucket(): Promise<void> {
 }
 
 export async function uploadListingPhoto(file: File, userId: string): Promise<string> {
+  const validation = validateImageFile(file, 5);
+  if (!validation.ok) throw new Error(validation.error);
   await ensurePhotoBucket();
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -294,6 +297,8 @@ export async function fetchProvenance(plantId: string): Promise<{ listing: Listi
 }
 
 export async function uploadDisputeEvidence(file: File, userId: string): Promise<string> {
+  const validation = validateImageFile(file, 5);
+  if (!validation.ok) throw new Error(validation.error);
   const bucket = 'dispute-evidence';
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -316,8 +321,8 @@ export async function createDispute(input: {
   const { error } = await supabase.from('disputes').insert({
     transaction_id: input.transaction_id,
     opened_by: input.opened_by,
-    reason: input.reason,
-    description: input.description,
+    reason: sanitizeText(input.reason, 50),
+    description: sanitizeText(input.description, 2000),
     evidence_urls: input.evidence_urls,
     status: 'open',
   });
@@ -325,10 +330,17 @@ export async function createDispute(input: {
 }
 
 export async function updateProfile(userId: string, patch: Partial<Profile>): Promise<void> {
-  const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
+  const cleanPatch: Record<string, any> = {};
+  if (patch.display_name !== undefined) cleanPatch.display_name = sanitizeText(patch.display_name, 50);
+  if (patch.promptpay_id !== undefined) cleanPatch.promptpay_id = patch.promptpay_id ? sanitizeText(patch.promptpay_id, 20) : null;
+  if (patch.language_preference !== undefined) cleanPatch.language_preference = patch.language_preference;
+  if (patch.location !== undefined) cleanPatch.location = patch.location ? sanitizeText(patch.location, 50) : null;
+  if (patch.avatar_url !== undefined) cleanPatch.avatar_url = patch.avatar_url;
+
+  const { error } = await supabase.from('profiles').update(cleanPatch).eq('id', userId);
   if (error) throw error;
   const user = USERS.find(u => u.id === userId);
-  if (user) Object.assign(user, patch);
+  if (user) Object.assign(user, cleanPatch);
 }
 
 export async function toggleWatch(

@@ -8,6 +8,11 @@ const SUPABASE_URL =
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_pfQ_kyf47PV-p_E2fDG3wQ__5MaWnsZ';
 
+// Warn if using fallback credentials in production-like environments
+if (import.meta.env.PROD && !import.meta.env.VITE_SUPABASE_URL) {
+  console.warn('Using fallback Supabase credentials. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for production.');
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,

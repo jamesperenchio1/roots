@@ -1,7 +1,10 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircle, XCircle, Ban, Hammer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, SPECIES } from '@/data/mockData';
+import { updateOrderStatus } from '@/lib/api';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isLocalAdmin } = useAuth();
@@ -73,9 +76,36 @@ function Overview() {
 }
 
 function Disputes() {
+  const [disputes, setDisputes] = useState(DISPUTES);
+
+  const handleResolve = async (disputeId: string, resolution: 'buyer' | 'seller' | 'partial') => {
+    const dispute = disputes.find(d => d.id === disputeId);
+    if (!dispute) return;
+
+    try {
+      await updateOrderStatus(dispute.transaction_id, {
+        status: resolution === 'buyer' ? 'refunded' : 'completed',
+      });
+
+      setDisputes(prev => prev.map(d =>
+        d.id === disputeId
+          ? {
+              ...d,
+              status: resolution === 'partial' ? 'resolved_partial' : resolution === 'buyer' ? 'resolved_buyer' : 'resolved_seller',
+              resolved_at: new Date().toISOString(),
+              resolution_amount_thb: resolution === 'buyer' ? d.transaction?.sale_price_thb : resolution === 'partial' ? Math.round((d.transaction?.sale_price_thb || 0) / 2) : 0,
+            }
+          : d
+      ));
+      toast.success(`Dispute resolved in favor of ${resolution === 'buyer' ? 'buyer' : resolution === 'seller' ? 'seller' : 'partial'}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to resolve dispute');
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {DISPUTES.map(d => (
+      {disputes.map(d => (
         <div key={d.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Dispute #{d.id.slice(-4)}</span>
@@ -83,15 +113,39 @@ function Disputes() {
           </div>
           <p className="text-xs text-zinc-500 mb-1">Reason: {d.reason} | Opened by: {d.opened_by}</p>
           <p className="text-sm text-zinc-400 mb-3">{d.description}</p>
+          {d.evidence_urls.length > 0 && (
+            <div className="flex gap-2 mb-3">
+              {d.evidence_urls.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                </a>
+              ))}
+            </div>
+          )}
           {d.status === 'open' && (
-            <div className="flex gap-2">
-              <button className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleResolve(d.id, 'buyer')}
+                className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors"
+              >
                 <CheckCircle className="w-3 h-3" /> Rule for Buyer
               </button>
-              <button className="flex items-center gap-1 text-xs bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors">
+              <button
+                onClick={() => handleResolve(d.id, 'seller')}
+                className="flex items-center gap-1 text-xs bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
+              >
                 <XCircle className="w-3 h-3" /> Rule for Seller
               </button>
+              <button
+                onClick={() => handleResolve(d.id, 'partial')}
+                className="flex items-center gap-1 text-xs bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/20 transition-colors"
+              >
+                <Hammer className="w-3 h-3" /> Partial Refund
+              </button>
             </div>
+          )}
+          {d.status !== 'open' && d.resolved_at && (
+            <p className="text-xs text-zinc-600">Resolved: {d.resolved_at.slice(0, 10)} — {d.resolution_amount_thb?.toLocaleString()} THB</p>
           )}
         </div>
       ))}
@@ -100,9 +154,21 @@ function Disputes() {
 }
 
 function UsersPage() {
+  const [users, setUsers] = useState(USERS);
+
+  const handleStrike = (userId: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, strike_count: u.strike_count + 1 } : u));
+    toast.success('Strike added');
+  };
+
+  const handleBan = (userId: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: true } : u));
+    toast.success('User banned');
+  };
+
   return (
     <div className="space-y-2">
-      {USERS.filter(u => !u.is_admin).map(u => (
+      {users.filter(u => !u.is_admin).map(u => (
         <div key={u.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-medium">
@@ -115,12 +181,23 @@ function UsersPage() {
           </div>
           <div className="flex items-center gap-2">
             {u.strike_count > 0 && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{u.strike_count} strikes</span>}
-            <button className="text-xs bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/20 transition-colors">
-              Strike
-            </button>
-            <button className="text-xs bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors">
-              Ban
-            </button>
+            {u.is_banned && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Banned</span>}
+            {!u.is_banned && (
+              <>
+                <button
+                  onClick={() => handleStrike(u.id)}
+                  className="text-xs bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/20 transition-colors"
+                >
+                  Strike
+                </button>
+                <button
+                  onClick={() => handleBan(u.id)}
+                  className="text-xs bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
+                >
+                  <Ban className="w-3 h-3 inline mr-1" /> Ban
+                </button>
+              </>
+            )}
           </div>
         </div>
       ))}

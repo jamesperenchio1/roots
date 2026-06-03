@@ -9,7 +9,7 @@ export default function HomePage() {
   const listings = getActiveListings().slice(0, 8);
   const market = getMarketOverview();
 
-  const thaiConstellationData = getPriceSnapshotsForSpecies('sp-aroid-2', undefined, 90).map(ps => ({
+  const thaiConstellationData = getPriceSnapshotsForSpecies('sp-1', undefined, 90).map(ps => ({
     date: ps.snapshot_date,
     price: ps.median_price_thb,
   }));

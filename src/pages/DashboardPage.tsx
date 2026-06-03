@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getTransactionsWithDetails, WATCHLIST, MESSAGES, DISPUTES } from '@/data/mockData';
-import { updateProfile } from '@/lib/api';
+import { updateProfile, toggleWatch } from '@/lib/api';
 import { toast } from 'sonner';
+import { sanitizeText } from '@/lib/validation';
 
 const TABS = [
   { id: 'purchases', label: 'Purchases', icon: ShoppingBag },
@@ -25,6 +26,7 @@ export default function DashboardPage() {
     promptpay_id: user?.promptpay_id || '',
     language_preference: user?.language_preference || 'en',
   });
+  const [localWatchlist, setLocalWatchlist] = useState(WATCHLIST.filter(w => w.user_id === user?.id));
 
   useEffect(() => {
     if (tab && TABS.some(t => t.id === tab)) {
@@ -40,6 +42,7 @@ export default function DashboardPage() {
         promptpay_id: user.promptpay_id || '',
         language_preference: user.language_preference || 'en',
       });
+      setLocalWatchlist(WATCHLIST.filter(w => w.user_id === user.id));
     }
   }, [user?.id]);
 
@@ -50,8 +53,8 @@ export default function DashboardPage() {
     setSaving(true);
     try {
       await updateProfile(user.id, {
-        display_name: settingsForm.display_name,
-        promptpay_id: settingsForm.promptpay_id || null,
+        display_name: sanitizeText(settingsForm.display_name, 50),
+        promptpay_id: settingsForm.promptpay_id ? sanitizeText(settingsForm.promptpay_id, 20) : null,
         language_preference: settingsForm.language_preference as 'th' | 'en',
         updated_at: new Date().toISOString(),
       });
@@ -61,6 +64,17 @@ export default function DashboardPage() {
       toast.error(err?.message || 'Failed to save settings.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveWatch = async (watchId: string, targetId: string, type: 'species' | 'listing') => {
+    if (!user) return;
+    setLocalWatchlist(prev => prev.filter(w => w.id !== watchId));
+    try {
+      await toggleWatch(user.id, type, targetId, false);
+      toast.success('Removed from watchlist');
+    } catch {
+      toast.error('Could not remove from watchlist');
     }
   };
 
@@ -123,34 +137,58 @@ export default function DashboardPage() {
       case 'watchlist':
         return (
           <div className="space-y-3">
-            {WATCHLIST.filter(w => w.user_id === 'u-1').map(w => (
+            {localWatchlist.length > 0 ? localWatchlist.map(w => (
               <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
                 <div>
                   <p className="text-sm font-medium">{w.watch_type === 'species' ? 'Species' : 'Listing'} watch</p>
                   <p className="text-xs text-zinc-500">Target: {w.target_id}</p>
                 </div>
-                <button className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                <button
+                  onClick={() => handleRemoveWatch(w.id, w.target_id, w.watch_type)}
+                  className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Remove
+                </button>
               </div>
-            ))}
+            )) : (
+              <div className="text-center py-12">
+                <p className="text-zinc-500 mb-2">Your watchlist is empty</p>
+                <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants to watch</Link>
+              </div>
+            )}
           </div>
         );
       case 'messages':
         return (
           <div className="space-y-3">
-            {Array.from(new Set(MESSAGES.map(m => m.thread_id))).map(threadId => {
-              const threadMessages = MESSAGES.filter(m => m.thread_id === threadId);
-              const lastMessage = threadMessages[threadMessages.length - 1];
-              return (
-                <div key={threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all cursor-pointer">
-                  <div>
-                    <p className="text-sm font-medium">{lastMessage.sender?.display_name || 'Unknown'}</p>
-                    <p className="text-xs text-zinc-500 truncate max-w-xs">{lastMessage.content}</p>
-                    {lastMessage.flagged_contact_info && <span className="text-xs text-amber-400">Contact info flagged</span>}
+            {(() => {
+              // Get threads where user is sender or recipient
+              const userThreads = Array.from(new Set(
+                MESSAGES.filter(m => m.sender_id === user?.id || m.recipient_id === user?.id).map(m => m.thread_id)
+              ));
+              if (userThreads.length === 0) {
+                return (
+                  <div className="text-center py-12">
+                    <p className="text-zinc-500 mb-2">No messages yet</p>
+                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Find plants to message sellers</Link>
                   </div>
-                  <span className="text-xs text-zinc-600">{new Date(lastMessage.created_at).toLocaleDateString()}</span>
-                </div>
-              );
-            })}
+                );
+              }
+              return userThreads.map(threadId => {
+                const threadMessages = MESSAGES.filter(m => m.thread_id === threadId);
+                const lastMessage = threadMessages[threadMessages.length - 1];
+                return (
+                  <div key={threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all cursor-pointer">
+                    <div>
+                      <p className="text-sm font-medium">{lastMessage.sender?.display_name || 'Unknown'}</p>
+                      <p className="text-xs text-zinc-500 truncate max-w-xs">{lastMessage.content}</p>
+                      {lastMessage.flagged_contact_info && <span className="text-xs text-amber-400">Contact info flagged</span>}
+                    </div>
+                    <span className="text-xs text-zinc-600">{new Date(lastMessage.created_at).toLocaleDateString()}</span>
+                  </div>
+                );
+              });
+            })()}
           </div>
         );
       case 'disputes':
@@ -167,7 +205,10 @@ export default function DashboardPage() {
               </div>
             ))}
             {DISPUTES.filter(d => d.status === 'open').length === 0 && (
-              <p className="text-zinc-500 text-center py-8">No active disputes</p>
+              <div className="text-center py-12">
+                <p className="text-zinc-500 mb-2">No active disputes</p>
+                <p className="text-zinc-600 text-sm">That is a good thing.</p>
+              </div>
             )}
           </div>
         );

@@ -20,6 +20,8 @@ interface AuthContextType {
   loginAsLocalAdmin: () => void;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   isLoading: boolean;
 }
 
@@ -32,6 +34,8 @@ const AuthContext = createContext<AuthContextType>({
   loginAsLocalAdmin: () => {},
   logout: () => {},
   refreshProfile: async () => {},
+  resetPassword: async () => ({ ok: false }),
+  updatePassword: async () => ({ ok: false }),
   isLoading: false,
 });
 
@@ -113,6 +117,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return ok ? { ok: true } : { ok: false, error: 'Account created — please log in.' };
   }, [login]);
 
+  const resetPassword = useCallback(async (email: string): Promise<{ ok: boolean; error?: string }> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/#/reset-password`,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string): Promise<{ ok: boolean; error?: string }> => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, []);
+
   const loginAsLocalAdmin = useCallback(() => {
     const adminUser: Profile = {
       id: 'local-admin',
@@ -152,6 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginAsLocalAdmin,
       logout,
       refreshProfile,
+      resetPassword,
+      updatePassword,
       isLoading,
     }}>
       {children}

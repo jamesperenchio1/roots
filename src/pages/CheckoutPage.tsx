@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { createOrder } from '@/lib/api';
 import { generatePromptPayQR } from '@/lib/promptpay';
+import { validateShippingAddress } from '@/lib/validation';
 
 // Platform fallback PromptPay (used only if a seller has not set their own).
 const PLATFORM_PROMPTPAY = '0812345678';
@@ -18,6 +19,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const [method, setMethod] = useState<'promptpay' | 'card'>('promptpay');
   const [address, setAddress] = useState({ name: '', address: '', district: '', province: '', postal: '', phone: '' });
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const [paying, setPaying] = useState(false);
   const [qr, setQr] = useState('');
 
@@ -48,8 +50,10 @@ export default function CheckoutPage() {
       toast.info('Card payments are coming soon — please use PromptPay.');
       return;
     }
-    if (!address.name || !address.address || !address.phone) {
-      toast.error('Please fill in your shipping name, address and phone.');
+    const validation = validateShippingAddress(address);
+    setAddressErrors(validation.errors);
+    if (!validation.ok) {
+      toast.error('Please fix the errors in your shipping address.');
       return;
     }
     setPaying(true);
@@ -113,9 +117,18 @@ export default function CheckoutPage() {
             Shipping Address
           </h2>
           <div className="grid sm:grid-cols-2 gap-3">
-            <input placeholder="Full name" className="bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" value={address.name} onChange={e => setAddress({ ...address, name: e.target.value })} />
-            <input placeholder="Phone" className="bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" value={address.phone} onChange={e => setAddress({ ...address, phone: e.target.value })} />
-            <input placeholder="Address line" className="sm:col-span-2 bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" value={address.address} onChange={e => setAddress({ ...address, address: e.target.value })} />
+            <div>
+              <input placeholder="Full name" className={`bg-black border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 w-full ${addressErrors.name ? 'border-red-500/50' : 'border-white/10'}`} value={address.name} onChange={e => setAddress({ ...address, name: e.target.value })} />
+              {addressErrors.name && <p className="text-xs text-red-400 mt-1">{addressErrors.name}</p>}
+            </div>
+            <div>
+              <input placeholder="Phone" className={`bg-black border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 w-full ${addressErrors.phone ? 'border-red-500/50' : 'border-white/10'}`} value={address.phone} onChange={e => setAddress({ ...address, phone: e.target.value })} />
+              {addressErrors.phone && <p className="text-xs text-red-400 mt-1">{addressErrors.phone}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <input placeholder="Address line" className={`w-full bg-black border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 ${addressErrors.address ? 'border-red-500/50' : 'border-white/10'}`} value={address.address} onChange={e => setAddress({ ...address, address: e.target.value })} />
+              {addressErrors.address && <p className="text-xs text-red-400 mt-1">{addressErrors.address}</p>}
+            </div>
             <input placeholder="District" className="bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" value={address.district} onChange={e => setAddress({ ...address, district: e.target.value })} />
             <input placeholder="Province" className="bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" value={address.province} onChange={e => setAddress({ ...address, province: e.target.value })} />
             <input placeholder="Postal Code" className="bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" value={address.postal} onChange={e => setAddress({ ...address, postal: e.target.value })} />

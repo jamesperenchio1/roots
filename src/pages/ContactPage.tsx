@@ -1,8 +1,33 @@
-import { Mail, MapPin, Clock } from 'lucide-react';
+import { Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { sanitizeText } from '@/lib/validation';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', topic: 'General Question', message: '' });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setSubmitting(true);
+    // Simulate network delay for realism
+    await new Promise(r => setTimeout(r, 800));
+    setSubmitting(false);
+    setSubmitted(true);
+    toast.success('Message sent! We will reply within 24 hours.');
+    // In production, integrate with Supabase Edge Function or email service
+    console.log('Contact form submitted:', {
+      name: sanitizeText(form.name, 100),
+      email: sanitizeText(form.email, 100),
+      topic: form.topic,
+      message: sanitizeText(form.message, 2000),
+    });
+  };
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -38,22 +63,39 @@ export default function ContactPage() {
             <h2 className="text-lg font-medium mb-4">Send a Message</h2>
             {submitted ? (
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
+                <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
                 <p className="text-emerald-400 font-medium mb-1">Message sent!</p>
                 <p className="text-sm text-zinc-500">We will get back to you within 24 hours.</p>
               </div>
             ) : (
-              <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-sm text-zinc-400 mb-1.5 block">Name</label>
-                  <input type="text" className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" required />
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="text-sm text-zinc-400 mb-1.5 block">Email</label>
-                  <input type="email" className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" required />
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="text-sm text-zinc-400 mb-1.5 block">Topic</label>
-                  <select className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50">
+                  <select
+                    value={form.topic}
+                    onChange={e => setForm({ ...form, topic: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50"
+                  >
                     <option>General Question</option>
                     <option>Buying Help</option>
                     <option>Selling Help</option>
@@ -64,10 +106,20 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <label className="text-sm text-zinc-400 mb-1.5 block">Message</label>
-                  <textarea rows={5} className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 resize-none" required />
+                  <textarea
+                    value={form.message}
+                    onChange={e => setForm({ ...form, message: e.target.value })}
+                    rows={5}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 resize-none"
+                    required
+                  />
                 </div>
-                <button type="submit" className="w-full bg-emerald-500 text-black font-medium py-2.5 rounded-lg hover:bg-emerald-600 transition-colors">
-                  Send Message
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-emerald-500 text-black font-medium py-2.5 rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {submitting ? 'Sending…' : <><Send className="w-4 h-4" /> Send Message</>}
                 </button>
               </form>
             )}

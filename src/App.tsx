@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { hydratePublicData } from '@/lib/api';
 import { Leaf } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import ScrollToTop from '@/components/ScrollToTop';
 import HomePage from '@/pages/HomePage';
 import BrowsePage from '@/pages/BrowsePage';
 import MarketPage from '@/pages/MarketPage';
@@ -15,6 +17,8 @@ import PlantQRPage from '@/pages/PlantQRPage';
 import SellerPage from '@/pages/SellerPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import SellerDashboardPage from '@/pages/SellerDashboardPage';
 import AdminPage from '@/pages/AdminPage';
@@ -38,7 +42,11 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!user) {
+    // Preserve intended destination so we can redirect back after login
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -67,12 +75,14 @@ function AppContent() {
           {/* Auth Pages */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Authenticated User Pages */}
           <Route path="/dashboard" element={<AuthGuard><DashboardPage /></AuthGuard>} />
           <Route path="/dashboard/:tab" element={<AuthGuard><DashboardPage /></AuthGuard>} />
 
-          {/* Seller Pages — order matters: most specific first */}
+          {/* Seller Pages */}
           <Route path="/seller-dashboard/listings/new" element={<AuthGuard><CreateListingPage /></AuthGuard>} />
           <Route path="/seller-dashboard/:tab" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
           <Route path="/seller-dashboard" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
@@ -91,15 +101,20 @@ function AppContent() {
       </main>
       <Footer />
       <Toaster />
+      <ScrollToTop />
     </div>
   );
 }
 
 function BootGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [bootError, setBootError] = useState(false);
   useEffect(() => {
-    hydratePublicData().finally(() => setReady(true));
+    hydratePublicData()
+      .catch(() => setBootError(true))
+      .finally(() => setReady(true));
   }, []);
+
   if (!ready) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3">
@@ -108,15 +123,38 @@ function BootGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  if (bootError) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <Leaf className="w-8 h-8 text-amber-400" />
+        <p className="text-sm text-zinc-400">Connection issue detected</p>
+        <p className="text-xs text-zinc-600 max-w-xs">
+          We are having trouble connecting to our servers. Some features may be limited. Try refreshing the page.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
+        >
+          Retry
+        </button>
+        {/* Still render app so offline seed data works */}
+        {children}
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
 export default function App() {
   return (
-    <BootGate>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </BootGate>
+    <ErrorBoundary>
+      <BootGate>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </BootGate>
+    </ErrorBoundary>
   );
 }

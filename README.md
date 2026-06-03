@@ -11,6 +11,7 @@ nurseries and collectors.
 - **Payments:** Dynamic **PromptPay** QR generated client-side (EMVCo standard).
   Any Thai banking app scans it and pays the seller directly. No gateway or
   business registration required. A payment gateway can be added later.
+- **Testing:** Vitest + jsdom + @testing-library/react
 
 ## How it works
 
@@ -31,6 +32,8 @@ marketplace looks alive while you onboard real nurseries.
 npm install
 npm run dev      # http://localhost:3000
 npm run build    # type-check + production build
+npm run test     # run tests
+npm run test:ui  # interactive test UI
 ```
 
 Supabase credentials ship with safe public defaults (see `.env.example`); access
@@ -41,3 +44,22 @@ is gated by Row Level Security. Override via env vars if you fork the backend.
 Schema lives in Supabase (tables: `profiles`, `listings`, `transactions`,
 `messages`, `watchlist`) with RLS policies and a `listing-photos` storage bucket.
 A trigger auto-creates a profile on signup.
+
+## Production checklist
+
+- [ ] Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars
+- [ ] Create storage buckets: `listing-photos`, `order-photos`, `dispute-evidence` (public, 5MB limit)
+- [ ] Enable RLS on all tables with appropriate policies
+- [ ] Configure Supabase auth email templates
+- [ ] Set up a custom domain for the deployed app
+- [ ] Configure CORS on Supabase Storage
+- [ ] Add Sentry or similar for error tracking (wire into `src/lib/logger.ts`)
+- [ ] Review and tighten `updateProfile` RLS policy
+- [ ] Enable email verification if moving out of pilot mode
+
+## Architecture decisions
+
+- **HashRouter** used for static hosting compatibility (GitHub Pages, Netlify, etc.)
+- **Client-side PromptPay** keeps us free-tier; no payment gateway needed
+- **Mock data merged with live data** at boot means the app works offline and looks full from day one
+- **Code splitting** via manual chunks keeps initial JS under 900KB

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store } from 'lucide-react';
@@ -10,6 +10,12 @@ export default function Navbar() {
   const [query, setQuery] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+  }, [location.pathname, location.search]);
 
   const isActive = (path: string) => location.pathname === path;
 

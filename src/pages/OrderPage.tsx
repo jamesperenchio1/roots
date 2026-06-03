@@ -1,16 +1,44 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2 } from 'lucide-react';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { updateOrderStatus, uploadDisputeEvidence } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import type { Transaction } from '@/types';
 
 export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
-  const tx = getTransactionById(transactionId || '');
+  const navigate = useNavigate();
+  const [tx, setTx] = useState<Transaction | undefined>(getTransactionById(transactionId || ''));
   const [confirming, setConfirming] = useState(false);
-  const [status, setStatus] = useState(tx?.status || 'paid_in_escrow');
+
+  // Re-fetch transaction from Supabase to get latest status
+  const refreshTx = useCallback(async () => {
+    if (!transactionId) return;
+    try {
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', transactionId)
+        .single();
+      if (data) {
+        // Merge with local cache
+        const local = getTransactionById(transactionId);
+        setTx({ ...local, ...data, status: data.status } as Transaction);
+      }
+    } catch {
+      // offline — keep local data
+    }
+  }, [transactionId]);
+
+  useEffect(() => {
+    refreshTx();
+    // Poll every 10s for status updates while viewing the order
+    const interval = setInterval(refreshTx, 10000);
+    return () => clearInterval(interval);
+  }, [refreshTx]);
 
   if (!tx) {
     return (
@@ -20,6 +48,8 @@ export default function OrderPage() {
       </div>
     );
   }
+
+  const status = tx.status;
 
   const statusSteps = [
     { key: 'paid_in_escrow', label: 'Paid', icon: CheckCircle },
@@ -34,16 +64,14 @@ export default function OrderPage() {
   const handleConfirmReceipt = async (file: File, method: 'qr' | 'photo') => {
     setConfirming(true);
     try {
-      // Upload evidence photo
       await uploadDisputeEvidence(file, tx.buyer_id || 'anonymous');
-
-      // Mark transaction as completed
       await updateOrderStatus(tx.id, {
         status: 'completed',
         completed_at: new Date().toISOString(),
       });
-      setStatus('completed');
+      await refreshTx();
       toast.success(method === 'qr' ? 'QR verified — escrow released to seller.' : 'Receipt confirmed — escrow released to seller.');
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to confirm receipt. Please try again.');
     } finally {
@@ -161,13 +189,13 @@ export default function OrderPage() {
 
         {status === 'shipped' && (
           <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 mb-6">
-            <p className="text-sm text-blue-400">Your plant is on the way! You'll be able to confirm receipt once it arrives.</p>
+            <p className="text-sm text-blue-400">Your plant is on the way! You will be able to confirm receipt once it arrives.</p>
           </div>
         )}
 
         {status === 'paid_in_escrow' && (
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 mb-6">
-            <p className="text-sm text-amber-400">Waiting for seller to ship. You'll receive tracking info once shipped.</p>
+            <p className="text-sm text-amber-400">Waiting for seller to ship. You will receive tracking info once shipped.</p>
           </div>
         )}
 

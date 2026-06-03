@@ -9,6 +9,7 @@ import { getSpeciesPriceStats } from '@/data/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { createListing, uploadListingPhoto } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
+import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
 import type { Listing, Category } from '@/types';
 
 interface PhotoItem { file: File; preview: string; }
@@ -56,10 +57,15 @@ export default function CreateListingPage() {
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
-    const next = Array.from(files).slice(0, 10 - photos.length).map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
+    const next: PhotoItem[] = [];
+    for (const file of Array.from(files).slice(0, 10 - photos.length)) {
+      const validation = validateImageFile(file, 5);
+      if (!validation.ok) {
+        toast.error(`${file.name}: ${validation.error}`);
+        continue;
+      }
+      next.push({ file, preview: URL.createObjectURL(file) });
+    }
     setPhotos(prev => [...prev, ...next].slice(0, 10));
   };
 
@@ -86,7 +92,7 @@ export default function CreateListingPage() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!speciesQuery) e.species = 'Select or enter a species';
-    if (!price || parseInt(price) < 10) e.price = 'Minimum price is 10 THB';
+    if (!price || !isValidPrice(parseInt(price))) e.price = 'Minimum price is 10 THB, maximum 10M THB';
     if (!size) e.size = 'Select a size';
     if (!description || description.length < 20) e.description = 'Minimum 20 characters';
     if (delivery.length === 0) e.delivery = 'Select at least one delivery method';
@@ -119,7 +125,7 @@ export default function CreateListingPage() {
         price_thb: parseInt(price),
         size_category: size,
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
-        description,
+        description: sanitizeText(description, 2000),
         delivery_options: delivery,
         pickup_province: province || undefined,
         photos: urls,

@@ -1,22 +1,25 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Leaf, AlertTriangle } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Leaf, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login, loginAsLocalAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     const success = await login(email, password);
     if (success) {
-      navigate('/');
+      navigate(redirect);
     } else {
       setError('Invalid email or password. New here? Create an account.');
     }
@@ -58,23 +61,41 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="text-sm text-zinc-400 mb-1.5 block">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 pr-10 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer">
+              <input type="checkbox" className="rounded bg-zinc-900 border-white/10" />
+              Remember me
+            </label>
+            <Link to="/forgot-password" className="text-xs text-emerald-400 hover:underline">
+              Forgot password?
+            </Link>
           </div>
           <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-11 rounded-lg" disabled={isLoading}>
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? 'Signing in…' : 'Sign In'}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-zinc-500">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-emerald-400 hover:underline">Sign up</Link>
+          <Link to={`/signup${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">Sign up</Link>
         </div>
 
         <div className="mt-8 pt-6 border-t border-white/5">
