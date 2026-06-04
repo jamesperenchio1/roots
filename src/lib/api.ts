@@ -66,6 +66,7 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     pot_size_cm: (r.pot_size_cm as number | undefined) || undefined,
     description: (r.description as string | undefined) || '',
     delivery_options: (r.delivery_options as DeliveryOption[] | undefined) || ['ship'],
+    shipping_cost_thb: (r.shipping_cost_thb as number | undefined) || undefined,
     pickup_province: (r.pickup_province as string | undefined) || undefined,
     status: (r.status as Listing['status'] | undefined) || 'active',
     created_at: r.created_at as string,
@@ -180,6 +181,7 @@ export interface NewListingInput {
   pot_size_cm?: number;
   description: string;
   delivery_options: string[];
+  shipping_cost_thb?: number;
   pickup_province?: string;
   photos: string[];
 }
@@ -199,6 +201,7 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
       pot_size_cm: input.pot_size_cm,
       description: sanitizeText(input.description, 2000),
       delivery_options: input.delivery_options,
+      shipping_cost_thb: input.shipping_cost_thb,
       pickup_province: input.pickup_province,
       image_url: input.photos[0] || null,
       photos: input.photos,
@@ -245,6 +248,8 @@ export interface NewOrderInput {
 
 export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const price = input.listing.price_thb;
+  const shipping = input.listing.shipping_cost_thb || 0;
+  const total = price + shipping;
   const fee = Math.round(price * 0.08);
   const sellerId = input.listing.seller_id;
   const cover = input.listing.photos?.[0]?.storage_path;
@@ -256,9 +261,10 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
       seller_id: sellerId,
       species_label: input.listing.species?.common_name_en || 'Plant',
       image_url: cover || null,
-      sale_price_thb: price,
+      sale_price_thb: total,
       platform_fee_thb: fee,
-      seller_payout_thb: price - fee,
+      seller_payout_thb: total - fee,
+      shipping_cost_thb: shipping,
       status: 'paid_in_escrow',
       delivery_method: input.delivery_method,
       shipping_address: input.shipping_address || null,
@@ -269,6 +275,9 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   if (error) throw error;
   // Mark the listing sold.
   await supabase.from('listings').update({ status: 'sold' }).eq('id', input.listing.id);
+  // Update local LISTINGS so the sold item disappears from browse immediately
+  const localListing = LISTINGS.find(l => l.id === input.listing.id);
+  if (localListing) localListing.status = 'sold';
   const tx = mapTransaction(data, { ...profileCache, [input.buyer.id]: input.buyer });
   upsertById(TRANSACTIONS, tx);
   return tx;

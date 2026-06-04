@@ -23,7 +23,8 @@ export default function CheckoutPage() {
   const [paying, setPaying] = useState(false);
   const [qr, setQr] = useState('');
 
-  const total = listing?.price_thb || 0;
+  const shipping = listing?.shipping_cost_thb || 0;
+  const total = (listing?.price_thb || 0) + shipping;
   const sellerPromptPay = listing?.seller?.promptpay_id || PLATFORM_PROMPTPAY;
 
   useEffect(() => {
@@ -101,7 +102,9 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-zinc-400">Shipping</span>
-              <span className="text-emerald-400">Free</span>
+              <span className={shipping === 0 ? 'text-emerald-400' : ''}>
+                {shipping === 0 ? 'Free' : `${shipping.toLocaleString()} THB`}
+              </span>
             </div>
             <div className="flex justify-between pt-2 border-t border-white/5 font-semibold text-base">
               <span>Total</span>

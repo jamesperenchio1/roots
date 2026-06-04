@@ -153,7 +153,14 @@ export default function ListingPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <Truck className="w-4 h-4" />
-                <span>Delivery: {listing.delivery_options?.join(', ')}</span>
+                <span>
+                  Delivery: {listing.delivery_options?.join(', ')}
+                  {listing.delivery_options?.includes('ship') && (
+                    <span className="text-emerald-400 ml-1">
+                      ({listing.shipping_cost_thb === 0 ? 'Free' : `${listing.shipping_cost_thb} THB`} shipping)
+                    </span>
+                  )}
+                </span>
               </div>
               {listing.pickup_province && (
                 <div className="flex items-center gap-3 text-sm text-zinc-400">

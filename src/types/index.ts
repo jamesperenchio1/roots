@@ -73,6 +73,7 @@ export interface Listing {
   pot_size_cm?: number;
   description: string;
   delivery_options: DeliveryOption[];
+  shipping_cost_thb?: number;
   pickup_province?: string;
   status: ListingStatus;
   created_at: string;
@@ -111,6 +112,7 @@ export interface Transaction {
   sale_price_thb: number;
   platform_fee_thb: number;
   seller_payout_thb: number;
+  shipping_cost_thb?: number;
   status: TransactionStatus;
   omise_charge_id?: string;
   tracking_number?: string;

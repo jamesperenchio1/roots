@@ -161,7 +161,11 @@ export default function OrderPage() {
             </div>
             <div>
               <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || 'Your plant'}</p>
-              <p className="text-xs text-zinc-500">Order total: {tx.sale_price_thb.toLocaleString()} THB</p>
+              <p className="text-xs text-zinc-500">
+                Plant: {((tx.sale_price_thb || 0) - (tx.shipping_cost_thb || 0)).toLocaleString()} THB
+                {tx.shipping_cost_thb ? ` · Shipping: ${tx.shipping_cost_thb.toLocaleString()} THB` : ' · Free shipping'}
+              </p>
+              <p className="text-xs text-zinc-500 font-medium">Total: {tx.sale_price_thb.toLocaleString()} THB</p>
               <p className="text-xs text-zinc-500">Seller: {tx.seller?.display_name}</p>
             </div>
           </div>

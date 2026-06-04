@@ -6,6 +6,7 @@ function seededRandom(seed: string, index: number): number {
   return Math.abs(Math.sin(hash + index) * 10000 % 1);
 }
 import { Link, useParams } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import {
   Package, DollarSign, TrendingUp, Plus, Eye, Heart,
   BarChart3, Truck, Wallet, ArrowDownLeft,
@@ -17,7 +18,7 @@ import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
-import { updateOrderStatus, updateProfile } from '@/lib/api';
+import { updateOrderStatus, updateProfile, hydrateUserTransactions } from '@/lib/api';
 import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
@@ -101,6 +102,34 @@ export default function SellerDashboardPage() {
       setActiveTab(tab);
     }
   }, [tab]);
+
+  // Re-fetch transactions when Sales tab opens and set up realtime
+  useEffect(() => {
+    if (activeTab !== 'sales' || !user) return;
+    let cancelled = false;
+    hydrateUserTransactions().then(() => {
+      if (!cancelled) refresh();
+    });
+    const channel = supabase
+      .channel(`seller-transactions-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `seller_id=eq.${user.id}` },
+        () => {
+          hydrateUserTransactions().then(() => {
+            if (!cancelled) {
+              refresh();
+              toast.info('New order received');
+            }
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, user, refresh]);
 
   const me = USERS.find(u => u.id === currentUserId);
   const listings = getActiveListings().filter(l => l.seller_id === currentUserId);
@@ -194,7 +223,10 @@ export default function SellerDashboardPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">Order #{s.id.slice(-4)} — {s.plant_id}</p>
-                          <p className="text-xs text-zinc-500">Buyer: {s.buyer?.display_name} | {s.sale_price_thb.toLocaleString()} THB</p>
+                          <p className="text-xs text-zinc-500">
+                            Buyer: {s.buyer?.display_name} | Plant: {(s.sale_price_thb - (s.shipping_cost_thb || 0)).toLocaleString()} THB
+                            {s.shipping_cost_thb ? ` + ${s.shipping_cost_thb.toLocaleString()} THB shipping` : ' · Free shipping'}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -246,6 +278,10 @@ export default function SellerDashboardPage() {
                       </div>
                       <div className="text-right text-sm">
                         <p>{s.sale_price_thb.toLocaleString()} THB</p>
+                        <p className="text-xs text-zinc-500">
+                          Plant: {(s.sale_price_thb - (s.shipping_cost_thb || 0)).toLocaleString()} THB
+                          {s.shipping_cost_thb ? ` · Ship: ${s.shipping_cost_thb.toLocaleString()}` : ' · Free ship'}
+                        </p>
                         <p className="text-xs text-emerald-400">Payout: {s.seller_payout_thb.toLocaleString()} THB</p>
                       </div>
                     </div>

@@ -31,6 +31,7 @@ export default function CreateListingPage() {
   const [potSize, setPotSize] = useState('');
   const [description, setDescription] = useState('');
   const [delivery, setDelivery] = useState<string[]>([]);
+  const [shippingCost, setShippingCost] = useState('');
   const [province, setProvince] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -396,6 +397,23 @@ export default function CreateListingPage() {
             </div>
             {errors.delivery && <p className="text-xs text-red-400 mt-1">{errors.delivery}</p>}
           </div>
+
+          {/* Shipping Cost */}
+          {delivery.includes('ship') && (
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Shipping Cost (THB)</label>
+              <input
+                type="number"
+                min="0"
+                max="5000"
+                value={shippingCost}
+                onChange={(e) => setShippingCost(e.target.value)}
+                placeholder="e.g. 50"
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              />
+              <p className="text-xs text-zinc-500 mt-1">Set to 0 for free shipping</p>
+            </div>
+          )}
 
           {/* Description */}
           <div>
