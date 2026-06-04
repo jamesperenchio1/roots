@@ -46,7 +46,6 @@ export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate">{species?.common_name_en || 'Plant'}</p>
               <p className="text-[10px] text-zinc-600 italic truncate">{species?.scientific_name || ''}</p>
-              <p className="text-[10px] text-zinc-500 mt-0.5">{listing.size_category} · {listing.price_thb.toLocaleString()} THB</p>
               <p className="text-[9px] text-zinc-400 mt-1 truncate">Scan for provenance · root.market</p>
             </div>
           </div>

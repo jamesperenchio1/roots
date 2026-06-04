@@ -471,10 +471,7 @@ export default function CreateListingPage() {
               <Shield className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-zinc-300">
-                  We handle <strong className="text-white">secure payments, escrow, and buyer protection</strong> for an 8% fee when you sell.
-                </p>
-                <p className="text-xs text-zinc-500 mt-1">
-                  No listing fee. No monthly fee. You keep 92% of every sale. The fee covers dispute resolution, verified reviews, and QR provenance tracking.
+                  <strong className="text-white">8% when you sell.</strong> No listing fees, no monthly fees.
                 </p>
               </div>
             </div>

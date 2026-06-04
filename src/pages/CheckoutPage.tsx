@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, CreditCard, QrCode, Truck, Lock } from 'lucide-react';
+import { ArrowLeft, Shield, CreditCard, QrCode, Truck, Lock, Upload, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getListingById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,11 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState({ name: '', address: '', district: '', province: '', postal: '', phone: '' });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const [paying, setPaying] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [slipPreview, setSlipPreview] = useState('');
+  const [refNumber, setRefNumber] = useState('');
   const [qr, setQr] = useState('');
+  const slipInputRef = useRef<HTMLInputElement>(null);
 
   const shipping = listing?.shipping_cost_thb || 0;
   const total = (listing?.price_thb || 0) + shipping;
@@ -42,7 +46,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const handlePay = async () => {
+  const handlePay = () => {
     if (!user) {
       navigate('/login');
       return;
@@ -57,6 +61,12 @@ export default function CheckoutPage() {
       toast.error('Please fix the errors in your shipping address.');
       return;
     }
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!user) return;
+    setShowConfirmModal(false);
     setPaying(true);
     try {
       const tx = await createOrder({
@@ -105,10 +115,6 @@ export default function CheckoutPage() {
               <span className={shipping === 0 ? 'text-emerald-400' : ''}>
                 {shipping === 0 ? 'Free' : `${shipping.toLocaleString()} THB`}
               </span>
-            </div>
-            <div className="flex justify-between text-xs text-zinc-500">
-              <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-emerald-500" /> Buyer protection & escrow included</span>
-              <span>No extra charge</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-white/5 font-semibold text-base">
               <span>Total</span>
@@ -228,6 +234,95 @@ export default function CheckoutPage() {
           Your payment is held safely until you confirm delivery. No hidden fees — the price above is all you pay.
         </p>
       </div>
+
+      {/* Payment Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+          <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-400" />
+                Confirm Your Payment
+              </h3>
+              <button onClick={() => setShowConfirmModal(false)} className="text-zinc-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-zinc-400 mb-4">
+              After paying via your banking app, upload your payment slip and enter the transaction reference. This helps the seller verify your payment quickly.
+            </p>
+
+            <div className="space-y-4">
+              {/* Slip upload */}
+              <div>
+                <label className="text-sm text-zinc-400 mb-1.5 block">Payment Slip (optional)</label>
+                <input
+                  ref={slipInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setSlipPreview(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {slipPreview ? (
+                  <div className="relative rounded-lg overflow-hidden border border-white/10">
+                    <img src={slipPreview} alt="Payment slip" className="w-full h-32 object-contain bg-zinc-800" />
+                    <button
+                      onClick={() => setSlipPreview('')}
+                      className="absolute top-1 right-1 bg-black/70 rounded-full p-1"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => slipInputRef.current?.click()}
+                    className="w-full py-6 border border-dashed border-white/10 rounded-lg text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition-colors flex flex-col items-center gap-1"
+                  >
+                    <Upload className="w-5 h-5" />
+                    <span className="text-xs">Upload payment slip screenshot</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Reference number */}
+              <div>
+                <label className="text-sm text-zinc-400 mb-1.5 block">Transaction Reference (optional)</label>
+                <input
+                  type="text"
+                  value={refNumber}
+                  onChange={(e) => setRefNumber(e.target.value)}
+                  placeholder="e.g. 20240605ABC123"
+                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPayment}
+                disabled={paying}
+                className="flex-1 py-2.5 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
+              >
+                {paying ? 'Confirming…' : 'Confirm Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
