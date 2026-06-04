@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X } from 'lucide-react';
+import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getTransactionsWithDetails, WATCHLIST, MESSAGES, DISPUTES } from '@/data/mockData';
-import { updateProfile, toggleWatch } from '@/lib/api';
+import { getTransactionsWithDetails, WATCHLIST, DISPUTES, SPECIES } from '@/data/mockData';
+import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
+import OfferCard from '@/components/OfferCard';
 
 const TABS = [
   { id: 'purchases', label: 'Purchases', icon: ShoppingBag },
@@ -27,6 +28,8 @@ export default function DashboardPage() {
     language_preference: user?.language_preference || 'en',
   });
   const [localWatchlist, setLocalWatchlist] = useState(WATCHLIST.filter(w => w.user_id === user?.id));
+  const [offersRefreshKey, setOffersRefreshKey] = useState(0);
+  const [priceAlerts, setPriceAlerts] = useState(() => getUserPriceAlerts(user?.id || ''));
 
   useEffect(() => {
     if (tab && TABS.some(t => t.id === tab)) {
@@ -43,8 +46,9 @@ export default function DashboardPage() {
         language_preference: user.language_preference || 'en',
       });
       setLocalWatchlist(WATCHLIST.filter(w => w.user_id === user.id));
+      setPriceAlerts(getUserPriceAlerts(user.id));
     }
-  }, [user?.id]);
+  }, [user?.id, offersRefreshKey]);
 
   const transactions = getTransactionsWithDetails().filter(t => t.buyer_id === user?.id);
 
@@ -80,39 +84,69 @@ export default function DashboardPage() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'purchases':
+      case 'purchases': {
+        const myOffers = user ? getOffersForBuyer(user.id) : [];
         return (
-          <div className="space-y-3">
-            {transactions.length > 0 ? transactions.map(tx => (
-              <Link to={`/order/${tx.id}`} key={tx.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center">
-                    <Package className="w-5 h-5 text-zinc-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Order #{tx.id.slice(-4)}</p>
-                    <p className="text-xs text-zinc-500">{tx.sale_price_thb.toLocaleString()} THB from {tx.seller?.display_name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
-                    tx.status === 'shipped' ? 'bg-blue-500/10 text-blue-400' :
-                    tx.status === 'delivered' ? 'bg-purple-500/10 text-purple-400' :
-                    tx.status === 'disputed' ? 'bg-red-500/10 text-red-400' :
-                    'bg-amber-500/10 text-amber-400'
-                  }`}>{tx.status}</span>
-                  <ChevronRight className="w-4 h-4 text-zinc-600" />
-                </div>
-              </Link>
-            )) : (
-              <div className="text-center py-12">
-                <p className="text-zinc-500 mb-2">No purchases yet</p>
-                <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants</Link>
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-medium mb-1">My Offers ({myOffers.filter(o => o.status === 'pending').length} pending)</h2>
+              <div className="space-y-3">
+                {myOffers.length > 0 ? myOffers.map(o => (
+                  <OfferCard
+                    key={o.id}
+                    offer={o}
+                    mode="buyer"
+                    onWithdraw={async () => {
+                      try {
+                        await withdrawOffer(o.id);
+                        toast.success('Offer withdrawn');
+                        setOffersRefreshKey(k => k + 1);
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to withdraw');
+                      }
+                    }}
+                  />
+                )) : (
+                  <p className="text-zinc-600 text-sm py-4 text-center">No offers made yet</p>
+                )}
               </div>
-            )}
+            </div>
+            <div>
+              <h2 className="text-lg font-medium mb-1">Purchases ({transactions.length})</h2>
+              <div className="space-y-3">
+                {transactions.length > 0 ? transactions.map(tx => (
+                  <Link to={`/order/${tx.id}`} key={tx.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center">
+                        <Package className="w-5 h-5 text-zinc-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Order #{tx.id.slice(-4)}</p>
+                        <p className="text-xs text-zinc-500">{tx.sale_price_thb.toLocaleString()} THB from {tx.seller?.display_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
+                        tx.status === 'shipped' ? 'bg-blue-500/10 text-blue-400' :
+                        tx.status === 'delivered' ? 'bg-purple-500/10 text-purple-400' :
+                        tx.status === 'disputed' ? 'bg-red-500/10 text-red-400' :
+                        'bg-amber-500/10 text-amber-400'
+                      }`}>{tx.status}</span>
+                      <ChevronRight className="w-4 h-4 text-zinc-600" />
+                    </div>
+                  </Link>
+                )) : (
+                  <div className="text-center py-12">
+                    <p className="text-zinc-500 mb-2">No purchases yet</p>
+                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants</Link>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         );
+      }
       case 'plants':
         return (
           <div className="grid sm:grid-cols-2 gap-4">
@@ -136,37 +170,87 @@ export default function DashboardPage() {
         );
       case 'watchlist':
         return (
-          <div className="space-y-3">
-            {localWatchlist.length > 0 ? localWatchlist.map(w => (
-              <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
-                <div>
-                  <p className="text-sm font-medium">{w.watch_type === 'species' ? 'Species' : 'Listing'} watch</p>
-                  <p className="text-xs text-zinc-500">Target: {w.target_id}</p>
-                </div>
-                <button
-                  onClick={() => handleRemoveWatch(w.id, w.target_id, w.watch_type)}
-                  className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" /> Remove
-                </button>
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-medium mb-1">My Price Alerts ({priceAlerts.length})</h2>
+              <div className="space-y-3">
+                {priceAlerts.length > 0 ? priceAlerts.map(pa => (
+                  <div key={pa.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <Bell className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{pa.species?.common_name_en || pa.species?.scientific_name || 'Unknown'}</p>
+                        <p className="text-xs text-zinc-500">Alert when price goes {pa.direction} {pa.threshold_thb.toLocaleString()} THB</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deletePriceAlert(pa.id);
+                          setPriceAlerts(prev => prev.filter(p => p.id !== pa.id));
+                          toast.success('Price alert deleted');
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to delete');
+                        }
+                      }}
+                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove
+                    </button>
+                  </div>
+                )) : (
+                  <p className="text-zinc-600 text-sm py-4 text-center">No price alerts set</p>
+                )}
               </div>
-            )) : (
-              <div className="text-center py-12">
-                <p className="text-zinc-500 mb-2">Your watchlist is empty</p>
-                <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants to watch</Link>
+            </div>
+            <div>
+              <h2 className="text-lg font-medium mb-1">Watchlist ({localWatchlist.length})</h2>
+              <div className="space-y-3">
+                {localWatchlist.length > 0 ? localWatchlist.map(w => {
+                  const species = w.watch_type === 'species' ? SPECIES.find(s => s.id === w.target_id) : null;
+                  return (
+                    <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
+                      <div>
+                        <p className="text-sm font-medium">{w.watch_type === 'species' ? 'Species' : 'Listing'} watch</p>
+                        <p className="text-xs text-zinc-500">Target: {species?.common_name_en || w.target_id}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {w.watch_type === 'species' && (
+                          <Link
+                            to={`/species/${w.target_id}`}
+                            className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                          >
+                            <Bell className="w-3 h-3" /> Set Price Alert
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => handleRemoveWatch(w.id, w.target_id, w.watch_type)}
+                          className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="text-center py-12">
+                    <p className="text-zinc-500 mb-2">Your watchlist is empty</p>
+                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants to watch</Link>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         );
       case 'messages':
         return (
           <div className="space-y-3">
             {(() => {
-              // Get threads where user is sender or recipient
-              const userThreads = Array.from(new Set(
-                MESSAGES.filter(m => m.sender_id === user?.id || m.recipient_id === user?.id).map(m => m.thread_id)
-              ));
-              if (userThreads.length === 0) {
+              const threads = getUserThreads(user?.id || '');
+              const totalUnread = threads.reduce((sum, t) => sum + t.unreadCount, 0);
+              if (threads.length === 0) {
                 return (
                   <div className="text-center py-12">
                     <p className="text-zinc-500 mb-2">No messages yet</p>
@@ -174,20 +258,41 @@ export default function DashboardPage() {
                   </div>
                 );
               }
-              return userThreads.map(threadId => {
-                const threadMessages = MESSAGES.filter(m => m.thread_id === threadId);
-                const lastMessage = threadMessages[threadMessages.length - 1];
-                return (
-                  <div key={threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all cursor-pointer">
-                    <div>
-                      <p className="text-sm font-medium">{lastMessage.sender?.display_name || 'Unknown'}</p>
-                      <p className="text-xs text-zinc-500 truncate max-w-xs">{lastMessage.content}</p>
-                      {lastMessage.flagged_contact_info && <span className="text-xs text-amber-400">Contact info flagged</span>}
-                    </div>
-                    <span className="text-xs text-zinc-600">{new Date(lastMessage.created_at).toLocaleDateString()}</span>
+              return (
+                <>
+                  {threads.slice(0, 3).map(t => (
+                    <Link to={`/messages/${t.threadId}`} key={t.threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden">
+                          {t.listing?.photos?.[0] ? (
+                            <img src={t.listing.photos[0].storage_path} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <MessageSquare className="w-4 h-4 text-zinc-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{t.otherUser?.display_name || 'Unknown'}</p>
+                          <p className="text-xs text-zinc-500 truncate max-w-xs">{t.lastMessage.content}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {t.unreadCount > 0 && (
+                          <span className="bg-emerald-500 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                            {t.unreadCount}
+                          </span>
+                        )}
+                        <span className="text-xs text-zinc-600">{new Date(t.lastMessage.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </Link>
+                  ))}
+                  <div className="flex items-center justify-between pt-2">
+                    {totalUnread > 0 && (
+                      <span className="text-xs text-emerald-400">{totalUnread} unread message{totalUnread !== 1 ? 's' : ''}</span>
+                    )}
+                    <Link to="/messages" className="text-sm text-emerald-400 hover:underline ml-auto">View All Messages</Link>
                   </div>
-                );
-              });
+                </>
+              );
             })()}
           </div>
         );

@@ -35,6 +35,9 @@ const AboutPage = lazy(() => import('@/pages/AboutPage'));
 const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const ContactPage = lazy(() => import('@/pages/ContactPage'));
+const ShippingGuidePage = lazy(() => import('@/pages/ShippingGuidePage'));
+const EditListingPage = lazy(() => import('@/pages/EditListingPage'));
+const MessagesPage = lazy(() => import('@/pages/MessagesPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 function PageLoader() {
@@ -59,6 +62,7 @@ function AppContent() {
             <Route path="/browse/:category" element={<BrowsePage />} />
             <Route path="/market" element={<MarketPage />} />
             <Route path="/listing/:id" element={<ListingPage />} />
+            <Route path="/listing/:id/edit" element={<AuthGuard><EditListingPage /></AuthGuard>} />
             <Route path="/species/:id" element={<SpeciesPage />} />
             <Route path="/p/:plantId" element={<PlantQRPage />} />
             <Route path="/seller/:id" element={<SellerPage />} />
@@ -68,6 +72,7 @@ function AppContent() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/fees" element={<FeesPage />} />
+            <Route path="/shipping-guide" element={<ShippingGuidePage />} />
 
             {/* Auth Pages */}
             <Route path="/login" element={<LoginPage />} />
@@ -83,6 +88,10 @@ function AppContent() {
             <Route path="/seller-dashboard/listings/new" element={<AuthGuard><CreateListingPage /></AuthGuard>} />
             <Route path="/seller-dashboard/:tab" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
             <Route path="/seller-dashboard" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
+
+            {/* Messages */}
+            <Route path="/messages" element={<AuthGuard><MessagesPage /></AuthGuard>} />
+            <Route path="/messages/:threadId" element={<AuthGuard><MessagesPage /></AuthGuard>} />
 
             {/* Transaction Flows */}
             <Route path="/checkout/:listingId" element={<AuthGuard><CheckoutPage /></AuthGuard>} />

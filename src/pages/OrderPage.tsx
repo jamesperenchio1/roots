@@ -3,16 +3,20 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2 } from 'lucide-react';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
-import { updateOrderStatus, uploadDisputeEvidence } from '@/lib/api';
+import { updateOrderStatus, uploadDisputeEvidence, hasReviewed } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import ReviewForm from '@/components/ReviewForm';
 import type { Transaction } from '@/types';
 
 export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tx, setTx] = useState<Transaction | undefined>(getTransactionById(transactionId || ''));
   const [confirming, setConfirming] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   // Re-fetch transaction from Supabase to get latest status
   const refreshTx = useCallback(async () => {
@@ -245,6 +249,26 @@ export default function OrderPage() {
             <p className="text-sm text-emerald-400 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
               Order completed — escrow released to seller. Enjoy your plant!
+            </p>
+          </div>
+        )}
+
+        {status === 'completed' && user && tx.buyer_id === user.id && !reviewSubmitted && !hasReviewed(tx.id, user.id) && tx.listing && (
+          <div className="mb-6">
+            <ReviewForm
+              transactionId={tx.id}
+              listingId={tx.listing_id}
+              sellerId={tx.seller_id}
+              onSubmitted={() => setReviewSubmitted(true)}
+            />
+          </div>
+        )}
+
+        {status === 'completed' && (reviewSubmitted || (user && hasReviewed(tx.id, user.id))) && (
+          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
+            <p className="text-sm text-emerald-400 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Thanks for your review!
             </p>
           </div>
         )}

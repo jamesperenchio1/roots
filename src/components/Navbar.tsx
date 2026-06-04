@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();
@@ -54,6 +55,7 @@ export default function Navbar() {
             <button onClick={() => setSearchOpen(!searchOpen)} className="p-2 text-zinc-400 hover:text-white transition-colors">
               <Search className="w-5 h-5" />
             </button>
+            {user && <NotificationBell userId={user.id} />}
             {user ? (
               <div className="hidden md:flex items-center gap-3">
                 <Link to="/seller-dashboard" className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors">

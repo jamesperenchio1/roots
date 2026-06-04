@@ -8,6 +8,8 @@ export type SizeCategory = 'S' | 'M' | 'L' | 'XL';
 export type DeliveryOption = 'ship' | 'pickup';
 export type WatchType = 'species' | 'listing';
 export type AlertDirection = 'above' | 'below';
+export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'withdrawn';
+export type NotificationType = 'order' | 'shipment' | 'dispute' | 'message' | 'offer' | 'review' | 'system';
 export type FlagType = 'wash_trade' | 'joke_price' | 'outlier' | 'other';
 
 export interface Profile {
@@ -249,6 +251,47 @@ export interface DashboardStats {
   user_count: number;
   pending_disputes: number;
   pending_payouts: number;
+}
+
+export interface Review {
+  id: string;
+  transaction_id: string;
+  listing_id: string;
+  reviewer_id: string;
+  seller_id: string;
+  rating: number;
+  comment: string;
+  tags: string[];
+  created_at: string;
+  reviewer?: Profile;
+  listing?: Listing;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface Offer {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  offer_price_thb: number;
+  message?: string;
+  status: OfferStatus;
+  counter_price_thb?: number;
+  created_at: string;
+  responded_at?: string;
+  listing?: Listing;
+  buyer?: Profile;
+  seller?: Profile;
 }
 
 export interface SellerAnalytics {

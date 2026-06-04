@@ -4,6 +4,7 @@ import { ArrowLeft, QrCode, Calendar, User, Tag, AlertTriangle } from 'lucide-re
 import { getSpeciesById, PLANT_IMAGES, USERS } from '@/data/mockData';
 import { fetchProvenance } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
+import ShareButtons from '@/components/ShareButtons';
 import { PriceChart } from '@/components/PriceChart';
 import { getPriceSnapshotsForSpecies } from '@/data/mockData';
 import type { Listing, Transfer } from '@/types';
@@ -153,7 +154,7 @@ export default function PlantQRPage() {
               </div>
             </div>
             <div className="sm:text-right">
-              <div className="w-24 h-24 bg-white rounded-xl p-2">
+              <div className="w-24 h-24 bg-white rounded-xl p-2 mx-auto sm:mx-0 sm:ml-auto">
                 {qrUrl ? (
                   <img src={qrUrl} alt="QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
                 ) : (
@@ -163,6 +164,12 @@ export default function PlantQRPage() {
                 )}
               </div>
               <p className="text-xs text-zinc-500 mt-2 text-center">Scan to verify</p>
+              <div className="mt-3 flex justify-center sm:justify-end">
+                <ShareButtons
+                  title={`Provenance for ${species?.scientific_name || 'Plant'}`}
+                  url={`${window.location.origin}/#/p/${plantId}`}
+                />
+              </div>
             </div>
           </div>
         </div>

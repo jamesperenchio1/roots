@@ -1,14 +1,18 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, TrendingUp, Shield, Search, CreditCard } from 'lucide-react';
-import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
+import { ArrowRight, TrendingUp, Shield, Search, CreditCard, Clock } from 'lucide-react';
+import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES, getListingById } from '@/data/mockData';
 import { PriceChart } from '@/components/PriceChart';
 import { LazyImage } from '@/components/LazyImage';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 export default function HomePage() {
   const [heroLoaded, setHeroLoaded] = useState(false);
   const listings = getActiveListings().slice(0, 8);
   const market = getMarketOverview();
+  const { getRecentlyViewed } = useRecentlyViewed();
+  const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
+  const recentlyViewed = recentlyViewedIds.map(id => getListingById(id)).filter(Boolean);
 
   const thaiConstellationData = getPriceSnapshotsForSpecies('sp-1', undefined, 90).map(ps => ({
     date: ps.snapshot_date,
@@ -72,6 +76,42 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Recently Viewed */}
+      {recentlyViewed.length > 0 && (
+        <section className="pt-20 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">Recently Viewed</h2>
+                <p className="text-zinc-500">Pick up where you left off</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {recentlyViewed.map(listing => (
+                <Link to={`/listing/${listing!.id}`} key={listing!.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
+                  <LazyImage
+                    src={listing!.photos?.[0]?.storage_path || PLANT_IMAGES[listing!.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                    alt={listing!.species?.scientific_name || 'Plant listing'}
+                    aspectRatio="3/4"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="p-4">
+                    <div className="flex items-center gap-1 text-xs text-zinc-500 mb-1">
+                      <Clock className="w-3 h-3" /> Recently viewed
+                    </div>
+                    <p className="font-medium text-white mb-1 truncate">{listing!.species?.common_name_en || listing!.species?.common_name_th}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-400 font-semibold">{listing!.price_thb.toLocaleString()} THB</span>
+                      <span className="text-xs text-zinc-600">{listing!.size_category}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Featured */}
       <section className="py-20 px-4 sm:px-6">

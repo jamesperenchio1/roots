@@ -1,7 +1,7 @@
 import type {
   Species, Profile, Listing, Transaction, Transfer, PriceSnapshot,
   Message, Dispute, WatchlistItem, PriceAlert, MarketOverview, DashboardStats,
-  ProvenanceChain, SizeCategory
+  ProvenanceChain, SizeCategory, Review, Notification, Offer
 } from '@/types';
 
 export const SPECIES: Species[] = [
@@ -156,6 +156,42 @@ export const PRICE_ALERTS: PriceAlert[] = [
   { id: 'pa-1', user_id: 'u-1', species_id: 'sp-11', size_category: 'M', threshold_thb: 15000, direction: 'below', created_at: '2024-06-01' },
   { id: 'pa-2', user_id: 'u-2', species_id: 'sp-1', size_category: 'M', threshold_thb: 7000, direction: 'below', created_at: '2024-06-10' },
   { id: 'pa-3', user_id: 'u-1', species_id: 'sp-14', threshold_thb: 1800, direction: 'below', created_at: '2024-06-15' },
+];
+
+export const REVIEWS: Review[] = [
+  { id: 'r-1', transaction_id: 't-1', listing_id: 'l-1', reviewer_id: 'u-2', seller_id: 'u-1', rating: 5, comment: 'Absolutely stunning plant! The variegation is even better in person. Seller packed it perfectly with moss and heat pack. Will definitely buy again.', tags: ['great packaging', 'as described', 'fast shipping'], created_at: '2024-04-20T10:00:00' },
+  { id: 'r-2', transaction_id: 't-2', listing_id: 'l-5', reviewer_id: 'u-5', seller_id: 'u-11', rating: 5, comment: 'My White Princess arrived in perfect condition. Seller was very responsive and even sent care tips after delivery. Highly recommended!', tags: ['great communication', 'healthy plant'], created_at: '2024-05-15T14:30:00' },
+  { id: 'r-3', transaction_id: 't-3', listing_id: 'l-10', reviewer_id: 'u-8', seller_id: 'u-1', rating: 4, comment: 'Beautiful Gloriosum, good root system. Shipping took a day longer than expected but plant was fine.', tags: ['healthy plant'], created_at: '2024-05-22T09:00:00' },
+  { id: 'r-4', transaction_id: 't-5', listing_id: 'l-14', reviewer_id: 'u-3', seller_id: 'u-1', rating: 5, comment: 'The Thai Constellation is a dream come true. Every leaf has amazing variegation. Thank you!', tags: ['as described', 'would recommend'], created_at: '2024-06-01T16:00:00' },
+  { id: 'r-5', transaction_id: 't-6', listing_id: 'l-20', reviewer_id: 'u-5', seller_id: 'u-11', rating: 3, comment: 'Plant was good but one leaf had minor shipping damage. Seller offered a partial refund which was fair.', tags: ['shipping damage'], created_at: '2024-06-05T11:00:00' },
+  { id: 'r-6', transaction_id: 't-7', listing_id: 'l-3', reviewer_id: 'u-6', seller_id: 'u-1', rating: 5, comment: 'Fast shipping, excellent packaging, plant looks exactly like the photos. A+ seller!', tags: ['fast shipping', 'great packaging', 'as described'], created_at: '2024-06-08T08:00:00' },
+  { id: 'r-7', transaction_id: 't-8', listing_id: 'l-7', reviewer_id: 'u-9', seller_id: 'u-11', rating: 4, comment: 'Lovely Pink Princess with stable variegation. Seller included a free cutting too!', tags: ['bonus items', 'healthy plant'], created_at: '2024-06-10T13:00:00' },
+  { id: 'r-8', transaction_id: 't-9', listing_id: 'l-12', reviewer_id: 'u-4', seller_id: 'u-1', rating: 5, comment: 'The Albo is just incredible. Half-moon leaves on a mature plant. Worth every baht.', tags: ['as described', 'would recommend'], created_at: '2024-06-12T15:00:00' },
+  { id: 'r-9', transaction_id: 't-10', listing_id: 'l-18', reviewer_id: 'u-7', seller_id: 'u-11', rating: 4, comment: 'Good condition Melano. A bit smaller than expected but very healthy root system.', tags: ['healthy plant'], created_at: '2024-06-14T10:00:00' },
+  { id: 'r-10', transaction_id: 't-12', listing_id: 'l-2', reviewer_id: 'u-10', seller_id: 'u-1', rating: 2, comment: 'Plant arrived with mealybugs. Had to quarantine and treat immediately. Disappointed.', tags: ['pests'], created_at: '2024-06-16T09:00:00' },
+  { id: 'r-11', transaction_id: 't-13', listing_id: 'l-8', reviewer_id: 'u-12', seller_id: 'u-11', rating: 5, comment: 'Perfect transaction from start to finish. Seller even video called to show the plant before shipping!', tags: ['great communication', 'as described', 'would recommend'], created_at: '2024-06-17T14:00:00' },
+  { id: 'r-12', transaction_id: 't-14', listing_id: 'l-15', reviewer_id: 'u-2', seller_id: 'u-1', rating: 4, comment: 'Nice Crystal Anthurium. Packaging was good but soil spilled a bit. Plant is thriving now.', tags: ['healthy plant'], created_at: '2024-06-18T11:00:00' },
+];
+
+export const NOTIFICATIONS: Notification[] = [
+  { id: 'n-1', user_id: 'u-1', type: 'order', title: 'New order received', message: 'Someone purchased your Thai Constellation for 12,500 THB', link: '/order/t-1', read: false, created_at: '2024-06-18T09:00:00' },
+  { id: 'n-2', user_id: 'u-1', type: 'shipment', title: 'Buyer confirmed receipt', message: 'The buyer confirmed delivery of order #8901', link: '/order/t-1', read: true, created_at: '2024-06-17T10:00:00' },
+  { id: 'n-3', user_id: 'u-1', type: 'offer', title: 'New offer received', message: 'A buyer offered 11,000 THB for your Monstera Albo', link: '/seller-dashboard', read: false, created_at: '2024-06-18T08:30:00' },
+  { id: 'n-4', user_id: 'u-1', type: 'review', title: 'New review', message: 'You received a 5-star review for your Thai Constellation', link: '/seller-dashboard', read: false, created_at: '2024-06-18T07:00:00' },
+  { id: 'n-5', user_id: 'u-1', type: 'message', title: 'New message', message: 'PlantLover99: "Is this still available?"', link: '/messages', read: true, created_at: '2024-06-16T14:00:00' },
+  { id: 'n-6', user_id: 'u-2', type: 'shipment', title: 'Order shipped', message: 'Your Thai Constellation has been shipped via Kerry Express', link: '/order/t-1', read: false, created_at: '2024-06-18T09:15:00' },
+  { id: 'n-7', user_id: 'u-2', type: 'offer', title: 'Offer accepted', message: 'Your offer of 11,000 THB was accepted!', link: '/order/t-15', read: false, created_at: '2024-06-17T16:00:00' },
+  { id: 'n-8', user_id: 'u-11', type: 'order', title: 'New order received', message: 'Someone purchased your White Princess for 5,500 THB', link: '/order/t-2', read: true, created_at: '2024-06-15T11:00:00' },
+  { id: 'n-9', user_id: 'u-11', type: 'dispute', title: 'Dispute opened', message: 'A buyer opened a dispute on order #8902', link: '/order/t-6/dispute', read: false, created_at: '2024-06-16T10:00:00' },
+  { id: 'n-10', user_id: 'u-11', type: 'system', title: 'Weekly payout', message: 'Your weekly payout of 18,400 THB has been processed', link: '/seller-dashboard', read: true, created_at: '2024-06-14T00:00:00' },
+];
+
+export const OFFERS: Offer[] = [
+  { id: 'o-1', listing_id: 'l-11', buyer_id: 'u-2', seller_id: 'u-1', offer_price_thb: 15000, message: 'Would you take 15,000? I can pick up in Chiang Mai this weekend.', status: 'pending', created_at: '2024-06-18T08:00:00' },
+  { id: 'o-2', listing_id: 'l-4', buyer_id: 'u-5', seller_id: 'u-11', offer_price_thb: 2200, message: 'Can you do 2,200 including shipping?', status: 'accepted', created_at: '2024-06-15T10:00:00', responded_at: '2024-06-15T14:00:00' },
+  { id: 'o-3', listing_id: 'l-6', buyer_id: 'u-3', seller_id: 'u-1', offer_price_thb: 3500, message: 'I will buy immediately at 3,500.', status: 'rejected', created_at: '2024-06-14T09:00:00', responded_at: '2024-06-14T12:00:00' },
+  { id: 'o-4', listing_id: 'l-19', buyer_id: 'u-8', seller_id: 'u-11', offer_price_thb: 18000, message: 'Would you consider 18,000? I have been looking for a mature Albo for months.', status: 'countered', counter_price_thb: 19000, created_at: '2024-06-17T11:00:00', responded_at: '2024-06-17T16:00:00' },
+  { id: 'o-5', listing_id: 'l-9', buyer_id: 'u-4', seller_id: 'u-1', offer_price_thb: 4000, message: 'Cash pickup in Bangkok tomorrow?', status: 'pending', created_at: '2024-06-18T07:00:00' },
 ];
 
 // Realistic price curve definitions for major species

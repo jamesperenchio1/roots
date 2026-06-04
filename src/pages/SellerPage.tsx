@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Star, Store, MapPin, Calendar } from 'lucide-react';
 import { getUserById, getActiveListings, PLANT_IMAGES } from '@/data/mockData';
+import ReviewSection from '@/components/ReviewSection';
 
 export default function SellerPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +47,11 @@ export default function SellerPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Reviews */}
+        <div className="mb-8">
+          <ReviewSection sellerId={seller.id} />
         </div>
 
         {/* Active Listings */}

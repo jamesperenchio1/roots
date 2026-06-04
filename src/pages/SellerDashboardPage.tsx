@@ -11,14 +11,16 @@ import {
   Package, DollarSign, TrendingUp, Plus, Eye, Heart,
   BarChart3, Truck, Wallet, ArrowDownLeft,
   Clock, CheckCircle, Users, Star,
-  Megaphone, Settings
+  Megaphone, Settings, Tag
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
-import { updateOrderStatus, updateProfile, hydrateUserTransactions } from '@/lib/api';
+import { updateProfile, hydrateUserTransactions, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse } from '@/lib/api';
+import MarkShippedModal from '@/components/MarkShippedModal';
+import OfferCard from '@/components/OfferCard';
 import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
@@ -81,6 +83,7 @@ const FULL_PAYOUTS = [
 const TABS_DEF = [
   { id: 'listings', label: 'Listings', icon: Package },
   { id: 'sales', label: 'Sales', icon: DollarSign },
+  { id: 'offers', label: 'Offers', icon: Tag },
   { id: 'payouts', label: 'Payouts', icon: Wallet },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'performance', label: 'Performance', icon: TrendingUp },
@@ -93,6 +96,8 @@ export default function SellerDashboardPage() {
   const [activeTab, setActiveTab] = useState(tab && TABS_DEF.some(t => t.id === tab) ? tab : 'listings');
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [shipModalOrder, setShipModalOrder] = useState<string | null>(null);
+  const [withdrawConfirm, setWithdrawConfirm] = useState<string | null>(null);
   const currentUserId = user?.id || 'u-1';
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
@@ -135,7 +140,7 @@ export default function SellerDashboardPage() {
   const listings = getActiveListings().filter(l => l.seller_id === currentUserId);
   const allSales = getTransactionsWithDetails().filter(t => t.seller_id === currentUserId);
   const completedSales = allSales.filter(s => s.status === 'completed');
-  const pendingSales = allSales.filter(s => s.status === 'paid_in_escrow' || s.status === 'shipped');
+  const pendingSales = allSales.filter(s => s.status === 'paid_in_escrow' || s.status === 'shipped' || s.status === 'disputed');
   const totalRevenue = completedSales.reduce((s, t) => s + t.seller_payout_thb, 0);
   const pendingRevenue = pendingSales.reduce((s, t) => s + t.seller_payout_thb, 0);
 
@@ -144,6 +149,30 @@ export default function SellerDashboardPage() {
       case 'listings':
         return (
           <div>
+            {withdrawConfirm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+                <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-sm p-6">
+                  <h3 className="text-lg font-medium mb-2">Withdraw Listing?</h3>
+                  <p className="text-sm text-zinc-400 mb-6">This will remove your listing from the marketplace. You can relist it later from your dashboard.</p>
+                  <div className="flex gap-3">
+                    <button onClick={() => setWithdrawConfirm(null)} className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5">Cancel</button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await withdrawListing(withdrawConfirm);
+                          toast.success('Listing withdrawn.');
+                          setWithdrawConfirm(null);
+                          refresh();
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to withdraw.');
+                        }
+                      }}
+                      className="flex-1 py-2.5 rounded-lg text-sm bg-red-500 text-white font-medium hover:bg-red-600"
+                    >Withdraw</button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-medium">Active Listings ({listings.length})</h2>
@@ -186,8 +215,11 @@ export default function SellerDashboardPage() {
                         </div>
                         <div className="flex gap-2">
                           <Link to={`/listing/${l.id}`} className="text-xs text-emerald-400 hover:underline">View</Link>
-                          <button className="text-xs text-zinc-500 hover:text-white">Edit</button>
-                          <button className="text-xs text-red-400 hover:text-red-300">Withdraw</button>
+                          <Link to={`/listing/${l.id}/edit`} className="text-xs text-zinc-500 hover:text-white">Edit</Link>
+                          <button
+                            onClick={() => setWithdrawConfirm(l.id)}
+                            className="text-xs text-red-400 hover:text-red-300"
+                          >Withdraw</button>
                         </div>
                       </div>
                     </div>
@@ -232,21 +264,28 @@ export default function SellerDashboardPage() {
                       <div className="text-right">
                         <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-full">{s.status}</span>
                         {s.status === 'paid_in_escrow' && (
-                          <button
-                            onClick={async () => {
-                              try {
-                                await updateOrderStatus(s.id, { status: 'shipped', shipped_at: new Date().toISOString() });
-                                toast.success('Marked as shipped.');
-                                refresh();
-                              } catch (err) {
-                                toast.error(err instanceof Error ? err.message : 'Failed to update status.');
-                              }
-                            }}
-                            className="block mt-2 text-xs text-emerald-400 hover:underline"
-                          >Mark as Shipped</button>
+                          <>
+                            <button
+                              onClick={() => setShipModalOrder(s.id)}
+                              className="block mt-2 text-xs text-emerald-400 hover:underline"
+                            >Mark as Shipped</button>
+                            <Link
+                              to={`/order/${s.id}`}
+                              className="block mt-1 text-xs text-zinc-500 hover:text-white"
+                            >View Order</Link>
+                          </>
                         )}
                         {s.status === 'shipped' && (
-                          <p className="text-xs text-zinc-600 mt-1">Tracking: {s.tracking_number || 'N/A'}</p>
+                          <>
+                            <p className="text-xs text-zinc-600 mt-1">Tracking: {s.tracking_number || 'N/A'}</p>
+                            <Link to={`/order/${s.id}`} className="block mt-1 text-xs text-zinc-500 hover:text-white">View Order</Link>
+                          </>
+                        )}
+                        {s.status === 'disputed' && (
+                          <>
+                            <span className="inline-block mt-1 text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Dispute Opened</span>
+                            <Link to={`/order/${s.id}`} className="block mt-1 text-xs text-red-400 hover:text-red-300">View Dispute</Link>
+                          </>
                         )}
                       </div>
                     </div>
@@ -254,6 +293,19 @@ export default function SellerDashboardPage() {
                 )) : (
                   <p className="text-zinc-600 text-sm py-4 text-center">No pending sales</p>
                 )}
+              </div>
+            </div>
+
+            {/* Shipping Guide Promo */}
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-emerald-400">New to shipping plants?</p>
+                  <p className="text-xs text-zinc-500">Learn how to pack safely step-by-step</p>
+                </div>
+                <Link to="/shipping-guide" className="text-xs bg-emerald-500 text-black px-4 py-2 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+                  Open Guide
+                </Link>
               </div>
             </div>
 
@@ -294,8 +346,63 @@ export default function SellerDashboardPage() {
                 {completedSales.length === 0 && <p className="text-zinc-600 text-sm py-4 text-center">No completed sales yet</p>}
               </div>
             </div>
+            {shipModalOrder && (
+              <MarkShippedModal
+                orderId={shipModalOrder}
+                onClose={() => setShipModalOrder(null)}
+                onShipped={refresh}
+              />
+            )}
           </div>
         );
+
+      case 'offers': {
+        const offers = getOffersForSeller(currentUserId);
+        const pendingOffers = offers.filter(o => o.status === 'pending');
+        const otherOffers = offers.filter(o => o.status !== 'pending');
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-medium mb-1">Incoming Offers ({pendingOffers.length} pending)</h2>
+              <p className="text-xs text-zinc-500 mb-3">Respond to buyer offers on your listings</p>
+              <div className="space-y-3">
+                {pendingOffers.length > 0 ? pendingOffers.map(o => (
+                  <OfferCard
+                    key={o.id}
+                    offer={o}
+                    mode="seller"
+                    onRespond={async (status, counterPrice) => {
+                      try {
+                        await respondToOffer(o.id, status, counterPrice);
+                        if (status === 'accepted' || status === 'rejected' || status === 'countered') {
+                          // TODO: notify buyer via notification API
+                          await notifyOfferResponse(o.buyer_id || '', o.id, status);
+                        }
+                        toast.success(`Offer ${status}`);
+                        refresh();
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to respond');
+                      }
+                    }}
+                  />
+                )) : (
+                  <p className="text-zinc-600 text-sm py-4 text-center">No pending offers</p>
+                )}
+              </div>
+            </div>
+            {otherOffers.length > 0 && (
+              <div>
+                <h2 className="text-lg font-medium mb-1">Past Offers</h2>
+                <div className="space-y-3">
+                  {otherOffers.map(o => (
+                    <OfferCard key={o.id} offer={o} mode="seller" />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
 
       case 'payouts':
         return (
