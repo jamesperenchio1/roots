@@ -111,15 +111,15 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
   if (compact) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300">
+        <span title={`Care level: ${careLevel}`} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Sprout className="w-3 h-3 text-emerald-400" />
           {careLevel}
         </span>
-        <span className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300">
+        <span title={`Watering: ${wateringToIcon(watering)}`} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Droplets className="w-3 h-3 text-sky-400" />
           {wateringToIcon(watering)}
         </span>
-        <span className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300">
+        <span title={`Light: ${sunlight.join(', ')}`} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Sun className="w-3 h-3 text-amber-400" />
           {sunlightToEmoji(sunlight)}
         </span>

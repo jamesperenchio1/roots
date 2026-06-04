@@ -87,6 +87,7 @@ export interface Listing {
   species?: Species;
   view_count?: number;
   watch_count?: number;
+  tags?: string[];
 }
 
 export interface ListingPhoto {

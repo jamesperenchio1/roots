@@ -66,6 +66,8 @@ export default function EditListingPage() {
   const [delivery, setDelivery] = useState<string[]>([]);
   const [shippingCost, setShippingCost] = useState('');
   const [province, setProvince] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -100,6 +102,7 @@ export default function EditListingPage() {
     setDelivery(listing.delivery_options);
     setShippingCost(listing.shipping_cost_thb ? String(listing.shipping_cost_thb) : '');
     setProvince(listing.pickup_province || '');
+    setTags(listing.tags || []);
     setPhotos(
       (listing.photos || []).map((p) => ({
         type: 'existing',
@@ -202,6 +205,7 @@ export default function EditListingPage() {
         pickup_province: province || undefined,
         shipping_cost_thb: shippingCost ? parseInt(shippingCost) : undefined,
         photos: photoUrls,
+        tags: tags.length > 0 ? tags : undefined,
       });
 
       toast.success('Changes saved');
@@ -514,6 +518,49 @@ export default function EditListingPage() {
                 {description.length} chars
               </p>
             </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Tags</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {['variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly'].map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(t) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const v = tagInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+                    if (v && !tags.includes(v) && tags.length < 10) { setTags([...tags, v]); setTagInput(''); }
+                  }
+                }}
+                placeholder="Add custom tag + Enter"
+                className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {tags.map(t => (
+                  <span key={t} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
+                    {t}
+                    <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== t))} className="text-zinc-500 hover:text-white">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Fee Notice */}

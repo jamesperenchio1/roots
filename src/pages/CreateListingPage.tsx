@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, QrCode, CheckCircle, Tag, Info, X } from 'lucide-react';
+import { ArrowLeft, Camera, QrCode, CheckCircle, Info, X, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
@@ -33,28 +33,17 @@ export default function CreateListingPage() {
   const [delivery, setDelivery] = useState<string[]>([]);
   const [shippingCost, setShippingCost] = useState('');
   const [province, setProvince] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Listing | null>(null);
   const [provenanceQR, setProvenanceQR] = useState('');
-  const [qrDownloaded, setQrDownloaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isLocalAdmin } = useAuth();
   const navigate = useNavigate();
   const photoCount = photos.length;
-
-  useEffect(() => {
-    if (provenanceQR && created && !qrDownloaded) {
-      setQrDownloaded(true);
-      const a = document.createElement('a');
-      a.href = provenanceQR;
-      a.download = `root-provenance-${created.id}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  }, [provenanceQR, created, qrDownloaded]);
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -128,8 +117,10 @@ export default function CreateListingPage() {
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
         description: sanitizeText(description, 2000),
         delivery_options: delivery,
+        shipping_cost_thb: delivery.includes('ship') ? (shippingCost ? parseInt(shippingCost) : 0) : undefined,
         pickup_province: province || undefined,
         photos: urls,
+        tags: tags.length > 0 ? tags : undefined,
       }, user);
       const qr = await generateQR(`${window.location.origin}/#/p/${listing.id}`, 220);
       setCreated(listing);
@@ -431,17 +422,59 @@ export default function CreateListingPage() {
             </div>
           </div>
 
+          {/* Tags */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Tags</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {['variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly'].map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(t) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const v = tagInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+                    if (v && !tags.includes(v) && tags.length < 10) { setTags([...tags, v]); setTagInput(''); }
+                  }
+                }}
+                placeholder="Add custom tag + Enter"
+                className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {tags.map(t => (
+                  <span key={t} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
+                    {t}
+                    <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== t))} className="text-zinc-500 hover:text-white">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Fee Notice */}
           <div className="bg-zinc-900/30 border border-white/5 rounded-lg p-4 text-sm">
             <div className="flex items-start gap-2">
-              <Tag className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+              <Shield className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-zinc-400">
-                  When this sells, you will receive <strong className="text-white">{price ? (parseInt(price) * 0.92).toFixed(0) : '0'} THB</strong>
-                  {' '}after the 8% platform fee ({price ? (parseInt(price) * 0.08).toFixed(0) : '0'} THB).
+                <p className="text-zinc-300">
+                  We handle <strong className="text-white">secure payments, escrow, and buyer protection</strong> for an 8% fee when you sell.
                 </p>
-                <p className="text-xs text-zinc-600 mt-1">
-                  No listing fee. No monthly fee. You only pay when you sell.
+                <p className="text-xs text-zinc-500 mt-1">
+                  No listing fee. No monthly fee. You keep 92% of every sale. The fee covers dispute resolution, verified reviews, and QR provenance tracking.
                 </p>
               </div>
             </div>

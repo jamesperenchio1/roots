@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, QrCode, Calendar, User, Tag, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, QrCode, Calendar, User, Tag, AlertTriangle, Printer, Download } from 'lucide-react';
+import PrintTag from '@/components/PrintTag';
 import { getSpeciesById, PLANT_IMAGES, USERS } from '@/data/mockData';
 import { fetchProvenance } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
@@ -25,6 +26,7 @@ export default function PlantQRPage() {
   const [qrUrl, setQrUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [disputes, setDisputes] = useState<{ date: string; type: string; description: string }[]>([]);
+  const [showPrintTag, setShowPrintTag] = useState(false);
 
   const speciesId = plantId?.replace('p-', 'sp-') || '';
   const species = getSpeciesById(speciesId);
@@ -34,7 +36,7 @@ export default function PlantQRPage() {
 
     // Generate QR for this page URL
     const pageUrl = `${window.location.origin}/#/p/${plantId}`;
-    generateQR(pageUrl, 200).then(setQrUrl).catch(() => setQrUrl(''));
+    generateQR(pageUrl, 96).then(setQrUrl).catch(() => setQrUrl(''));
 
     // Fetch provenance
     fetchProvenance(plantId).then(({ listing: l, transfers }) => {
@@ -154,22 +156,63 @@ export default function PlantQRPage() {
               </div>
             </div>
             <div className="sm:text-right">
-              <div className="w-24 h-24 bg-white rounded-xl p-2 mx-auto sm:mx-0 sm:ml-auto">
+              <div className="w-20 h-20 bg-white rounded-xl p-1.5 mx-auto sm:mx-0 sm:ml-auto">
                 {qrUrl ? (
                   <img src={qrUrl} alt="QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-full h-full bg-zinc-900 rounded-lg flex items-center justify-center">
-                    <QrCode className="w-12 h-12 text-white" />
+                    <QrCode className="w-10 h-10 text-white" />
                   </div>
                 )}
               </div>
               <p className="text-xs text-zinc-500 mt-2 text-center">Scan to verify</p>
+              <div className="mt-2 flex flex-col gap-1.5 items-center sm:items-end">
+                {qrUrl && (
+                  <a
+                    href={qrUrl}
+                    download={`root-qr-${plantId}.png`}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" /> Download QR
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowPrintTag(true)}
+                  className="text-xs text-zinc-500 hover:text-white flex items-center gap-1"
+                >
+                  <Printer className="w-3 h-3" /> Print Tag
+                </button>
+              </div>
               <div className="mt-3 flex justify-center sm:justify-end">
                 <ShareButtons
                   title={`Provenance for ${species?.scientific_name || 'Plant'}`}
                   url={`${window.location.origin}/#/p/${plantId}`}
                 />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* What is Provenance? */}
+        <div className="mb-10 bg-zinc-900/20 border border-white/5 rounded-xl p-6">
+          <h2 className="text-lg font-medium mb-3">What is Root Provenance?</h2>
+          <div className="space-y-3 text-sm text-zinc-400 leading-relaxed">
+            <p>
+              Every plant sold on Root receives a unique QR code — a digital birth certificate
+              that stays with the plant for life. Scanning this QR reveals the plant's full
+              history: who grew it, when it was sold, and every owner since.
+            </p>
+            <p>
+              This creates trust in the second-hand plant market. Buyers can verify a seller's
+              claims about variegation, maturity, and care history. Sellers build reputation
+              through verified sales. And rare plants retain their provenance value across
+              multiple owners.
+            </p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Verified ownership</span>
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Fraud protection</span>
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Care history</span>
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Resale value</span>
             </div>
           </div>
         </div>
@@ -227,6 +270,14 @@ export default function PlantQRPage() {
           </div>
         )}
       </div>
+
+      {showPrintTag && listing && (
+        <PrintTag
+          listing={listing}
+          species={species}
+          onClose={() => setShowPrintTag(false)}
+        />
+      )}
     </div>
   );
 }

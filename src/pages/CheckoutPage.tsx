@@ -106,6 +106,10 @@ export default function CheckoutPage() {
                 {shipping === 0 ? 'Free' : `${shipping.toLocaleString()} THB`}
               </span>
             </div>
+            <div className="flex justify-between text-xs text-zinc-500">
+              <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-emerald-500" /> Buyer protection & escrow included</span>
+              <span>No extra charge</span>
+            </div>
             <div className="flex justify-between pt-2 border-t border-white/5 font-semibold text-base">
               <span>Total</span>
               <span>{total.toLocaleString()} THB</span>
@@ -220,8 +224,8 @@ export default function CheckoutPage() {
           {paying ? 'Confirming…' : method === 'promptpay' ? `I've paid ${total.toLocaleString()} THB` : `Pay ${total.toLocaleString()} THB`}
         </Button>
 
-        <p className="text-xs text-zinc-600 text-center mt-3">
-          By completing this purchase, you agree to our terms of service.
+        <p className="text-xs text-zinc-500 text-center mt-3">
+          Your payment is held safely until you confirm delivery. No hidden fees — the price above is all you pay.
         </p>
       </div>
     </div>

@@ -8,8 +8,12 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 export default function HomePage() {
   const [heroLoaded, setHeroLoaded] = useState(false);
-  const listings = getActiveListings().slice(0, 8);
+  const [listings, setListings] = useState(() => getActiveListings().slice(0, 8));
   const market = getMarketOverview();
+
+  useEffect(() => {
+    setListings(getActiveListings().slice(0, 8));
+  }, []);
   const { getRecentlyViewed } = useRecentlyViewed();
   const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
   const recentlyViewed = recentlyViewedIds.map(id => getListingById(id)).filter(Boolean);

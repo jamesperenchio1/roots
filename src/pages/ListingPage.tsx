@@ -147,7 +147,10 @@ export default function ListingPage() {
 
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-semibold">{listing.price_thb.toLocaleString()} THB</span>
-              <span className={`text-sm ${parseFloat(pctDiff) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              <span
+                title="Median is the middle price of all recent sales — more reliable than average because it is not skewed by one unusually cheap or expensive sale."
+                className={`text-sm cursor-help ${parseFloat(pctDiff) > 0 ? 'text-red-400' : 'text-emerald-400'}`}
+              >
                 {parseFloat(pctDiff) > 0 ? '+' : ''}{pctDiff}% vs 30d median
               </span>
             </div>
@@ -157,6 +160,9 @@ export default function ListingPage() {
               {listing.size_cm_range && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_cm_range}</span>}
               {listing.pot_size_cm && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.pot_size_cm}cm pot</span>}
               <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.species?.category}</span>
+              {listing.tags?.map(t => (
+                <span key={t} className="bg-emerald-500/10 px-3 py-1 rounded-full text-xs text-emerald-400">{t}</span>
+              ))}
             </div>
 
             <p className="text-zinc-400 leading-relaxed">{listing.description}</p>
@@ -177,7 +183,7 @@ export default function ListingPage() {
                   Delivery: {listing.delivery_options?.join(', ')}
                   {listing.delivery_options?.includes('ship') && (
                     <span className="text-emerald-400 ml-1">
-                      ({listing.shipping_cost_thb === 0 ? 'Free' : `${listing.shipping_cost_thb} THB`} shipping)
+                      ({(listing.shipping_cost_thb ?? 0) === 0 ? 'Free' : `${listing.shipping_cost_thb} THB`} shipping)
                     </span>
                   )}
                 </span>
@@ -195,6 +201,7 @@ export default function ListingPage() {
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <QrCode className="w-4 h-4" />
                 <span>Comes with QR provenance tag</span>
+                <Link to={`/p/${listing.id}`} className="text-emerald-400 hover:underline text-xs">What is this?</Link>
               </div>
             </div>
 

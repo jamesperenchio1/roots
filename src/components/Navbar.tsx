@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store } from 'lucide-react';
+import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store, QrCode } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
@@ -52,6 +52,9 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/scan" className="p-2 text-zinc-400 hover:text-white transition-colors hidden sm:block" title="Scan QR">
+              <QrCode className="w-5 h-5" />
+            </Link>
             <button onClick={() => setSearchOpen(!searchOpen)} className="p-2 text-zinc-400 hover:text-white transition-colors">
               <Search className="w-5 h-5" />
             </button>

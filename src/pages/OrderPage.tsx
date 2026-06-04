@@ -183,6 +183,21 @@ export default function OrderPage() {
               <p className="text-sm text-zinc-400">Tracking: {tx.tracking_number}</p>
             </div>
           )}
+
+          {/* Payment Info */}
+          <div className="border-t border-white/5 pt-4 mt-4">
+            <div className="flex items-start gap-2 text-xs text-zinc-500">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-zinc-400">
+                  Payment verified via PromptPay. Funds are held in escrow until you confirm delivery.
+                </p>
+                <p className="mt-1">
+                  If the plant does not match the listing, you can open a dispute within 48 hours of delivery.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Actions */}

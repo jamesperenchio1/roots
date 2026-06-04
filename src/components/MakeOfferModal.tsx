@@ -20,9 +20,8 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
 
   if (!isOpen) return null;
 
-  const maxPrice = listing.price_thb - 1;
   const priceNum = parseInt(price, 10);
-  const isValid = !isNaN(priceNum) && priceNum >= 10 && priceNum <= maxPrice;
+  const isValid = !isNaN(priceNum) && priceNum >= 10;
 
   const handleSubmit = async () => {
     if (!user) {
@@ -30,7 +29,7 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
       return;
     }
     if (!isValid) {
-      toast.error(`Offer must be between 10 and ${maxPrice.toLocaleString()} THB.`);
+      toast.error('Offer must be at least 10 THB.');
       return;
     }
     setSubmitting(true);
@@ -79,14 +78,11 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder={`Max ${maxPrice.toLocaleString()} THB`}
+              placeholder="Enter your offer"
               min={10}
-              max={maxPrice}
               className="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
             />
-            {priceNum > maxPrice && (
-              <p className="text-xs text-red-400 mt-1">Must be less than listing price</p>
-            )}
+
           </div>
 
           <div>

@@ -38,6 +38,7 @@ const ContactPage = lazy(() => import('@/pages/ContactPage'));
 const ShippingGuidePage = lazy(() => import('@/pages/ShippingGuidePage'));
 const EditListingPage = lazy(() => import('@/pages/EditListingPage'));
 const MessagesPage = lazy(() => import('@/pages/MessagesPage'));
+const QRScannerPage = lazy(() => import('@/pages/QRScannerPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 function PageLoader() {
@@ -73,6 +74,7 @@ function AppContent() {
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/fees" element={<FeesPage />} />
             <Route path="/shipping-guide" element={<ShippingGuidePage />} />
+            <Route path="/scan" element={<QRScannerPage />} />
 
             {/* Auth Pages */}
             <Route path="/login" element={<LoginPage />} />

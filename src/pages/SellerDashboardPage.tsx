@@ -98,7 +98,18 @@ export default function SellerDashboardPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [shipModalOrder, setShipModalOrder] = useState<string | null>(null);
   const [withdrawConfirm, setWithdrawConfirm] = useState<string | null>(null);
+  const [qrChecklist, setQrChecklist] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('qr_checklist') || '{}'); } catch { return {}; }
+  });
   const currentUserId = user?.id || 'u-1';
+
+  const toggleQrCheck = (listingId: string) => {
+    setQrChecklist(prev => {
+      const next = { ...prev, [listingId]: !prev[listingId] };
+      localStorage.setItem('qr_checklist', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
@@ -216,11 +227,21 @@ export default function SellerDashboardPage() {
                         <div className="flex gap-2">
                           <Link to={`/listing/${l.id}`} className="text-xs text-emerald-400 hover:underline">View</Link>
                           <Link to={`/listing/${l.id}/edit`} className="text-xs text-zinc-500 hover:text-white">Edit</Link>
+                          <Link to={`/p/${l.id}`} className="text-xs text-zinc-500 hover:text-white">QR</Link>
                           <button
                             onClick={() => setWithdrawConfirm(l.id)}
                             className="text-xs text-red-400 hover:text-red-300"
                           >Withdraw</button>
                         </div>
+                        <label className="flex items-center gap-1.5 mt-1.5 text-[11px] text-zinc-500 cursor-pointer hover:text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={qrChecklist[l.id] || false}
+                            onChange={() => toggleQrCheck(l.id)}
+                            className="w-3 h-3 accent-emerald-500"
+                          />
+                          QR tag attached to plant
+                        </label>
                       </div>
                     </div>
                   </div>
