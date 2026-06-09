@@ -1,6 +1,7 @@
 export type Category = 'aroid' | 'hoya' | 'cactus' | 'orchid' | 'succulent' | 'fern' | 'other';
 export type ListingStatus = 'active' | 'sold' | 'withdrawn' | 'draft';
-export type TransactionStatus = 'pending_payment' | 'paid_in_escrow' | 'shipped' | 'delivered' | 'completed' | 'disputed' | 'refunded' | 'cancelled';
+export type TransactionStatus = 'pending_payment' | 'pending_verification' | 'paid_in_escrow' | 'shipped' | 'delivered' | 'completed' | 'disputed' | 'refunded' | 'cancelled';
+export type VerificationMethod = 'slipok_auto' | 'seller_manual' | 'retry_pending';
 export type PlantStatus = 'active' | 'deceased' | 'lost';
 export type DisputeStatus = 'open' | 'under_review' | 'resolved_buyer' | 'resolved_seller' | 'resolved_partial';
 export type DisputeReason = 'DOA' | 'mismatch' | 'wrong_species' | 'pests' | 'root_rot' | 'transit_damage' | 'other';
@@ -77,6 +78,7 @@ export interface Listing {
   delivery_options: DeliveryOption[];
   shipping_cost_thb?: number;
   pickup_province?: string;
+  pickup_address?: string;
   status: ListingStatus;
   created_at: string;
   last_photo_update_at: string;
@@ -88,6 +90,8 @@ export interface Listing {
   view_count?: number;
   watch_count?: number;
   tags?: string[];
+  custom_name?: string;
+  display_qualities?: string[];
 }
 
 export interface ListingPhoto {
@@ -120,6 +124,10 @@ export interface Transaction {
   omise_charge_id?: string;
   tracking_number?: string;
   courier?: string;
+  payment_slip_url?: string;
+  payment_ref_number?: string;
+  verification_method?: VerificationMethod;
+  verification_attempted_at?: string;
   delivery_method: DeliveryOption;
   shipped_at?: string;
   delivered_at?: string;

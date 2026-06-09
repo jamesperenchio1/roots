@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag } from 'lucide-react';
+import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, Info, Sprout, Droplets, Sun } from 'lucide-react';
 import PlantCareCard from '@/components/PlantCareCard';
 import WeatherWidget from '@/components/WeatherWidget';
 import { PROVINCE_CITIES } from '@/lib/weather';
 import { toast } from 'sonner';
-import { getListingById, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
+import { getListingById, getPriceSnapshotsForSpecies, PLANT_IMAGES, USERS } from '@/data/mockData';
 import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { toggleWatch } from '@/lib/api';
+import { toggleWatch, fetchProvenance, getOrCreateThreadId, sendMessage, createNotification } from '@/lib/api';
 import ReviewSection from '@/components/ReviewSection';
 import { generateQR } from '@/lib/promptpay';
 import MakeOfferModal from '@/components/MakeOfferModal';
 import ShareButtons from '@/components/ShareButtons';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import type { Transfer } from '@/types';
 
 export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,9 @@ export default function ListingPage() {
   const [activeImage, setActiveImage] = useState(1); // default to plant photo (index 1) if available
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const { recordView } = useRecentlyViewed();
+  const [provenanceEvents, setProvenanceEvents] = useState<{ date: string; event: string; from: string | null; to: string | null; price: number | null; type: 'origin' | 'sale' | 'current' }[]>([]);
+  const [showProvenance, setShowProvenance] = useState(false);
+  const [showQrTooltip, setShowQrTooltip] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -33,6 +37,64 @@ export default function ListingPage() {
       const plantId = listing.plant_id || listing.id;
       generateQR(`${window.location.origin}/#/p/${plantId}`, 400).then(setQrUrl).catch(() => setQrUrl(''));
       recordView(listing.id);
+
+      // Fetch provenance
+      fetchProvenance(plantId).then(({ transfers }) => {
+        const events: typeof provenanceEvents = [];
+        if (transfers.length === 0) {
+          events.push({
+            date: listing.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+            event: 'Plant registered',
+            from: null,
+            to: listing.seller?.display_name || 'Current Owner',
+            price: null,
+            type: 'origin',
+          });
+          events.push({
+            date: new Date().toISOString().slice(0, 10),
+            event: 'Current ownership',
+            from: null,
+            to: listing.seller?.display_name || 'Current Owner',
+            price: null,
+            type: 'current',
+          });
+        } else {
+          transfers.forEach((tr: Transfer, i: number) => {
+            const fromUser = tr.from_user_id ? USERS.find(u => u.id === tr.from_user_id) : null;
+            const toUser = tr.to_user_id ? USERS.find(u => u.id === tr.to_user_id) : null;
+            if (i === 0 && !tr.from_user_id) {
+              events.push({
+                date: tr.transferred_at.slice(0, 10),
+                event: 'Plant registered',
+                from: null,
+                to: toUser?.display_name || 'Unknown',
+                price: null,
+                type: 'origin',
+              });
+            } else {
+              events.push({
+                date: tr.transferred_at.slice(0, 10),
+                event: tr.sale_price_thb ? 'Sale' : 'Transfer',
+                from: fromUser?.display_name || 'Unknown',
+                to: toUser?.display_name || 'Unknown',
+                price: tr.sale_price_thb || null,
+                type: 'sale',
+              });
+            }
+          });
+          const last = transfers[transfers.length - 1];
+          const lastOwner = last.to_user_id ? USERS.find(u => u.id === last.to_user_id) : null;
+          events.push({
+            date: new Date().toISOString().slice(0, 10),
+            event: 'Current ownership',
+            from: lastOwner?.display_name || 'Unknown',
+            to: lastOwner?.display_name || 'Unknown',
+            price: null,
+            type: 'current',
+          });
+        }
+        setProvenanceEvents(events);
+      });
     }
   }, [listing, id, recordView]);
 
@@ -42,6 +104,17 @@ export default function ListingPage() {
     setWatched(next);
     try {
       await toggleWatch(user.id, 'listing', id || '', next);
+      if (next && listing?.seller_id && listing.seller_id !== user.id) {
+        // Notify seller someone is watching their listing
+        createNotification({
+          user_id: listing.seller_id,
+          type: 'system',
+          title: 'Someone is watching your listing',
+          message: `${user.display_name} added your ${listing.species?.common_name_en || 'plant'} to their watchlist`,
+          link: `/listing/${listing.id}`,
+          read: false,
+        }).catch(() => {});
+      }
       toast.success(next ? 'Added to your watchlist' : 'Removed from watchlist');
     } catch {
       setWatched(!next);
@@ -49,9 +122,28 @@ export default function ListingPage() {
     }
   };
 
-  const handleMessage = () => {
+  const handleMessage = async () => {
     if (!user) { toast.info('Log in to message the seller.'); return; }
-    toast.success(`Your interest was sent to ${listing?.seller?.display_name || 'the seller'}.`);
+    if (!listing?.seller_id || listing.seller_id === user.id) {
+      toast.info('You cannot message yourself.');
+      return;
+    }
+    const threadId = getOrCreateThreadId(user.id, listing.seller_id, listing.id);
+    // Send an initial interest message
+    try {
+      await sendMessage({
+        thread_id: threadId,
+        sender_id: user.id,
+        recipient_id: listing.seller_id,
+        listing_id: listing.id,
+        content: `Hi! I'm interested in your ${listing.species?.common_name_en || 'plant listing'}. Is it still available?`,
+        flagged_contact_info: false,
+      });
+      toast.success(`Chat started with ${listing.seller?.display_name || 'the seller'}`);
+      window.location.href = `/#/messages/${threadId}`;
+    } catch {
+      toast.error('Could not start chat');
+    }
   };
 
   if (!listing) {
@@ -79,6 +171,16 @@ export default function ListingPage() {
     ? priceData.slice(-30).reduce((s, d) => s + d.price, 0) / Math.min(30, priceData.length)
     : listing.price_thb;
   const pctDiff = ((listing.price_thb - median30d) / median30d * 100).toFixed(1);
+
+  const qualities = listing.display_qualities || ['size','pot','category','care','water','light'];
+  const showSize = qualities.includes('size');
+  const showPot = qualities.includes('pot');
+  const showCategory = qualities.includes('category');
+  const showCare = qualities.includes('care');
+  const showWater = qualities.includes('water');
+  const showLight = qualities.includes('light');
+
+  const displayTitle = listing.custom_name || listing.species?.common_name_en || listing.species?.common_name_th || 'Plant';
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -121,10 +223,15 @@ export default function ListingPage() {
                 {listing.species?.scientific_name}
               </Link>
               <h1 className="text-2xl sm:text-3xl font-light tracking-tight mb-2">
-                {listing.species?.common_name_en || listing.species?.common_name_th}
+                {displayTitle}
               </h1>
+              {listing.custom_name && (
+                <p className="text-sm text-zinc-500 mb-1">
+                  {listing.species?.common_name_en || listing.species?.common_name_th}
+                </p>
+              )}
               <p className="text-sm text-zinc-500 mb-3">
-                {listing.species?.common_name_th && `${listing.species.common_name_th} · `}
+                {listing.species?.common_name_th && !listing.custom_name ? `${listing.species.common_name_th} · ` : ''}
                 {listing.species?.scientific_name}
               </p>
               <div className="flex items-center justify-between">
@@ -132,7 +239,7 @@ export default function ListingPage() {
                   by {listing.seller?.display_name} {listing.seller?.rating ? `(${listing.seller.rating})` : ''}
                 </Link>
                 <ShareButtons
-                  title={`${listing.species?.common_name_en || 'Plant listing'} on Root`}
+                  title={`${displayTitle} on Root`}
                   url={typeof window !== 'undefined' ? window.location.href : ''}
                   description={listing.description}
                 />
@@ -155,17 +262,42 @@ export default function ListingPage() {
               </span>
             </div>
 
+            {/* Physical attributes */}
             <div className="flex flex-wrap gap-2">
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_category} size</span>
-              {listing.size_cm_range && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_cm_range}</span>}
-              {listing.pot_size_cm && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.pot_size_cm}cm pot</span>}
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.species?.category}</span>
+              {showSize && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_category} size</span>}
+              {showPot && listing.size_cm_range && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_cm_range}</span>}
+              {showPot && listing.pot_size_cm && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.pot_size_cm}cm pot</span>}
+              {showCategory && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.species?.category}</span>}
               {listing.tags?.map(t => (
                 <span key={t} className="bg-emerald-500/10 px-3 py-1 rounded-full text-xs text-emerald-400">{t}</span>
               ))}
             </div>
 
             <p className="text-zinc-400 leading-relaxed">{listing.description}</p>
+
+            {/* Care info - filtered by seller preferences */}
+            {(showCare || showWater || showLight) && (
+              <div className="flex flex-wrap gap-2">
+                {showCare && (
+                  <span className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300">
+                    <Sprout className="w-3 h-3 text-emerald-400" />
+                    {listing.species?.care_level || 'Moderate'}
+                  </span>
+                )}
+                {showWater && (
+                  <span className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300">
+                    <Droplets className="w-3 h-3 text-sky-400" />
+                    Average
+                  </span>
+                )}
+                {showLight && (
+                  <span className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300">
+                    <Sun className="w-3 h-3 text-amber-400" />
+                    {listing.species?.light_requirement || 'Bright indirect'}
+                  </span>
+                )}
+              </div>
+            )}
 
             <PlantCareCard speciesName={listing.species?.scientific_name || listing.species?.common_name_en || ''} compact />
 
@@ -194,14 +326,55 @@ export default function ListingPage() {
                   <span>Pickup: {listing.pickup_province}</span>
                 </div>
               )}
+              {listing.pickup_address && (
+                <div className="bg-zinc-900/30 border border-white/5 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-emerald-400 font-medium mb-0.5">Pickup Address</p>
+                      <p className="text-sm text-zinc-300">{listing.pickup_address}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <Shield className="w-4 h-4" />
                 <span>Escrow protected — funds released after delivery confirmation</span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-zinc-400">
+              <div className="flex items-center gap-3 text-sm text-zinc-400 relative">
                 <QrCode className="w-4 h-4" />
                 <span>Comes with QR provenance tag</span>
-                <Link to={`/p/${listing.id}`} className="text-emerald-400 hover:underline text-xs">What is this?</Link>
+                <button
+                  type="button"
+                  onClick={() => setShowQrTooltip(!showQrTooltip)}
+                  className="text-emerald-400 hover:text-emerald-300 text-xs inline-flex items-center gap-0.5"
+                >
+                  <Info className="w-3 h-3" /> What is this?
+                </button>
+                {showQrTooltip && (
+                  <div className="absolute left-0 top-full mt-2 bg-zinc-900 border border-white/10 rounded-xl p-4 shadow-xl z-20 max-w-sm">
+                    <p className="text-sm text-zinc-300 leading-relaxed mb-2">
+                      Every plant sold on Root receives a unique QR code — a digital birth certificate
+                      that stays with the plant for life.
+                    </p>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Scanning this QR reveals the plant's full history: who grew it, when it was sold,
+                      and every owner since. It creates trust in the second-hand plant market and helps
+                      rare plants retain their provenance value across multiple owners.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">Verified ownership</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">Fraud protection</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">Resale value</span>
+                    </div>
+                    <button
+                      onClick={() => setShowQrTooltip(false)}
+                      className="absolute top-2 right-2 text-zinc-500 hover:text-white"
+                    >
+                      <span className="text-xs">×</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -232,6 +405,61 @@ export default function ListingPage() {
             </div>
           </div>
         </div>
+
+        {/* Provenance History */}
+        {provenanceEvents.length > 0 && (
+          <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium">Plant History</h2>
+              <Link to={`/p/${listing.plant_id || listing.id}`} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+                <QrCode className="w-3 h-3" /> Full Provenance Page
+              </Link>
+            </div>
+            <div className="relative">
+              <div className="absolute left-4 top-0 bottom-0 w-px bg-white/10" />
+              <div className="space-y-4">
+                {provenanceEvents.slice(-3).map((entry, i) => (
+                  <div key={i} className="relative pl-12">
+                    <div className={`absolute left-3 w-2.5 h-2.5 rounded-full border-2 ${entry.type === 'origin' ? 'bg-emerald-500 border-emerald-500' : entry.type === 'current' ? 'bg-purple-500 border-purple-500' : 'bg-white border-white'}`} />
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{entry.event}</span>
+                      <span className="text-xs text-zinc-500">{entry.date}</span>
+                    </div>
+                    {entry.to && entry.type !== 'current' && (
+                      <p className="text-xs text-zinc-500">To: {entry.to}</p>
+                    )}
+                    {entry.price && <p className="text-xs text-emerald-400">{entry.price.toLocaleString()} THB</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowProvenance(!showProvenance)}
+              className="text-xs text-zinc-500 hover:text-white mt-3 transition-colors"
+            >
+              {showProvenance ? 'Show less' : `Show all ${provenanceEvents.length} entries`}
+            </button>
+            {showProvenance && (
+              <div className="relative mt-4">
+                <div className="absolute left-4 top-0 bottom-0 w-px bg-white/10" />
+                <div className="space-y-4">
+                  {provenanceEvents.map((entry, i) => (
+                    <div key={i} className="relative pl-12">
+                      <div className={`absolute left-3 w-2.5 h-2.5 rounded-full border-2 ${entry.type === 'origin' ? 'bg-emerald-500 border-emerald-500' : entry.type === 'current' ? 'bg-purple-500 border-purple-500' : 'bg-white border-white'}`} />
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{entry.event}</span>
+                        <span className="text-xs text-zinc-500">{entry.date}</span>
+                      </div>
+                      {entry.from && <p className="text-xs text-zinc-500">From: {entry.from}</p>}
+                      {entry.to && <p className="text-xs text-zinc-500">To: {entry.to}</p>}
+                      {entry.price && <p className="text-xs text-emerald-400">{entry.price.toLocaleString()} THB</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Price History */}
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6">

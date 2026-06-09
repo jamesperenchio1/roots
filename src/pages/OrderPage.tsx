@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2 } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2, Shield, Banknote, RotateCcw, FileCheck, XCircle } from 'lucide-react';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
-import { updateOrderStatus, uploadDisputeEvidence, hasReviewed } from '@/lib/api';
+import { updateOrderStatus, uploadDisputeEvidence, hasReviewed, verifyOrderManually, notifyPaymentVerified, notifyPaymentRejected } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,8 @@ export default function OrderPage() {
   const [tx, setTx] = useState<Transaction | undefined>(getTransactionById(transactionId || ''));
   const [confirming, setConfirming] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [retryingVerify, setRetryingVerify] = useState(false);
+  const [manualReviewing, setManualReviewing] = useState(false);
 
   // Re-fetch transaction from Supabase to get latest status
   const refreshTx = useCallback(async () => {
@@ -127,6 +129,59 @@ export default function OrderPage() {
     e.target.value = '';
   };
 
+  const isBuyer = user?.id === tx.buyer_id;
+  const isSeller = user?.id === tx.seller_id;
+
+  const handleRetryVerification = async () => {
+    if (!tx.payment_slip_url || !tx.listing) return;
+    setRetryingVerify(true);
+    try {
+      const { verifyPaymentSlip } = await import('@/lib/slipVerification');
+      const result = await verifyPaymentSlip(
+        tx.payment_slip_url,
+        tx.sale_price_thb,
+        tx.seller?.promptpay_id || '',
+        tx.seller?.display_name || ''
+      );
+
+      if (result.passed) {
+        await updateOrderStatus(tx.id, {
+          status: 'paid_in_escrow',
+          verification_method: 'slipok_auto',
+        });
+        await refreshTx();
+        toast.success('Payment verified! Order is now processing.');
+      } else if (result.failureType === 'mismatch') {
+        toast.error(result.reasons[0] || 'Slip does not match this order.');
+      } else {
+        toast.info('Still could not verify. Seller will review manually.');
+      }
+    } catch {
+      toast.error('Verification service unavailable. Please try again later.');
+    } finally {
+      setRetryingVerify(false);
+    }
+  };
+
+  const handleManualVerify = async (decision: 'approve' | 'reject') => {
+    setManualReviewing(true);
+    try {
+      await verifyOrderManually(tx.id, decision);
+      await refreshTx();
+      if (decision === 'approve') {
+        toast.success('Payment approved — order is now processing.');
+        void notifyPaymentVerified(tx.buyer_id || '', tx.id);
+      } else {
+        toast.error('Payment rejected — order cancelled.');
+        void notifyPaymentRejected(tx.buyer_id || '', tx.id, 'Payment could not be verified.');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update order.');
+    } finally {
+      setManualReviewing(false);
+    }
+  };
+
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
@@ -139,6 +194,7 @@ export default function OrderPage() {
           <span className={`text-xs px-3 py-1 rounded-full ${
             status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
             status === 'disputed' ? 'bg-red-500/10 text-red-400' :
+            status === 'pending_verification' ? 'bg-purple-500/10 text-purple-400' :
             'bg-amber-500/10 text-amber-400'
           }`}>{status.replace(/_/g, ' ')}</span>
         </div>
@@ -186,19 +242,115 @@ export default function OrderPage() {
 
           {/* Payment Info */}
           <div className="border-t border-white/5 pt-4 mt-4">
-            <div className="flex items-start gap-2 text-xs text-zinc-500">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+            {status === 'pending_verification' ? (
               <div>
-                <p className="text-zinc-400">
-                  Payment verified via PromptPay. Funds are held in escrow until you confirm delivery.
-                </p>
-                <p className="mt-1">
-                  If the plant does not match the listing, you can open a dispute within 48 hours of delivery.
-                </p>
+                <div className="flex items-start gap-2 text-xs text-purple-400 mb-3">
+                  <AlertTriangle className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p>Payment slip submitted — awaiting verification.</p>
+                    <p className="mt-1 text-zinc-500">
+                      {isSeller
+                        ? 'Please review the payment slip below and approve or reject.'
+                        : 'The seller is reviewing your payment slip. You can retry auto-verification below.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Buyer retry */}
+                {isBuyer && (
+                  <button
+                    onClick={handleRetryVerification}
+                    disabled={retryingVerify}
+                    className="w-full py-2 rounded-lg text-xs bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {retryingVerify ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                    {retryingVerify ? 'Retrying verification…' : 'Retry Auto-Verification'}
+                  </button>
+                )}
+
+                {/* Seller manual review */}
+                {isSeller && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleManualVerify('approve')}
+                      disabled={manualReviewing}
+                      className="flex-1 py-2 rounded-lg text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <FileCheck className="w-3.5 h-3.5" />
+                      Approve Payment
+                    </button>
+                    <button
+                      onClick={() => handleManualVerify('reject')}
+                      disabled={manualReviewing}
+                      className="flex-1 py-2 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      Reject
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="flex items-start gap-2 text-xs text-zinc-500">
+                <Shield className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-zinc-400">
+                    {tx.verification_method === 'slipok_auto'
+                      ? 'Payment auto-verified via SlipOK against bank records. Funds are held in escrow until you confirm delivery.'
+                      : tx.verification_method === 'seller_manual'
+                        ? 'Payment verified by the seller. Funds are held in escrow until you confirm delivery.'
+                        : 'Payment verified. Funds are held in escrow until you confirm delivery.'}
+                  </p>
+                  <p className="mt-1">
+                    If the plant does not match the listing, you can open a dispute within 48 hours of delivery.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Payment Slip / Reference */}
+        {(tx.payment_slip_url || tx.payment_ref_number) && (
+          <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Banknote className="w-4 h-4 text-zinc-400" />
+              <h3 className="text-sm font-medium">Payment Details</h3>
+              {status === 'paid_in_escrow' && (
+                <span className="ml-auto text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Auto-verified
+                </span>
+              )}
+            </div>
+            {tx.payment_slip_url && (
+              <div className="mb-3">
+                <p className="text-xs text-zinc-500 mb-1.5">Payment Slip</p>
+                <button
+                  onClick={() => window.open(tx.payment_slip_url!, '_blank')}
+                  className="relative group cursor-pointer block w-fit"
+                >
+                  <img
+                    src={tx.payment_slip_url}
+                    alt="Payment slip"
+                    className="max-h-64 rounded-lg border border-white/5 object-contain"
+                  />
+                  <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white rounded-lg">
+                    View Full Size
+                  </span>
+                </button>
+              </div>
+            )}
+            {tx.payment_ref_number && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-zinc-500">Transaction Ref:</span>
+                <span className="text-sm font-mono text-zinc-300 bg-zinc-900/50 px-2 py-0.5 rounded">{tx.payment_ref_number}</span>
+              </div>
+            )}
+            <div className="text-xs text-zinc-600">
+              Verified by SlipOK against bank records
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         {status === 'delivered' && (

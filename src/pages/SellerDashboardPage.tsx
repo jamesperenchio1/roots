@@ -11,7 +11,7 @@ import {
   Package, DollarSign, TrendingUp, Plus, Eye, Heart,
   BarChart3, Truck, Wallet, ArrowDownLeft,
   Clock, CheckCircle, Users, Star,
-  Megaphone, Settings, Tag
+  Megaphone, Settings, Tag, FileCheck, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -97,6 +97,7 @@ export default function SellerDashboardPage() {
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [shipModalOrder, setShipModalOrder] = useState<string | null>(null);
+  const [salesSubTab, setSalesSubTab] = useState<'verified' | 'needs_review'>('verified');
   const [withdrawConfirm, setWithdrawConfirm] = useState<string | null>(null);
   const [qrChecklist, setQrChecklist] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem('qr_checklist') || '{}'); } catch { return {}; }
@@ -151,7 +152,8 @@ export default function SellerDashboardPage() {
   const listings = getActiveListings().filter(l => l.seller_id === currentUserId);
   const allSales = getTransactionsWithDetails().filter(t => t.seller_id === currentUserId);
   const completedSales = allSales.filter(s => s.status === 'completed');
-  const pendingSales = allSales.filter(s => s.status === 'paid_in_escrow' || s.status === 'shipped' || s.status === 'disputed');
+  const pendingVerification = allSales.filter(s => s.status === 'pending_verification');
+  const pendingSales = allSales.filter(s => s.status === 'pending_verification' || s.status === 'paid_in_escrow' || s.status === 'shipped' || s.status === 'disputed');
   const totalRevenue = completedSales.reduce((s, t) => s + t.seller_payout_thb, 0);
   const pendingRevenue = pendingSales.reduce((s, t) => s + t.seller_payout_thb, 0);
 
@@ -262,60 +264,163 @@ export default function SellerDashboardPage() {
       case 'sales':
         return (
           <div className="space-y-6">
-            {/* Pending Sales */}
-            <div>
-              <h2 className="text-lg font-medium mb-1">Pending Sales ({pendingSales.length})</h2>
-              <p className="text-xs text-zinc-500 mb-3">Orders awaiting shipping or delivery</p>
-              <div className="space-y-2">
-                {pendingSales.length > 0 ? pendingSales.map(s => (
-                  <div key={`${s.id}-${refreshKey}`} className="bg-zinc-900/30 border border-amber-500/10 rounded-xl p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                          <Truck className="w-5 h-5 text-amber-400" />
+            {/* Sales Sub-Tabs */}
+            <div className="flex gap-2 border-b border-white/5 pb-3">
+              <button
+                onClick={() => setSalesSubTab('verified')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-colors ${
+                  salesSubTab === 'verified'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                <CheckCircle className="w-4 h-4" />
+                Verified Orders ({allSales.filter(s => s.status !== 'pending_verification' && s.status !== 'cancelled').length})
+              </button>
+              <button
+                onClick={() => setSalesSubTab('needs_review')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-colors ${
+                  salesSubTab === 'needs_review'
+                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Needs Review ({pendingVerification.length})
+                {pendingVerification.length > 0 && (
+                  <span className="ml-1 text-[10px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full">{pendingVerification.length}</span>
+                )}
+              </button>
+            </div>
+
+            {/* ── VERIFIED ORDERS ── */}
+            {salesSubTab === 'verified' && (
+              <div className="space-y-4">
+                {/* Pending shipping */}
+                {allSales.filter(s => s.status === 'paid_in_escrow' || s.status === 'shipped').length > 0 ? (
+                  <div className="space-y-2">
+                    {allSales
+                      .filter(s => s.status === 'paid_in_escrow' || s.status === 'shipped')
+                      .map(s => (
+                        <div key={`${s.id}-${refreshKey}`} className="bg-zinc-900/30 border border-amber-500/10 rounded-xl p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                <Truck className="w-5 h-5 text-amber-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">Order #{s.id.slice(-4)} — {s.plant_id}</p>
+                                <p className="text-xs text-zinc-500">
+                                  Buyer: {s.buyer?.display_name} | {(s.sale_price_thb - (s.shipping_cost_thb || 0)).toLocaleString()} THB
+                                  {s.shipping_cost_thb ? ` + ${s.shipping_cost_thb.toLocaleString()} THB shipping` : ' · Free shipping'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {s.status === 'paid_in_escrow' && (
+                                <>
+                                  <span className="inline-block text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">
+                                    {s.verification_method === 'slipok_auto' ? 'Auto-verified' : 'Verified'}
+                                  </span>
+                                  <button
+                                    onClick={() => setShipModalOrder(s.id)}
+                                    className="block mt-2 text-xs text-emerald-400 hover:underline"
+                                  >Mark as Shipped</button>
+                                </>
+                              )}
+                              {s.status === 'shipped' && (
+                                <>
+                                  <span className="inline-block text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">Shipped</span>
+                                  <p className="text-xs text-zinc-600 mt-1">Tracking: {s.tracking_number || 'N/A'}</p>
+                                </>
+                              )}
+                              <Link to={`/order/${s.id}`} className="block mt-1 text-xs text-zinc-500 hover:text-white">View Order</Link>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">Order #{s.id.slice(-4)} — {s.plant_id}</p>
-                          <p className="text-xs text-zinc-500">
-                            Buyer: {s.buyer?.display_name} | Plant: {(s.sale_price_thb - (s.shipping_cost_thb || 0)).toLocaleString()} THB
-                            {s.shipping_cost_thb ? ` + ${s.shipping_cost_thb.toLocaleString()} THB shipping` : ' · Free shipping'}
-                          </p>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-zinc-600 text-sm py-4 text-center">No verified orders awaiting action</p>
+                )}
+
+                {/* Completed */}
+                {completedSales.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-zinc-400 mb-2">Completed ({completedSales.length})</h3>
+                    <div className="space-y-2">
+                      {completedSales.map(s => (
+                        <div key={s.id} className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                <CheckCircle className="w-5 h-5 text-emerald-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">Order #{s.id.slice(-4)} — {s.plant_id}</p>
+                                <p className="text-xs text-zinc-500">Buyer: {s.buyer?.display_name} | {s.sale_price_thb.toLocaleString()} THB</p>
+                              </div>
+                            </div>
+                            <Link to={`/order/${s.id}`} className="text-xs text-zinc-500 hover:text-white">View</Link>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-full">{s.status}</span>
-                        {s.status === 'paid_in_escrow' && (
-                          <>
-                            <button
-                              onClick={() => setShipModalOrder(s.id)}
-                              className="block mt-2 text-xs text-emerald-400 hover:underline"
-                            >Mark as Shipped</button>
-                            <Link
-                              to={`/order/${s.id}`}
-                              className="block mt-1 text-xs text-zinc-500 hover:text-white"
-                            >View Order</Link>
-                          </>
-                        )}
-                        {s.status === 'shipped' && (
-                          <>
-                            <p className="text-xs text-zinc-600 mt-1">Tracking: {s.tracking_number || 'N/A'}</p>
-                            <Link to={`/order/${s.id}`} className="block mt-1 text-xs text-zinc-500 hover:text-white">View Order</Link>
-                          </>
-                        )}
-                        {s.status === 'disputed' && (
-                          <>
-                            <span className="inline-block mt-1 text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Dispute Opened</span>
-                            <Link to={`/order/${s.id}`} className="block mt-1 text-xs text-red-400 hover:text-red-300">View Dispute</Link>
-                          </>
-                        )}
-                      </div>
+                      ))}
                     </div>
                   </div>
-                )) : (
-                  <p className="text-zinc-600 text-sm py-4 text-center">No pending sales</p>
                 )}
               </div>
-            </div>
+            )}
+
+            {/* ── NEEDS REVIEW ── */}
+            {salesSubTab === 'needs_review' && (
+              <div className="space-y-4">
+                {pendingVerification.length > 0 ? (
+                  <div className="space-y-2">
+                    {pendingVerification.map(s => (
+                      <div key={`${s.id}-${refreshKey}`} className="bg-zinc-900/30 border border-purple-500/20 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                              <FileCheck className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">Order #{s.id.slice(-4)} — {s.plant_id}</p>
+                              <p className="text-xs text-zinc-500">
+                                Buyer: {s.buyer?.display_name} | {s.sale_price_thb.toLocaleString()} THB
+                              </p>
+                              {s.payment_ref_number && (
+                                <p className="text-xs text-purple-400 mt-0.5">Ref: {s.payment_ref_number}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs bg-purple-500/10 text-purple-400 px-2 py-1 rounded-full">Needs Review</span>
+                            <Link to={`/order/${s.id}`} className="block mt-1 text-xs text-purple-400 hover:text-purple-300">Review & Verify</Link>
+                          </div>
+                        </div>
+                        {s.payment_slip_url && (
+                          <div className="mt-3">
+                            <Link to={`/order/${s.id}`}>
+                              <img
+                                src={s.payment_slip_url}
+                                alt="Payment slip"
+                                className="h-24 rounded-lg border border-white/5 object-contain bg-zinc-800"
+                              />
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <CheckCircle className="w-8 h-8 text-emerald-500/30 mx-auto mb-2" />
+                    <p className="text-sm text-zinc-500">All orders are verified</p>
+                    <p className="text-xs text-zinc-600 mt-1">New orders that can't be auto-verified will appear here</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Shipping Guide Promo */}
             <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
