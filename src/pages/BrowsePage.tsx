@@ -65,31 +65,16 @@ export default function BrowsePage() {
     });
 
     if (q) {
-      const queryWords = q.split(/\s+/).filter(Boolean);
       result = result.filter((l) => {
-        const haystack = [
+        const hay = [
           l.species?.common_name_en,
           l.species?.common_name_th,
           l.species?.scientific_name,
-          l.custom_name,
           l.description,
           l.seller?.display_name,
           l.pickup_province,
-          l.pickup_address,
-          ...(l.tags || []),
         ].filter(Boolean).join(' ').toLowerCase();
-        // Match if ANY query word is found (more forgiving)
-        return queryWords.some(word => haystack.includes(word));
-      });
-      // Sort: exact matches first, then partial matches
-      result = [...result].sort((a, b) => {
-        const aText = [a.species?.common_name_en, a.species?.scientific_name, a.custom_name].filter(Boolean).join(' ').toLowerCase();
-        const bText = [b.species?.common_name_en, b.species?.scientific_name, b.custom_name].filter(Boolean).join(' ').toLowerCase();
-        const aExact = aText.includes(q);
-        const bExact = bText.includes(q);
-        if (aExact && !bExact) return -1;
-        if (bExact && !aExact) return 1;
-        return 0;
+        return hay.includes(q);
       });
     }
 
@@ -225,16 +210,6 @@ export default function BrowsePage() {
                     <span className="text-emerald-400 font-semibold text-sm">{listing.price_thb.toLocaleString()} THB</span>
                     <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{listing.size_category}</span>
                   </div>
-                  {listing.tags && listing.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {listing.tags.slice(0, 3).map(t => (
-                        <span key={t} className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded-full">{t}</span>
-                      ))}
-                      {listing.tags.length > 3 && (
-                        <span className="text-[10px] text-zinc-600">+{listing.tags.length - 3}</span>
-                      )}
-                    </div>
-                  )}
                   <div className="flex items-center gap-2 mt-2">
                     <Sparkline
                       data={Array.from({ length: 20 }, (_, i) => seededRandom(listing.id, i) * 50 + listing.price_thb * 0.8)}

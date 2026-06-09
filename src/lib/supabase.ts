@@ -7,7 +7,7 @@ import { logger } from './logger';
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL || 'https://daacilgagkphafpjdcte.supabase.co';
 const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYWNpbGdhZ2twaGFmcGpkY3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODc2NTQsImV4cCI6MjA5NjA2MzY1NH0.8hq2nYbzur0muo99s0lfdBN4yUvpVMMEPqbfpUlJmyA';
+  import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_pfQ_kyf47PV-p_E2fDG3wQ__5MaWnsZ';
 
 // Warn if using fallback credentials in production-like environments
 if (import.meta.env.PROD && !import.meta.env.VITE_SUPABASE_URL) {

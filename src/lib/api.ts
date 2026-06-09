@@ -4,7 +4,7 @@
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
 import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, getListingByPlantId, MESSAGES, getListingById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Message } from '@/types';
+import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Message } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 
@@ -59,7 +59,6 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
   const speciesId = r.species_id as string | undefined;
   const cover = photos[0] || (speciesId ? PLANT_IMAGES[speciesId] : '') || FALLBACK_IMG;
   const sellerId = r.seller_id as string;
-  const displayQualities = r.display_qualities as string[] | undefined;
   return {
     id: r.id as string,
     plant_id: r.id as string,
@@ -72,7 +71,6 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     delivery_options: (r.delivery_options as DeliveryOption[] | undefined) || ['ship'],
     shipping_cost_thb: (r.shipping_cost_thb as number | undefined) || undefined,
     pickup_province: (r.pickup_province as string | undefined) || undefined,
-    pickup_address: (r.pickup_address as string | undefined) || undefined,
     status: (r.status as Listing['status'] | undefined) || 'active',
     created_at: r.created_at as string,
     last_photo_update_at: (r.last_photo_update_at as string | undefined) || (r.created_at as string),
@@ -87,8 +85,6 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
       order_index: i,
       created_at: r.created_at as string,
     })),
-    custom_name: (r.custom_name as string | undefined) || undefined,
-    display_qualities: displayQualities && displayQualities.length > 0 ? displayQualities : ['size','pot','category','care','water','light'],
   };
 }
 
@@ -177,17 +173,6 @@ export async function hydrateUserTransactions(): Promise<void> {
 }
 
 // ---------- writes ----------
-export interface CreateOrderInput {
-  listing: Listing;
-  buyer: Profile;
-  delivery_method: 'ship' | 'pickup';
-  shipping_address?: Record<string, string>;
-  initialStatus?: TransactionStatus;
-  payment_slip_url?: string;
-  payment_ref_number?: string;
-  verification_method?: import('@/types').VerificationMethod;
-}
-
 export interface NewListingInput {
   species_id?: string;
   species_scientific?: string;
@@ -201,11 +186,8 @@ export interface NewListingInput {
   delivery_options: string[];
   shipping_cost_thb?: number;
   pickup_province?: string;
-  pickup_address?: string;
   photos: string[];
   tags?: string[];
-  custom_name?: string;
-  display_qualities?: string[];
 }
 
 export async function createListing(input: NewListingInput, seller: Profile): Promise<Listing> {
@@ -225,12 +207,9 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
       delivery_options: input.delivery_options,
       shipping_cost_thb: input.shipping_cost_thb,
       pickup_province: input.pickup_province,
-      pickup_address: input.pickup_address,
       image_url: input.photos[0] || null,
       photos: input.photos,
       tags: input.tags || [],
-      custom_name: input.custom_name,
-      display_qualities: input.display_qualities,
     })
     .select('*')
     .single();
@@ -272,14 +251,13 @@ export interface NewOrderInput {
   delivery_method: string;
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<Transaction> {
+export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const price = input.listing.price_thb;
   const shipping = input.listing.shipping_cost_thb || 0;
   const total = price + shipping;
   const fee = Math.round(price * 0.08);
   const sellerId = input.listing.seller_id;
   const cover = input.listing.photos?.[0]?.storage_path;
-  const status = input.initialStatus || 'paid_in_escrow';
 
   let txData: Record<string, unknown> | null = null;
   let supabaseError: Error | null = null;
@@ -297,14 +275,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Transaction>
         platform_fee_thb: fee,
         seller_payout_thb: total - fee,
         shipping_cost_thb: shipping,
-        status,
+        status: 'paid_in_escrow',
         delivery_method: input.delivery_method,
         shipping_address: input.shipping_address || null,
         seller_promptpay_id: input.listing.seller?.promptpay_id || null,
-        payment_slip_url: input.payment_slip_url || null,
-        payment_ref_number: input.payment_ref_number || null,
-        verification_method: input.verification_method || null,
-        verification_attempted_at: new Date().toISOString(),
       })
       .select('*')
       .single();
@@ -330,14 +304,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Transaction>
       platform_fee_thb: fee,
       seller_payout_thb: total - fee,
       shipping_cost_thb: shipping,
-      status,
+      status: 'paid_in_escrow',
       delivery_method: input.delivery_method,
       tracking_number: null,
       courier: null,
-      payment_slip_url: input.payment_slip_url || null,
-      payment_ref_number: input.payment_ref_number || null,
-      verification_method: input.verification_method || null,
-      verification_attempted_at: new Date().toISOString(),
       shipped_at: null,
       delivered_at: null,
       escrow_release_at: null,
@@ -359,23 +329,6 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
   await supabase.from('transactions').update(patch).eq('id', id);
   const tx = TRANSACTIONS.find((t) => t.id === id);
   if (tx) Object.assign(tx, patch);
-}
-
-export async function verifyOrderManually(
-  orderId: string,
-  decision: 'approve' | 'reject',
-  _reason?: string
-): Promise<void> {
-  const tx = TRANSACTIONS.find((t) => t.id === orderId);
-  if (!tx) throw new Error('Order not found');
-
-  const patch: Record<string, unknown> = {
-    status: decision === 'approve' ? 'paid_in_escrow' : 'cancelled',
-    verification_method: decision === 'approve' ? 'seller_manual' : 'seller_manual',
-  };
-
-  await supabase.from('transactions').update(patch).eq('id', orderId);
-  Object.assign(tx, patch);
 }
 
 export async function updateListing(id: string, patch: Partial<NewListingInput>): Promise<Listing> {
@@ -554,39 +507,6 @@ export function notifyNewOrder(sellerId: string, orderId: string, plantName: str
     type: 'order',
     title: 'New order received',
     message: `Someone purchased your ${plantName} for ${amount.toLocaleString()} THB`,
-    link: `/order/${orderId}`,
-    read: false,
-  });
-}
-
-export function notifyOrderNeedsReview(sellerId: string, orderId: string, plantName: string, amount: number) {
-  return createNotification({
-    user_id: sellerId,
-    type: 'order',
-    title: 'Payment needs review',
-    message: `New order for ${plantName} (${amount.toLocaleString()} THB) — payment slip could not be auto-verified. Please review and approve.`,
-    link: `/order/${orderId}`,
-    read: false,
-  });
-}
-
-export function notifyPaymentVerified(buyerId: string, orderId: string) {
-  return createNotification({
-    user_id: buyerId,
-    type: 'order',
-    title: 'Payment approved',
-    message: 'Your payment has been verified. The seller will ship your plant soon.',
-    link: `/order/${orderId}`,
-    read: false,
-  });
-}
-
-export function notifyPaymentRejected(buyerId: string, orderId: string, reason?: string) {
-  return createNotification({
-    user_id: buyerId,
-    type: 'order',
-    title: 'Payment rejected',
-    message: reason || 'Your payment could not be verified. Please contact the seller.',
     link: `/order/${orderId}`,
     read: false,
   });

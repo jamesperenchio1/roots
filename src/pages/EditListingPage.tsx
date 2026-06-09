@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, CheckCircle, Tag, Info, X, Eye } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle, Tag, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
@@ -34,15 +34,6 @@ const SIZE_LABELS: Record<string, string> = {
   XL: 'Extra Large (80cm+)',
 };
 
-const QUALITY_OPTIONS = [
-  { key: 'size', label: 'Size badge' },
-  { key: 'pot', label: 'Pot size' },
-  { key: 'category', label: 'Category' },
-  { key: 'care', label: 'Care level' },
-  { key: 'water', label: 'Water needs' },
-  { key: 'light', label: 'Light needs' },
-];
-
 function findSpeciesEntry(listing: Listing): SpeciesEntry | null {
   if (!listing.species) return null;
   const byId = ALL_SPECIES.find((s) => s.id === listing.species!.id);
@@ -68,7 +59,6 @@ export default function EditListingPage() {
 
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
   const [speciesQuery, setSpeciesQuery] = useState('');
-  const [customName, setCustomName] = useState('');
   const [price, setPrice] = useState('');
   const [size, setSize] = useState('');
   const [potSize, setPotSize] = useState('');
@@ -76,10 +66,8 @@ export default function EditListingPage() {
   const [delivery, setDelivery] = useState<string[]>([]);
   const [shippingCost, setShippingCost] = useState('');
   const [province, setProvince] = useState('');
-  const [pickupAddress, setPickupAddress] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [displayQualities, setDisplayQualities] = useState<string[]>(['size','pot','category','care','water','light']);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -107,7 +95,6 @@ export default function EditListingPage() {
         ? matchedSpecies.scientific_name
         : listing.species?.scientific_name || listing.species?.common_name_en || ''
     );
-    setCustomName(listing.custom_name || '');
     setPrice(String(listing.price_thb));
     setSize(listing.size_category);
     setPotSize(listing.pot_size_cm ? String(listing.pot_size_cm) : '');
@@ -115,9 +102,7 @@ export default function EditListingPage() {
     setDelivery(listing.delivery_options);
     setShippingCost(listing.shipping_cost_thb ? String(listing.shipping_cost_thb) : '');
     setProvince(listing.pickup_province || '');
-    setPickupAddress(listing.pickup_address || '');
     setTags(listing.tags || []);
-    setDisplayQualities(listing.display_qualities || ['size','pot','category','care','water','light']);
     setPhotos(
       (listing.photos || []).map((p) => ({
         type: 'existing',
@@ -170,11 +155,6 @@ export default function EditListingPage() {
     setIsDirty(true);
   };
 
-  const toggleQuality = (key: string) => {
-    setDisplayQualities(prev => prev.includes(key) ? prev.filter(q => q !== key) : [...prev, key]);
-    setIsDirty(true);
-  };
-
   const updateField =
     (setter: (v: string) => void) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -223,11 +203,9 @@ export default function EditListingPage() {
         description: sanitizeText(description, 2000),
         delivery_options: delivery,
         pickup_province: province || undefined,
-        pickup_address: delivery.includes('pickup') ? (pickupAddress.trim() || undefined) : undefined,
         shipping_cost_thb: shippingCost ? parseInt(shippingCost) : undefined,
         photos: photoUrls,
         tags: tags.length > 0 ? tags : undefined,
-        display_qualities: displayQualities.length > 0 ? displayQualities : ['size','pot','category','care','water','light'],
       });
 
       toast.success('Changes saved');
@@ -378,19 +356,6 @@ export default function EditListingPage() {
             {errors.species && <p className="text-xs text-red-400 mt-1">{errors.species}</p>}
           </div>
 
-          {/* Custom Name */}
-          <div>
-            <label className="text-sm font-medium mb-1.5 block">Custom Name <span className="text-zinc-500 font-normal">(optional)</span></label>
-            <input
-              type="text"
-              value={customName}
-              onChange={updateField(setCustomName)}
-              placeholder="e.g. Ultra Rare Thai Constellation #3"
-              className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
-            />
-            <p className="text-xs text-zinc-500 mt-1">A catchy name buyers will see alongside the scientific name</p>
-          </div>
-
           {/* Price with Market Context */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -492,21 +457,6 @@ export default function EditListingPage() {
             </div>
           </div>
 
-          {/* Pickup Address */}
-          {delivery.includes('pickup') && (
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Pickup Address <span className="text-zinc-500 font-normal">(optional, shown to buyers)</span></label>
-              <textarea
-                value={pickupAddress}
-                onChange={updateField(setPickupAddress)}
-                placeholder="123 Sukhumvit Rd, Watthana, Bangkok 10110 — Perfect for nurseries who want walk-in customers"
-                rows={3}
-                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none"
-              />
-              <p className="text-xs text-zinc-500 mt-1">Your full address is shown to buyers who select pickup</p>
-            </div>
-          )}
-
           {/* Delivery Options */}
           <div>
             <label className="text-sm font-medium mb-2 block">Delivery Options *</label>
@@ -568,31 +518,6 @@ export default function EditListingPage() {
                 {description.length} chars
               </p>
             </div>
-          </div>
-
-          {/* Display Qualities */}
-          <div>
-            <label className="text-sm font-medium mb-2 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-zinc-400" />
-              Qualities Shown to Buyers
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {QUALITY_OPTIONS.map(q => (
-                <button
-                  key={q.key}
-                  type="button"
-                  onClick={() => toggleQuality(q.key)}
-                  className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                    displayQualities.includes(q.key)
-                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                      : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'
-                  }`}
-                >
-                  {displayQualities.includes(q.key) ? '✓ ' : ''}{q.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-zinc-500 mt-1">Choose which attribute badges appear on your listing card</p>
           </div>
 
           {/* Tags */}

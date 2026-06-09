@@ -1,96 +1,49 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, QrCode, Camera, Upload, Keyboard } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { toast } from 'sonner';
-
-let Html5QrcodeConstructor: typeof import('html5-qrcode').Html5Qrcode | null = null;
-
-async function getHtml5Qrcode() {
-  if (!Html5QrcodeConstructor) {
-    const mod = await import('html5-qrcode');
-    Html5QrcodeConstructor = mod.Html5Qrcode;
-  }
-  return Html5QrcodeConstructor;
-}
 
 export default function QRScannerPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<'camera' | 'upload' | 'manual'>('camera');
+  const [scanning, setScanning] = useState(false);
   const [manualId, setManualId] = useState('');
-  const scannerRef = useRef<InstanceType<typeof import('html5-qrcode').Html5Qrcode> | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mountedRef = useRef(true);
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const stopScanner = useCallback(async () => {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        scannerRef.current = null;
-      }
-    } catch {
-      // Already stopped or not started
-    }
-    // scanning state removed
-  }, []);
-
-  useEffect(() => {
-    if (mode !== 'camera') {
-      stopScanner();
-      return;
-    }
-
-    let cancelled = false;
-
-    async function start() {
-      try {
-        const Html5Qrcode = await getHtml5Qrcode();
-        if (cancelled) return;
-
-        // Ensure DOM element exists
-        const el = document.getElementById('qr-reader');
-        if (!el) return;
-
-        const scanner = new Html5Qrcode('qr-reader');
-        scannerRef.current = scanner;
-        // scanner started
-
-        await scanner.start(
+    if (mode === 'camera' && !scanning) {
+      setScanning(true);
+      const scanner = new Html5Qrcode('qr-reader');
+      scannerRef.current = scanner;
+      scanner
+        .start(
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText: string) => {
+          (decodedText) => {
             handleDecoded(decodedText);
           },
           () => {}
-        );
-      } catch {
-        if (!cancelled && mountedRef.current) {
+        )
+        .catch(() => {
           toast.error('Could not access camera. Try upload mode instead.');
           setMode('upload');
-        }
-      }
+          setScanning(false);
+        });
+      return () => {
+        scanner.stop().catch(() => {});
+        setScanning(false);
+      };
     }
-
-    start();
-
-    return () => {
-      cancelled = true;
-      stopScanner();
-    };
-  }, [mode, stopScanner]);
+  }, [mode]);
 
   const handleDecoded = (text: string) => {
     // Extract plant ID from URL like ".../#/p/plant-123" or just "plant-123"
     const match = text.match(/p-[^/?#]+/);
     const plantId = match ? match[0] : text.trim();
     if (plantId.startsWith('p-')) {
-      stopScanner();
+      scannerRef.current?.stop().catch(() => {});
       navigate(`/p/${plantId}`);
     } else {
       toast.error('Not a valid Root provenance QR');
@@ -99,18 +52,12 @@ export default function QRScannerPage() {
 
   const handleFile = async (file: File) => {
     try {
-      const Html5Qrcode = await getHtml5Qrcode();
       const scanner = new Html5Qrcode('qr-reader-file');
       const result = await scanner.scanFile(file, true);
       handleDecoded(result);
     } catch {
       toast.error('Could not read QR from image. Try manual entry.');
     }
-  };
-
-  const switchMode = (newMode: typeof mode) => {
-    if (mode === newMode) return;
-    setMode(newMode);
   };
 
   return (
@@ -133,13 +80,13 @@ export default function QRScannerPage() {
         {/* Mode switcher */}
         <div className="flex gap-2 mb-6">
           {[
-            { id: 'camera' as const, label: 'Camera', icon: Camera },
-            { id: 'upload' as const, label: 'Upload', icon: Upload },
-            { id: 'manual' as const, label: 'Type ID', icon: Keyboard },
+            { id: 'camera', label: 'Camera', icon: Camera },
+            { id: 'upload', label: 'Upload', icon: Upload },
+            { id: 'manual', label: 'Type ID', icon: Keyboard },
           ].map((m) => (
             <button
               key={m.id}
-              onClick={() => switchMode(m.id)}
+              onClick={() => { setMode(m.id as typeof mode); scannerRef.current?.stop().catch(() => {}); setScanning(false); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm transition-colors ${
                 mode === m.id
                   ? 'border-emerald-500 bg-emerald-500/5 text-emerald-400'
