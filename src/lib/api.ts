@@ -322,6 +322,8 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
 
   const tx = mapTransaction(txData, { ...profileCache, [input.buyer.id]: input.buyer });
   upsertById(TRANSACTIONS, tx);
+  // Always notify the seller a sale came in — wired here so no call site can forget.
+  notifyNewOrder(sellerId, tx.id, input.listing.species?.common_name_en || 'plant', total);
   return tx;
 }
 
@@ -329,6 +331,11 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
   await supabase.from('transactions').update(patch).eq('id', id);
   const tx = TRANSACTIONS.find((t) => t.id === id);
   if (tx) Object.assign(tx, patch);
+  // Notify the buyer when their order is marked shipped.
+  if (patch.status === 'shipped' && tx) {
+    const courier = (patch.courier as string | undefined) || tx.courier || 'courier';
+    notifyOrderShipped(tx.buyer_id, id, courier);
+  }
 }
 
 export async function updateListing(id: string, patch: Partial<NewListingInput>): Promise<Listing> {
@@ -405,6 +412,12 @@ export async function createDispute(input: {
     status: 'open',
   });
   if (error) throw error;
+  // Notify the counterparty (the side that did NOT open the dispute).
+  const dtx = TRANSACTIONS.find(t => t.id === input.transaction_id);
+  if (dtx) {
+    const recipientId = input.opened_by === 'buyer' ? dtx.seller_id : dtx.buyer_id;
+    notifyDisputeOpened(recipientId, input.transaction_id, input.transaction_id);
+  }
 }
 
 export async function updateProfile(userId: string, patch: Partial<Profile>): Promise<void> {
@@ -679,6 +692,8 @@ export async function createOffer(
     logger.warn('createOffer supabase failed, using local only', { error: error.message });
   }
   OFFERS.push(offer);
+  const offerListingName = LISTINGS.find(l => l.id === data.listing_id)?.species?.common_name_en || 'plant';
+  notifyOfferReceived(data.seller_id, offer.id, offerListingName, data.offer_price_thb);
   return offer;
 }
 
@@ -825,6 +840,8 @@ export async function sendMessage(data: Omit<Message, 'id' | 'created_at' | 'sen
     logger.warn('sendMessage supabase failed, using local only', { error: e instanceof Error ? e.message : String(e) });
   }
   MESSAGES.push(message);
+  const senderName = USERS.find(u => u.id === data.sender_id)?.display_name || 'Someone';
+  notifyNewMessage(data.recipient_id, senderName, data.content, data.thread_id);
   return message;
 }
 
