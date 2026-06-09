@@ -18,19 +18,17 @@ export default function HomePage() {
   const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
   const recentlyViewed = recentlyViewedIds.map(id => getListingById(id)).filter(Boolean);
 
-  const thaiConstellationData = getPriceSnapshotsForSpecies('sp-1', undefined, 90).map(ps => ({
-    date: ps.snapshot_date,
-    price: ps.median_price_thb,
-  }));
-  const fallbackChartData = useMemo(() =>
-    Array.from({ length: 30 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (30 - i));
-      return { date: d.toISOString().split('T')[0], price: 4000 + Math.sin(i / 5) * 1000 + ((i * 37) % 100 - 50) };
-    }),
-    []
+  // Price history for the most-listed species, derived from real snapshots only.
+  const featuredPriceSpecies = market.trending_up[0]?.species ?? market.most_traded[0]?.species;
+  const chartData = useMemo(() =>
+    featuredPriceSpecies
+      ? getPriceSnapshotsForSpecies(featuredPriceSpecies.id, undefined, 90).map(ps => ({
+          date: ps.snapshot_date,
+          price: ps.median_price_thb,
+        }))
+      : [],
+    [featuredPriceSpecies]
   );
-  const chartData = thaiConstellationData.length > 0 ? thaiConstellationData : fallbackChartData;
 
   useEffect(() => {
     const timer = setTimeout(() => setHeroLoaded(true), 300);
@@ -129,6 +127,15 @@ export default function HomePage() {
               View All <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
+          {listings.length === 0 ? (
+            <div className="border border-dashed border-white/10 rounded-xl py-16 text-center">
+              <p className="text-zinc-400 mb-2">No listings yet</p>
+              <p className="text-sm text-zinc-600 mb-6">Be the first to list a plant on Root.</p>
+              <Link to="/sell" className="inline-flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full text-sm font-medium hover:bg-zinc-200 transition-all">
+                List a Plant <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {listings.map(listing => (
               <Link to={`/listing/${listing.id}`} key={listing.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
@@ -149,6 +156,7 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
+          )}
         </div>
       </section>
 
@@ -164,19 +172,23 @@ export default function HomePage() {
               Full Market <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
+          {market.trending_up.length === 0 && chartData.length === 0 ? (
+            <div className="border border-dashed border-white/10 rounded-xl py-16 text-center">
+              <p className="text-zinc-400 mb-2">No market data yet</p>
+              <p className="text-sm text-zinc-600">Price trends appear here once plants start selling on Root.</p>
+            </div>
+          ) : (
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6">
               <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 Trending Up
               </h3>
+              {market.trending_up.length === 0 ? (
+                <p className="text-sm text-zinc-600 py-4">Not enough sales data yet.</p>
+              ) : (
               <div className="space-y-3">
-                {(market.trending_up.length > 0 ? market.trending_up.slice(0, 4) : [
-                  { species: { id: 's1', scientific_name: 'Philodendron gloriosum', common_name_en: 'Gloriosum', common_name_th: '' }, current_median: 5200, previous_median: 4570, percent_change: 13.7, sales_count: 12, sparkline_data: [] },
-                  { species: { id: 's2', scientific_name: 'Anthurium clarinervium', common_name_en: 'Velvet Cardboard', common_name_th: '' }, current_median: 1850, previous_median: 1647, percent_change: 12.3, sales_count: 18, sparkline_data: [] },
-                  { species: { id: 's3', scientific_name: 'Pink Princess', common_name_en: 'Pink Princess', common_name_th: '' }, current_median: 3850, previous_median: 3481, percent_change: 10.6, sales_count: 24, sparkline_data: [] },
-                  { species: { id: 's4', scientific_name: 'Crystal Anthurium', common_name_en: 'Crystal Anthurium', common_name_th: '' }, current_median: 6200, previous_median: 5678, percent_change: 9.2, sales_count: 9, sparkline_data: [] },
-                ]).map((item: any) => (
+                {market.trending_up.slice(0, 4).map((item) => (
                   <Link to={`/species/${item.species.id}`} key={item.species.id} className="flex items-center justify-between group">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-xs font-medium">{item.species.scientific_name.charAt(0)}</div>
@@ -192,16 +204,26 @@ export default function HomePage() {
                   </Link>
                 ))}
               </div>
+              )}
             </div>
             <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6">
-              <h3 className="text-sm font-medium text-zinc-400 mb-4">Price History — Monstera Thai Constellation</h3>
-              <PriceChart data={chartData} height={200} showArea={true} />
-              <div className="flex items-center justify-between mt-4 text-xs text-zinc-500">
-                <span>90-day median: {chartData.length > 0 ? Math.round(chartData[chartData.length - 1].price).toLocaleString() : '0'} THB</span>
-                <span className="text-emerald-400">Live data</span>
-              </div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-4">
+                Price History{featuredPriceSpecies ? ` — ${featuredPriceSpecies.common_name_en || featuredPriceSpecies.scientific_name}` : ''}
+              </h3>
+              {chartData.length > 0 ? (
+                <>
+                  <PriceChart data={chartData} height={200} showArea={true} />
+                  <div className="flex items-center justify-between mt-4 text-xs text-zinc-500">
+                    <span>90-day median: {Math.round(chartData[chartData.length - 1].price).toLocaleString()} THB</span>
+                    <span className="text-emerald-400">Live data</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-600 py-12 text-center">No price history yet.</p>
+              )}
             </div>
           </div>
+          )}
         </div>
       </section>
 

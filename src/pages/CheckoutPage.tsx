@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, CreditCard, QrCode, Truck, Lock, Upload, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Shield, QrCode, Truck, Lock, Upload, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getListingById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ export default function CheckoutPage() {
   const listing = getListingById(listingId || '');
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [method, setMethod] = useState<'promptpay' | 'card'>('promptpay');
+  const method = 'promptpay' as const;
   const [address, setAddress] = useState({ name: '', address: '', district: '', province: '', postal: '', phone: '' });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const [paying, setPaying] = useState(false);
@@ -49,10 +49,6 @@ export default function CheckoutPage() {
   const handlePay = () => {
     if (!user) {
       navigate('/login');
-      return;
-    }
-    if (method === 'card') {
-      toast.info('Card payments are coming soon — please use PromptPay.');
       return;
     }
     const validation = validateShippingAddress(address);
@@ -155,16 +151,10 @@ export default function CheckoutPage() {
             Secure Payment
           </h2>
 
-          {/* Method Tabs */}
-          <div className="flex gap-2 mb-5">
-            <button onClick={() => setMethod('promptpay')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border text-sm transition-colors ${method === 'promptpay' ? 'border-emerald-500 bg-emerald-500/5 text-emerald-400' : 'border-white/10 hover:border-white/20'}`}>
-              <QrCode className="w-4 h-4" />
-              PromptPay
-            </button>
-            <button onClick={() => setMethod('card')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border text-sm transition-colors ${method === 'card' ? 'border-emerald-500 bg-emerald-500/5 text-emerald-400' : 'border-white/10 hover:border-white/20'}`}>
-              <CreditCard className="w-4 h-4" />
-              Credit / Debit Card
-            </button>
+          {/* Payment method */}
+          <div className="flex items-center justify-center gap-2 py-3 mb-5 rounded-lg border border-emerald-500 bg-emerald-500/5 text-emerald-400 text-sm">
+            <QrCode className="w-4 h-4" />
+            PromptPay
           </div>
 
           {/* PromptPay Panel */}
@@ -186,31 +176,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Card Panel */}
-          {method === 'card' && (
-            <div className="space-y-3">
-              <div className="bg-zinc-800/30 rounded-lg border border-white/5 p-4">
-                <div className="mb-4">
-                  <label className="text-xs text-zinc-500 mb-1 block">Card Number</label>
-                  <div className="flex items-center gap-2 bg-black border border-white/10 rounded-lg px-3 py-2.5">
-                    <CreditCard className="w-4 h-4 text-zinc-600" />
-                    <input type="text" placeholder="4242 4242 4242 4242" className="bg-transparent text-sm w-full focus:outline-none" maxLength={19} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">Expiry</label>
-                    <input type="text" placeholder="MM/YY" className="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none" maxLength={5} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">CVC</label>
-                    <input type="text" placeholder="123" className="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none" maxLength={3} />
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-zinc-600">Powered by Omise. Your card details are encrypted and never stored on our servers.</p>
-            </div>
-          )}
         </div>
 
         {/* Escrow Notice */}

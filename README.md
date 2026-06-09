@@ -23,8 +23,10 @@ nurseries and collectors.
    to the seller. Confirming creates an escrow-protected order.
 4. **Track** — orders move through paid → shipped → delivered → completed.
 
-The rich market price-history and trend analytics are seeded demo data so the
-marketplace looks alive while you onboard real nurseries.
+The catalog, sellers, orders, reviews and market analytics are all backed by
+real Supabase data — the app ships with no seeded demo listings, so it shows
+only genuine activity. A curated species taxonomy (names, care info, reference
+photos) is retained to power search, autocomplete and listing creation.
 
 ## Local development
 
@@ -61,5 +63,5 @@ A trigger auto-creates a profile on signup.
 
 - **HashRouter** used for static hosting compatibility (GitHub Pages, Netlify, etc.)
 - **Client-side PromptPay** keeps us free-tier; no payment gateway needed
-- **Mock data merged with live data** at boot means the app works offline and looks full from day one
+- **Live Supabase data only** — real profiles, listings and orders hydrate the in-memory stores at boot; no fabricated listings are shown
 - **Code splitting** via manual chunks keeps initial JS under 900KB
