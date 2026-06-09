@@ -25,61 +25,6 @@ import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 
-// Full payout detail mock data
-const FULL_PAYOUTS = [
-  {
-    id: 'pay-1',
-    date: '2025-05-28',
-    status: 'completed',
-    totalAmount: 9200,
-    transactions: [
-      { txId: 't-1', buyer: 'GreenHouse_BKK', plant: 'Monstera Thai Constellation', price: 5000, fee: 400, net: 4600 },
-      { txId: 't-2', buyer: 'RarePlantTH', plant: 'Pink Princess', price: 5000, fee: 400, net: 4600 },
-    ],
-    method: 'PromptPay',
-    destination: '081-234-5678',
-    processedAt: '2025-05-28 14:32:00',
-  },
-  {
-    id: 'pay-2',
-    date: '2025-05-21',
-    status: 'completed',
-    totalAmount: 4600,
-    transactions: [
-      { txId: 't-3', buyer: 'UrbanJungle', plant: 'Anthurium Clarinervium', price: 5000, fee: 400, net: 4600 },
-    ],
-    method: 'PromptPay',
-    destination: '081-234-5678',
-    processedAt: '2025-05-21 09:15:00',
-  },
-  {
-    id: 'pay-3',
-    date: '2025-05-15',
-    status: 'completed',
-    totalAmount: 13800,
-    transactions: [
-      { txId: 't-4', buyer: 'AroidLover', plant: 'Hoya Linearis', price: 5000, fee: 400, net: 4600 },
-      { txId: 't-5', buyer: 'HoyaCollector', plant: 'Crystal Anthurium', price: 5000, fee: 400, net: 4600 },
-      { txId: 't-6', buyer: 'SucculentHub', plant: 'Melanochrysum', price: 5000, fee: 400, net: 4600 },
-    ],
-    method: 'PromptPay',
-    destination: '081-234-5678',
-    processedAt: '2025-05-15 16:45:00',
-  },
-  {
-    id: 'pay-4',
-    date: '2025-06-02',
-    status: 'pending',
-    totalAmount: 4600,
-    transactions: [
-      { txId: 't-7', buyer: 'PlantMama_BKK', plant: 'White Princess', price: 5000, fee: 400, net: 4600 },
-    ],
-    method: 'PromptPay',
-    destination: '081-234-5678',
-    processedAt: null,
-  },
-];
-
 const TABS_DEF = [
   { id: 'listings', label: 'Listings', icon: Package },
   { id: 'sales', label: 'Sales', icon: DollarSign },
@@ -101,7 +46,7 @@ export default function SellerDashboardPage() {
   const [qrChecklist, setQrChecklist] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem('qr_checklist') || '{}'); } catch { return {}; }
   });
-  const currentUserId = user?.id || 'u-1';
+  const currentUserId = user?.id || '';
 
   const toggleQrCheck = (listingId: string) => {
     setQrChecklist(prev => {
@@ -154,6 +99,26 @@ export default function SellerDashboardPage() {
   const pendingSales = allSales.filter(s => s.status === 'paid_in_escrow' || s.status === 'shipped' || s.status === 'disputed');
   const totalRevenue = completedSales.reduce((s, t) => s + t.seller_payout_thb, 0);
   const pendingRevenue = pendingSales.reduce((s, t) => s + t.seller_payout_thb, 0);
+
+  // Real payout history derived from completed sales. Each completed order is a
+  // payout you can still drill into and track the plant afterwards.
+  const payouts = completedSales.map(t => ({
+    id: t.id,
+    date: (t.completed_at || t.created_at).slice(0, 10),
+    status: 'completed' as const,
+    totalAmount: t.seller_payout_thb,
+    method: 'PromptPay',
+    destination: me?.promptpay_id || 'Not set',
+    processedAt: t.completed_at ? t.completed_at.replace('T', ' ').slice(0, 19) : null,
+    transactions: [{
+      orderId: t.id,
+      plant: t.listing?.species?.common_name_en || t.listing?.species?.scientific_name || 'Plant',
+      buyer: t.buyer?.display_name || 'Buyer',
+      price: t.sale_price_thb,
+      fee: t.platform_fee_thb,
+      net: t.seller_payout_thb,
+    }],
+  }));
 
   const renderContent = () => {
     switch (activeTab) {
@@ -457,7 +422,10 @@ export default function SellerDashboardPage() {
               <h2 className="text-lg font-medium mb-1">Payout History</h2>
               <p className="text-xs text-zinc-500 mb-3">Every payout with complete transaction breakdown</p>
               <div className="space-y-3">
-                {FULL_PAYOUTS.map(payout => (
+                {payouts.length === 0 && (
+                  <p className="text-zinc-600 text-sm py-4 text-center">No payouts yet — they appear here once a sale completes.</p>
+                )}
+                {payouts.map(payout => (
                   <div key={payout.id} className="bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden">
                     {/* Payout Header */}
                     <button
@@ -498,6 +466,7 @@ export default function SellerDashboardPage() {
                               <div className="col-span-4">
                                 <p className="font-medium truncate">{tx.plant}</p>
                                 <p className="text-xs text-zinc-500">To: {tx.buyer}</p>
+                                <Link to={`/order/${tx.orderId}`} className="text-xs text-emerald-400 hover:text-emerald-300">Track plant →</Link>
                               </div>
                               <span className="col-span-2 text-right">{tx.price.toLocaleString()}</span>
                               <span className="col-span-2 text-right text-amber-400">-{tx.fee.toLocaleString()}</span>

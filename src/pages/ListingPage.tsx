@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag } from 'lucide-react';
 import PlantCareCard from '@/components/PlantCareCard';
 import WeatherWidget from '@/components/WeatherWidget';
@@ -10,7 +10,7 @@ import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { toggleWatch } from '@/lib/api';
+import { toggleWatch, getOrCreateThreadId } from '@/lib/api';
 import ReviewSection from '@/components/ReviewSection';
 import { generateQR } from '@/lib/promptpay';
 import MakeOfferModal from '@/components/MakeOfferModal';
@@ -21,6 +21,7 @@ export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
   const listing = getListingById(id || '');
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [watched, setWatched] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
   const [activeImage, setActiveImage] = useState(1); // default to plant photo (index 1) if available
@@ -51,7 +52,10 @@ export default function ListingPage() {
 
   const handleMessage = () => {
     if (!user) { toast.info('Log in to message the seller.'); return; }
-    toast.success(`Your interest was sent to ${listing?.seller?.display_name || 'the seller'}.`);
+    if (!listing?.seller_id) { toast.error('Seller unavailable for this listing.'); return; }
+    if (listing.seller_id === user.id) { toast.info("This is your own listing."); return; }
+    const threadId = getOrCreateThreadId(user.id, listing.seller_id, listing.id);
+    navigate(`/messages/${threadId}`);
   };
 
   if (!listing) {

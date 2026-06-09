@@ -115,6 +115,10 @@ export default function MessagesPage() {
   }, [threadId, user?.id]);
 
   const activeThread = threads.find((t) => t.threadId === threadId);
+  // For a brand-new conversation no thread exists yet, so resolve the other
+  // party straight from the thread id rather than showing "Unknown".
+  const otherUser = activeThread?.otherUser
+    || (threadId && user ? getUserById(getOtherUserIdFromThreadId(threadId, user.id) || '') : undefined);
   const hasContactFlag = messages.some((m) => m.flagged_contact_info);
 
   const handleSend = async () => {
@@ -259,7 +263,7 @@ export default function MessagesPage() {
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">
-                  {activeThread?.otherUser?.display_name || 'Unknown'}
+                  {otherUser?.display_name || 'Unknown'}
                 </p>
                 {activeThread?.listing && (
                   <Link
