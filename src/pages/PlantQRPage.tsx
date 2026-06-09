@@ -193,28 +193,21 @@ export default function PlantQRPage() {
           </div>
         </div>
 
-        {/* What is Provenance? */}
+        {/* What is Provenance? — short blurb; full explanation lives at /provenance */}
         <div className="mb-10 bg-zinc-900/20 border border-white/5 rounded-xl p-6">
           <h2 className="text-lg font-medium mb-3">What is Root Provenance?</h2>
-          <div className="space-y-3 text-sm text-zinc-400 leading-relaxed">
-            <p>
-              Every plant sold on Root receives a unique QR code — a digital birth certificate
-              that stays with the plant for life. Scanning this QR reveals the plant's full
-              history: who grew it, when it was sold, and every owner since.
-            </p>
-            <p>
-              This creates trust in the second-hand plant market. Buyers can verify a seller's
-              claims about variegation, maturity, and care history. Sellers build reputation
-              through verified sales. And rare plants retain their provenance value across
-              multiple owners.
-            </p>
-            <div className="flex flex-wrap gap-3 pt-2">
-              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Verified ownership</span>
-              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Fraud protection</span>
-              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Care history</span>
-              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Resale value</span>
-            </div>
+          <p className="text-sm text-zinc-400 leading-relaxed mb-3">
+            A unique QR tag — a plant's digital birth certificate — that records its full
+            history of owners and sales, so buyers can verify a seller's claims and rare plants
+            keep their value across owners.
+          </p>
+          <div className="flex flex-wrap gap-3 mb-4">
+            <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Verified ownership</span>
+            <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Fraud protection</span>
+            <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Care history</span>
+            <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">Resale value</span>
           </div>
+          <Link to="/provenance" className="text-sm text-emerald-400 hover:underline">Read the full white paper →</Link>
         </div>
 
         {/* Provenance Chain */}

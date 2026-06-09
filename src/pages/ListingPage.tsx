@@ -16,6 +16,7 @@ import { generateQR } from '@/lib/promptpay';
 import MakeOfferModal from '@/components/MakeOfferModal';
 import ShareButtons from '@/components/ShareButtons';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import ProvenanceInfo from '@/components/ProvenanceInfo';
 
 export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
@@ -205,7 +206,7 @@ export default function ListingPage() {
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <QrCode className="w-4 h-4" />
                 <span>Comes with QR provenance tag</span>
-                <Link to={`/p/${listing.id}`} className="text-emerald-400 hover:underline text-xs">What is this?</Link>
+                <ProvenanceInfo />
               </div>
             </div>
 

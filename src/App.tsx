@@ -17,6 +17,7 @@ const MarketPage = lazy(() => import('@/pages/MarketPage'));
 const ListingPage = lazy(() => import('@/pages/ListingPage'));
 const SpeciesPage = lazy(() => import('@/pages/SpeciesPage'));
 const PlantQRPage = lazy(() => import('@/pages/PlantQRPage'));
+const ProvenancePage = lazy(() => import('@/pages/ProvenancePage'));
 const SellerPage = lazy(() => import('@/pages/SellerPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const SignupPage = lazy(() => import('@/pages/SignupPage'));
@@ -72,6 +73,7 @@ function AppContent() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
+            <Route path="/provenance" element={<ProvenancePage />} />
             <Route path="/fees" element={<FeesPage />} />
             <Route path="/shipping-guide" element={<ShippingGuidePage />} />
             <Route path="/scan" element={<QRScannerPage />} />

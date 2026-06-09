@@ -22,6 +22,18 @@ const SIZE_LABELS: Record<string, string> = {
   XL: 'Extra Large (80cm+)',
 };
 
+// Broad tag vocabulary used for autocomplete. Sellers can still type anything
+// not in here and add it as a custom tag.
+const TAG_VOCAB = [
+  'variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'unrooted',
+  'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly', 'low-light',
+  'air-purifying', 'fast-growing', 'drought-tolerant', 'humidity-loving',
+  'trailing', 'climbing', 'compact', 'large', 'indoor', 'outdoor', 'aroid',
+  'hoya', 'succulent', 'cactus', 'fern', 'orchid', 'herb', 'vegetable',
+  'fruit', 'bonsai', 'carnivorous', 'aquatic', 'variegata', 'albo', 'mint',
+  'collector', 'imported', 'local', 'cold-hardy', 'shade', 'full-sun',
+];
+
 export default function CreateListingPage() {
   const [step, setStep] = useState<'form' | 'qr'>('form');
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
@@ -35,6 +47,11 @@ export default function CreateListingPage() {
   const [province, setProvince] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const tagSuggestions = (() => {
+    const q = tagInput.trim().toLowerCase();
+    if (!q) return [];
+    return TAG_VOCAB.filter(t => t.includes(q) && !tags.includes(t)).slice(0, 6);
+  })();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -437,7 +454,7 @@ export default function CreateListingPage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="relative">
               <input
                 type="text"
                 value={tagInput}
@@ -449,9 +466,26 @@ export default function CreateListingPage() {
                     if (v && !tags.includes(v) && tags.length < 10) { setTags([...tags, v]); setTagInput(''); }
                   }
                 }}
-                placeholder="Add custom tag + Enter"
-                className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+                placeholder="Type to search tags, or add your own + Enter"
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
+              {tagInput.trim() && tagSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-zinc-900 border border-white/10 rounded-lg overflow-hidden shadow-xl">
+                  {tagSuggestions.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        if (!tags.includes(s) && tags.length < 10) setTags([...tags, s]);
+                        setTagInput('');
+                      }}
+                      className="block w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">

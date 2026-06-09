@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { X, Tag } from 'lucide-react';
+import { X, Tag, TrendingUp, Clock, Eye, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Listing } from '@/types';
 import { createOffer } from '@/lib/api';
+import { getPriceSnapshotsForSpecies, getSpeciesPriceStats, getProvenanceChain } from '@/data/mockData';
+import { PriceChart } from '@/components/PriceChart';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MakeOfferModalProps {
@@ -19,6 +21,15 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
   const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
+
+  const speciesId = listing.species?.id || listing.plant_id?.replace('p-', 'sp-') || '';
+  const chartData = getPriceSnapshotsForSpecies(speciesId, undefined, 90).map(ps => ({
+    date: ps.snapshot_date,
+    price: ps.median_price_thb,
+  }));
+  const stats = getSpeciesPriceStats(speciesId, 30);
+  const provenance = getProvenanceChain(listing.plant_id);
+  const listedDate = listing.created_at ? new Date(listing.created_at).toLocaleDateString() : null;
 
   const priceNum = parseInt(price, 10);
   const isValid = !isNaN(priceNum) && priceNum >= 10;
@@ -55,7 +66,7 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-      <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-md p-6">
+      <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium flex items-center gap-2">
             <Tag className="w-5 h-5 text-emerald-400" />
@@ -69,6 +80,31 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
         <div className="mb-4 bg-zinc-800/30 border border-white/5 rounded-lg p-3">
           <p className="text-xs text-zinc-500 mb-1">Current listing price</p>
           <p className="text-lg font-semibold text-white">{listing.price_thb.toLocaleString()} THB</p>
+        </div>
+
+        {/* Price history — helps the buyer gauge a fair offer */}
+        <div className="mb-4 bg-zinc-800/30 border border-white/5 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-zinc-400 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Price history (90d)</p>
+            {stats && <p className="text-xs text-zinc-500">median {Math.round(stats.median).toLocaleString()} · range {Math.round(stats.min).toLocaleString()}–{Math.round(stats.max).toLocaleString()}</p>}
+          </div>
+          {chartData.length > 0 ? (
+            <PriceChart data={chartData} height={120} showArea />
+          ) : (
+            <p className="text-xs text-zinc-600 py-6 text-center">No market price history yet for this species.</p>
+          )}
+        </div>
+
+        {/* Plant history / provenance */}
+        <div className="mb-4 bg-zinc-800/30 border border-white/5 rounded-lg p-3">
+          <p className="text-xs text-zinc-400 mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-400" /> This plant's history</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+            {listedDate && <span>Listed {listedDate}</span>}
+            <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {listing.view_count ?? 0} views</span>
+            <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {listing.watch_count ?? 0} watching</span>
+            {provenance && <span>{provenance.total_owners} owner{provenance.total_owners === 1 ? '' : 's'}</span>}
+            {provenance && provenance.total_sales_value > 0 && <span>past sales {provenance.total_sales_value.toLocaleString()} THB</span>}
+          </div>
         </div>
 
         <div className="space-y-4">
