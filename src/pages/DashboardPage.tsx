@@ -226,6 +226,7 @@ export default function DashboardPage() {
                           </Link>
                         )}
                         <button
+                          type="button"
                           onClick={() => handleRemoveWatch(w.id, w.target_id, w.watch_type)}
                           className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
                         >
@@ -373,6 +374,7 @@ export default function DashboardPage() {
           {TABS.map(tab => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab === tab.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
