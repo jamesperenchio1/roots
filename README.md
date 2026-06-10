@@ -95,6 +95,8 @@ uploads (listing photos, shipment photos, dispute evidence).
 | `transactions` | buyer/seller/listing, pricing, status, delivery_method, shipping_address, tracking_number, courier, **`shipment_photo_url`**, timestamps |
 | `messages`     | thread_id, sender/recipient, listing_id, content |
 | `watchlist`    | user_id, watch_type, target_id |
+| `notifications`| user_id, type, title, message, link, read — RLS owner-only read/update/delete, any-authenticated insert. Hydrated per-user at login; bell/panel react via an external store |
+| `offers`       | listing/buyer/seller, offer_price_thb, message, status, counter_price_thb — RLS both-parties read, buyer-only insert, either-party update. Hydrated at login + on dashboard tabs |
 
 ### Tables the code USES but that DO NOT EXIST yet ⚠️
 
@@ -104,11 +106,13 @@ hydration path) to make the corresponding feature durable:**
 
 | Missing table  | Feature it backs              | UI status |
 | -------------- | ----------------------------- | --------- |
-| `offers`       | Make-an-offer / negotiation   | UI built (`MakeOfferModal`, `OfferCard`) |
-| `notifications`| In-app notifications          | UI built (`NotificationBell`, `NotificationPanel`) |
 | `reviews`      | Seller reviews                | UI built (`ReviewForm`, `ReviewSection`) |
 | `price_alerts` | Price-drop alerts             | UI built (in dashboard) |
 | `disputes`     | Dispute resolution            | UI built (`DisputePage`) |
+
+> `offers` and `notifications` previously lived here and are now **durable** —
+> use them as the reference pattern (create table + RLS, add `hydrate*` in
+> `api.ts`, call it from `useAuth`/the relevant page) when wiring up the rest.
 
 > Migrations are applied via the Supabase MCP `apply_migration` tool against
 > project `daacilgagkphafpjdcte`. There is no local `supabase/migrations/`
@@ -166,19 +170,20 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
   were missing, so that data was silently dropped on insert; added them.
 - ✅ **Listing image gallery** — full-screen lightbox with prev/next + keyboard
   nav, image counter, and all thumbnails (was capped at 4). (`ListingPage`)
+- ✅ **Durable notifications** — `notifications` table + per-user hydration; the
+  bell/panel now react to changes via an external store (`subscribeNotifications`).
+- ✅ **Durable offers** — `offers` table + hydration; `createOffer` reads back the
+  DB id so respond/withdraw target the right row after a reload.
+- ✅ **Bundle optimization** — split `react` and `@supabase/supabase-js` into
+  separate cacheable vendor chunks; app chunk ~540KB → ~294KB.
 
-**Next up in the cluster:**
+**Next up:**
 
-1. **Offers** — the UI and `api.ts` helpers exist, but the `offers` **table is
-   missing**, so offers don't survive reload. Pick up by: creating the `offers`
-   table (+RLS), adding a hydration path, and removing the in-memory fallback.
-2. **Notifications UX** — same situation: `NotificationBell`/`NotificationPanel`
-   and `notify*` helpers exist, but the `notifications` table is missing and
-   there is no boot-time hydration (`getNotifications` only reads the local
-   array). Create the table, hydrate per-user on login, then polish the UX.
-
-The same "create table + hydrate" pattern applies to `reviews`, `price_alerts`,
-and `disputes` if those need to become durable.
+1. Make `reviews`, `price_alerts`, and `disputes` durable using the same
+   "create table (+RLS) + `hydrate*` + call from `useAuth`/page" pattern that
+   `offers`/`notifications` now demonstrate.
+2. Further perf: the largest remaining chunk is `recharts` (~415KB) — consider a
+   lighter charting lib or lazy-mounting charts below the fold.
 
 **Workflow note:** development happens on `claude/exciting-allen-2j8tm2`, and
 finished features are pushed **directly to `main`** (the owner opted out of PR
