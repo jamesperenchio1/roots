@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag } from 'lucide-react';
+import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
 import PlantCareCard from '@/components/PlantCareCard';
 import WeatherWidget from '@/components/WeatherWidget';
 import { PROVINCE_CITIES } from '@/lib/weather';
@@ -26,6 +26,7 @@ export default function ListingPage() {
   const [watched, setWatched] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
   const [activeImage, setActiveImage] = useState(1); // default to plant photo (index 1) if available
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const { recordView } = useRecentlyViewed();
 
@@ -74,6 +75,10 @@ export default function ListingPage() {
     : [PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'];
   const gallery = qrUrl ? [qrUrl, ...plantPhotos] : plantPhotos;
   const mainImage = gallery[activeImage] || gallery[0] || '';
+  const showNav = gallery.length > 1;
+  const goTo = (i: number) => setActiveImage((i + gallery.length) % gallery.length);
+  const goNext = () => goTo(activeImage + 1);
+  const goPrev = () => goTo(activeImage - 1);
   const priceData = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 90).map(ps => ({
     date: ps.snapshot_date,
     price: ps.median_price_thb,
@@ -91,20 +96,53 @@ export default function ListingPage() {
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           {/* Image */}
           <div className="space-y-4">
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900 relative">
-              <img
-                src={mainImage}
-                alt={listing.species?.scientific_name || 'Plant listing'}
-                className="w-full h-full object-cover"
-              />
+            <div className="group aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900 relative">
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                className="block w-full h-full cursor-zoom-in"
+                aria-label="Open full-size image"
+              >
+                <img
+                  src={mainImage}
+                  alt={listing.species?.scientific_name || 'Plant listing'}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+              <span className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm rounded-full p-1.5 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <ZoomIn className="w-4 h-4" />
+              </span>
+              {showNav && (
+                <>
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    aria-label="Previous image"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    aria-label="Next image"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 text-[11px] text-white/90">
+                    {activeImage + 1} / {gallery.length}
+                  </div>
+                </>
+              )}
               {activeImage === 0 && qrUrl && (
-                <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
+                <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-center pointer-events-none">
                   <p className="text-xs text-purple-300 font-medium">Verified Provenance — Scan to check history</p>
                 </div>
               )}
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {gallery.slice(0, 4).map((src, i) => (
+              {gallery.map((src, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
@@ -261,6 +299,60 @@ export default function ListingPage() {
           onClose={() => setOfferModalOpen(false)}
           onSubmitted={() => {}}
         />
+      )}
+
+      {lightboxOpen && (
+        <div
+          ref={(el) => el?.focus()}
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setLightboxOpen(false);
+            else if (e.key === 'ArrowRight') goNext();
+            else if (e.key === 'ArrowLeft') goPrev();
+          }}
+          onClick={() => setLightboxOpen(false)}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm outline-none"
+          aria-modal="true"
+          role="dialog"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Close"
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 rounded-full p-2 text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={mainImage}
+            alt={listing?.species?.scientific_name || 'Plant listing'}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-[92vw] object-contain rounded-lg"
+          />
+          {showNav && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                aria-label="Previous image"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 rounded-full p-3 text-white"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goNext(); }}
+                aria-label="Next image"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 rounded-full p-3 text-white"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 bg-white/10 rounded-full px-3 py-1 text-sm text-white/90">
+                {activeImage + 1} / {gallery.length}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
