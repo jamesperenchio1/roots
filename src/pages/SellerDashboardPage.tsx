@@ -18,7 +18,7 @@ import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
-import { updateProfile, hydrateUserTransactions, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse } from '@/lib/api';
+import { updateProfile, hydrateUserTransactions, hydrateUserOffers, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse } from '@/lib/api';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import OfferCard from '@/components/OfferCard';
 import { toast } from 'sonner';
@@ -90,6 +90,14 @@ export default function SellerDashboardPage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
+  }, [activeTab, user, refresh]);
+
+  // Re-fetch offers when the Offers tab opens
+  useEffect(() => {
+    if (activeTab !== 'offers' || !user) return;
+    let cancelled = false;
+    hydrateUserOffers().then(() => { if (!cancelled) refresh(); });
+    return () => { cancelled = true; };
   }, [activeTab, user, refresh]);
 
   const me = USERS.find(u => u.id === currentUserId);

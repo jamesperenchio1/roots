@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getTransactionsWithDetails, WATCHLIST, DISPUTES, SPECIES } from '@/data/mockData';
-import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads } from '@/lib/api';
+import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
@@ -49,6 +49,14 @@ export default function DashboardPage() {
       setPriceAlerts(getUserPriceAlerts(user.id));
     }
   }, [user?.id, offersRefreshKey]);
+
+  // Re-fetch offers when the Purchases tab opens
+  useEffect(() => {
+    if (activeTab !== 'purchases' || !user) return;
+    let cancelled = false;
+    hydrateUserOffers().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
+    return () => { cancelled = true; };
+  }, [activeTab, user?.id]);
 
   const transactions = getTransactionsWithDetails().filter(t => t.buyer_id === user?.id);
 

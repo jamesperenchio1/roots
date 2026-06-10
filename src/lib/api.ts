@@ -202,6 +202,35 @@ export async function hydrateUserNotifications(userId: string): Promise<void> {
   }
 }
 
+function mapOffer(r: DbRow): Offer {
+  return {
+    id: r.id as string,
+    listing_id: r.listing_id as string,
+    buyer_id: r.buyer_id as string,
+    seller_id: r.seller_id as string,
+    offer_price_thb: r.offer_price_thb as number,
+    message: (r.message as string | undefined) || undefined,
+    status: r.status as Offer['status'],
+    counter_price_thb: (r.counter_price_thb as number | undefined) ?? undefined,
+    created_at: r.created_at as string,
+    responded_at: (r.responded_at as string | undefined) || undefined,
+  };
+}
+
+export async function hydrateUserOffers(): Promise<void> {
+  // RLS limits the result to offers where the caller is buyer or seller.
+  try {
+    const { data, error } = await supabase
+      .from('offers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(OFFERS, mapOffer(r)));
+  } catch (e) {
+    logger.warn('hydrateUserOffers failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 // ---------- writes ----------
 export interface NewListingInput {
   species_id?: string;
@@ -729,25 +758,33 @@ export function getOffersForListing(listingId: string): Offer[] {
 export async function createOffer(
   data: Omit<Offer, 'id' | 'created_at' | 'status' | 'responded_at'>
 ): Promise<Offer> {
-  const offer: Offer = {
-    ...data,
-    id: `o-${crypto.randomUUID().slice(0, 8)}`,
-    status: 'pending',
-    created_at: new Date().toISOString(),
-  };
-  // Try supabase first, fallback to local
-  const { error } = await supabase.from('offers').insert({
-    listing_id: data.listing_id,
-    buyer_id: data.buyer_id,
-    seller_id: data.seller_id,
-    offer_price_thb: data.offer_price_thb,
-    message: data.message || null,
-    status: 'pending',
-  });
+  // Insert and read back so the local copy uses the DB-generated id — otherwise
+  // a later hydrate would duplicate the offer under a different id, and
+  // respond/withdraw (which match by id) would target the wrong row.
+  const { data: row, error } = await supabase
+    .from('offers')
+    .insert({
+      listing_id: data.listing_id,
+      buyer_id: data.buyer_id,
+      seller_id: data.seller_id,
+      offer_price_thb: data.offer_price_thb,
+      message: data.message || null,
+      status: 'pending',
+    })
+    .select('*')
+    .single();
   if (error) {
     logger.warn('createOffer supabase failed, using local only', { error: error.message });
   }
-  OFFERS.push(offer);
+  const offer: Offer = row
+    ? mapOffer(row)
+    : {
+        ...data,
+        id: `o-${crypto.randomUUID().slice(0, 8)}`,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      };
+  upsertById(OFFERS, offer);
   const offerListingName = LISTINGS.find(l => l.id === data.listing_id)?.species?.common_name_en || 'plant';
   notifyOfferReceived(data.seller_id, offer.id, offerListingName, data.offer_price_thb);
   return offer;
