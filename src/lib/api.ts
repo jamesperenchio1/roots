@@ -175,6 +175,33 @@ export async function hydrateUserTransactions(): Promise<void> {
   }
 }
 
+export async function hydrateUserNotifications(userId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    (data || []).forEach((r) =>
+      upsertById(NOTIFICATIONS, {
+        id: r.id as string,
+        user_id: r.user_id as string,
+        type: r.type as Notification['type'],
+        title: r.title as string,
+        message: (r.message as string) || '',
+        link: (r.link as string | undefined) || undefined,
+        read: !!r.read,
+        created_at: r.created_at as string,
+      })
+    );
+    bumpNotifications();
+  } catch (e) {
+    logger.warn('hydrateUserNotifications failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 // ---------- writes ----------
 export interface NewListingInput {
   species_id?: string;
@@ -463,6 +490,22 @@ export async function toggleWatch(
 }
 
 // ---------- notifications ----------
+// Lightweight external store so the bell/panel re-render when the in-memory
+// NOTIFICATIONS array changes (async hydrate, create, mark-read, delete).
+let notificationsVersion = 0;
+const notificationListeners = new Set<() => void>();
+function bumpNotifications() {
+  notificationsVersion++;
+  notificationListeners.forEach((l) => l());
+}
+export function subscribeNotifications(cb: () => void): () => void {
+  notificationListeners.add(cb);
+  return () => { notificationListeners.delete(cb); };
+}
+export function getNotificationsVersion(): number {
+  return notificationsVersion;
+}
+
 export function getNotifications(userId: string): Notification[] {
   return NOTIFICATIONS
     .filter(n => n.user_id === userId)
@@ -481,6 +524,7 @@ export async function markNotificationRead(notificationId: string): Promise<void
   if (error) logger.warn('markNotificationRead failed', { error: error.message });
   const local = NOTIFICATIONS.find(n => n.id === notificationId);
   if (local) local.read = true;
+  bumpNotifications();
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
@@ -490,6 +534,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .eq('user_id', userId);
   if (error) logger.warn('markAllNotificationsRead failed', { error: error.message });
   NOTIFICATIONS.filter(n => n.user_id === userId).forEach(n => { n.read = true; });
+  bumpNotifications();
 }
 
 export async function deleteNotification(notificationId: string): Promise<void> {
@@ -500,25 +545,27 @@ export async function deleteNotification(notificationId: string): Promise<void> 
   if (error) logger.warn('deleteNotification failed', { error: error.message });
   const idx = NOTIFICATIONS.findIndex(n => n.id === notificationId);
   if (idx >= 0) NOTIFICATIONS.splice(idx, 1);
+  bumpNotifications();
 }
 
 export async function createNotification(
   data: Omit<Notification, 'id' | 'created_at'>
 ): Promise<Notification> {
   const payload = { ...data, created_at: new Date().toISOString() };
-  const { data: row, error } = await supabase
-    .from('notifications')
-    .insert(payload)
-    .select('*')
-    .single();
+  // Notifications are written FOR another user, and the RLS SELECT policy is
+  // owner-only — so the inserter cannot read the row back. We insert without a
+  // returning select (avoids a spurious "no rows" error) and keep a local copy
+  // for any in-session UI; the recipient hydrates the real row on next load.
+  const { error } = await supabase.from('notifications').insert(payload);
   if (error) {
-    logger.warn('createNotification supabase failed, using local only', { error: error.message });
+    logger.warn('createNotification supabase insert failed, using local only', { error: error.message });
   }
   const notification: Notification = {
-    id: row?.id ?? `local-${crypto.randomUUID()}`,
+    id: `local-${crypto.randomUUID()}`,
     ...payload,
   };
   NOTIFICATIONS.push(notification);
+  bumpNotifications();
   return notification;
 }
 

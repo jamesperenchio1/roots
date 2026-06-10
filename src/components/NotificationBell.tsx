@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useSyncExternalStore } from 'react';
 import { Bell } from 'lucide-react';
-import { getUnreadCount } from '@/lib/api';
+import { getUnreadCount, subscribeNotifications, getNotificationsVersion } from '@/lib/api';
 import NotificationPanel from './NotificationPanel';
 
 interface NotificationBellProps {
@@ -18,6 +18,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
     setOpen(false);
   }, []);
 
+  useSyncExternalStore(subscribeNotifications, getNotificationsVersion);
   const unread = getUnreadCount(userId);
 
   return (

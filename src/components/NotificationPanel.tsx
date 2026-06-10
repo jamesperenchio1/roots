@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -18,6 +18,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  subscribeNotifications,
+  getNotificationsVersion,
 } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -53,15 +55,8 @@ interface NotificationPanelProps {
 export default function NotificationPanel({ userId, open, onClose }: NotificationPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const [items, setItems] = useState<Notification[]>([]);
-
-  const refresh = useCallback(() => {
-    setItems(getNotifications(userId));
-  }, [userId]);
-
-  useEffect(() => {
-    if (open) refresh();
-  }, [open, refresh]);
+  useSyncExternalStore(subscribeNotifications, getNotificationsVersion);
+  const items = getNotifications(userId);
 
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -78,19 +73,16 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
   const handleMarkRead = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await markNotificationRead(id);
-    refresh();
   };
 
   const handleMarkAll = async () => {
     await markAllNotificationsRead(userId);
-    refresh();
     toast.success('All notifications marked as read');
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await deleteNotification(id);
-    refresh();
   };
 
   const handleClick = (n: Notification) => {
