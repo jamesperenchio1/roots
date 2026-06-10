@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { getListingById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { createOrder } from '@/lib/api';
+import { createOrder, uploadPaymentSlip } from '@/lib/api';
 import { generatePromptPayQR } from '@/lib/promptpay';
 import { validateShippingAddress } from '@/lib/validation';
 
@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const [paying, setPaying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreview, setSlipPreview] = useState('');
   const [refNumber, setRefNumber] = useState('');
   const [qr, setQr] = useState('');
@@ -62,16 +63,23 @@ export default function CheckoutPage() {
 
   const handleConfirmPayment = async () => {
     if (!user) return;
+    if (!slipFile) {
+      toast.error('Please upload your payment slip so the seller can verify it.');
+      return;
+    }
     setShowConfirmModal(false);
     setPaying(true);
     try {
+      const slipPath = await uploadPaymentSlip(slipFile, user.id);
       const tx = await createOrder({
         listing,
         buyer: user,
         delivery_method: listing.delivery_options?.includes('ship') ? 'ship' : 'pickup',
         shipping_address: address,
+        payment_slip_path: slipPath,
+        payment_ref: refNumber.trim() || undefined,
       });
-      toast.success('Payment confirmed — your order is protected by escrow.');
+      toast.success('Slip submitted — the seller will verify your payment, then ship.');
       navigate(`/order/${tx.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not place the order.');
@@ -215,13 +223,13 @@ export default function CheckoutPage() {
             </div>
 
             <p className="text-sm text-zinc-400 mb-4">
-              After paying via your banking app, upload your payment slip and enter the transaction reference. This helps the seller verify your payment quickly.
+              After paying via your banking app, upload your payment slip. The seller verifies it against their bank before shipping — this protects you both.
             </p>
 
             <div className="space-y-4">
               {/* Slip upload */}
               <div>
-                <label className="text-sm text-zinc-400 mb-1.5 block">Payment Slip (optional)</label>
+                <label className="text-sm text-zinc-400 mb-1.5 block">Payment Slip <span className="text-emerald-400">*</span></label>
                 <input
                   ref={slipInputRef}
                   type="file"
@@ -230,6 +238,7 @@ export default function CheckoutPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      setSlipFile(file);
                       const reader = new FileReader();
                       reader.onload = (ev) => setSlipPreview(ev.target?.result as string);
                       reader.readAsDataURL(file);
@@ -240,7 +249,7 @@ export default function CheckoutPage() {
                   <div className="relative rounded-lg overflow-hidden border border-white/10">
                     <img src={slipPreview} alt="Payment slip" className="w-full h-32 object-contain bg-zinc-800" />
                     <button
-                      onClick={() => setSlipPreview('')}
+                      onClick={() => { setSlipPreview(''); setSlipFile(null); }}
                       className="absolute top-1 right-1 bg-black/70 rounded-full p-1"
                     >
                       <X className="w-3 h-3 text-white" />
@@ -279,10 +288,10 @@ export default function CheckoutPage() {
               </button>
               <button
                 onClick={handleConfirmPayment}
-                disabled={paying}
+                disabled={paying || !slipFile}
                 className="flex-1 py-2.5 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
               >
-                {paying ? 'Confirming…' : 'Confirm Payment'}
+                {paying ? 'Submitting…' : 'Submit Payment Slip'}
               </button>
             </div>
           </div>

@@ -174,6 +174,22 @@ export default function OrderPage() {
             </div>
           </div>
 
+          {(tx.payment_slip_path || tx.payment_confirmed) && (
+            <div className="border-t border-white/5 pt-4">
+              {tx.payment_confirmed ? (
+                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Payment verified by the seller{tx.payment_confirmed_at ? ` on ${new Date(tx.payment_confirmed_at).toLocaleDateString()}` : ''}</span>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 text-sm text-amber-400">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>Payment slip submitted — waiting for the seller to verify it against their bank before they ship.</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {tx.tracking_number && (
             <div className="border-t border-white/5 pt-4">
               <div className="flex items-center gap-2 text-sm mb-1">

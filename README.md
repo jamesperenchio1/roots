@@ -92,7 +92,7 @@ uploads (listing photos, shipment photos, dispute evidence).
 | -------------- | ----- |
 | `profiles`     | id (=auth.users.id), display_name, location, promptpay_id, avatar_url, is_admin, language_preference, strike_count, is_banned, rating, sales_count |
 | `listings`     | species fields, category, price_thb, size, description, `delivery_options[]`, `tags[]`, `shipping_cost_thb`, `pickup_province`, **`pickup_location`/`pickup_lat`/`pickup_lng`**, photos[], view/watch counts |
-| `transactions` | buyer/seller/listing, pricing, status, delivery_method, shipping_address, tracking_number, courier, **`shipment_photo_url`**, timestamps |
+| `transactions` | buyer/seller/listing, pricing, status, delivery_method, shipping_address, tracking_number, courier, `shipment_photo_url`, **`payment_slip_path`/`payment_ref`/`payment_confirmed`/`payment_confirmed_at`**, timestamps |
 | `messages`     | thread_id, sender/recipient, listing_id, content |
 | `watchlist`    | user_id, watch_type, target_id |
 | `notifications`| user_id, type, title, message, link, read — RLS owner-only read/update/delete, any-authenticated insert. Hydrated per-user at login; bell/panel react via an external store |
@@ -175,6 +175,12 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
 - ✅ **Durable reviews / price_alerts / disputes** — the last three ephemeral
   features now persist (tables + RLS + hydration). All social features survive
   reload.
+- ✅ **Payment-slip verification** — the buyer's slip is now *required* and saved
+  to a private `payment-slips` bucket (was previously discarded). The order is
+  created `payment_confirmed=false`; the **seller** reviews the slip (signed URL)
+  and confirms receipt against their own bank, which unlocks shipping. Closes the
+  one-click "I've paid" self-confirm hole. A SlipOK/EasySlip API could later
+  automate the seller's confirm step.
 
 **Next up (suggestions):**
 
@@ -198,8 +204,11 @@ review for this cluster). Each Vercel preview/prod deploy is automatic.
 - [ ] Create the **missing tables** above with proper RLS + hydration
 - [ ] Storage buckets exist/public with a 5MB limit (`listing-photos`)
 - [ ] Tighten RLS policies (esp. `updateProfile`); add RLS policy tests
-- [ ] **PromptPay trust model:** payment is buyer-self-confirmed (no webhook).
-      Add slip verification (e.g. SlipOK) or a real gateway before scale.
+- [x] **PromptPay trust model:** buyer uploads a required payment slip; the
+      seller verifies it against their bank and confirms receipt before shipping.
+      *Next:* automate confirmation with a SlipOK/EasySlip API call (the seller's
+      "Confirm payment received" action is the integration point), and tighten
+      the `payment-slips` storage SELECT policy to the two transaction parties.
 - [ ] Enable email verification (pilot auto-confirms accounts)
 - [ ] Hide `loginAsLocalAdmin()` dev bypass before public launch
 - [ ] Configure Supabase auth email templates + Storage CORS + custom domain

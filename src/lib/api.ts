@@ -109,6 +109,10 @@ function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transactio
     delivery_method: (r.delivery_method as DeliveryOption | undefined) || 'ship',
     tracking_number: (r.tracking_number as string | undefined) || undefined,
     courier: (r.courier as string | undefined) || undefined,
+    payment_slip_path: (r.payment_slip_path as string | undefined) || undefined,
+    payment_ref: (r.payment_ref as string | undefined) || undefined,
+    payment_confirmed: !!r.payment_confirmed,
+    payment_confirmed_at: (r.payment_confirmed_at as string | undefined) || undefined,
     created_at: r.created_at as string,
     shipped_at: (r.shipped_at as string | undefined) || undefined,
     delivered_at: (r.delivered_at as string | undefined) || undefined,
@@ -386,6 +390,50 @@ export interface NewOrderInput {
   buyer: Profile;
   shipping_address?: Record<string, string>;
   delivery_method: string;
+  payment_slip_path?: string;
+  payment_ref?: string;
+}
+
+const SLIP_BUCKET = 'payment-slips';
+
+// Upload a payment slip to the PRIVATE slips bucket; returns the storage path
+// (not a public URL — slips contain bank details and are read via signed URLs).
+export async function uploadPaymentSlip(file: File, userId: string): Promise<string> {
+  const validation = validateImageFile(file, 5);
+  if (!validation.ok) throw new Error(validation.error);
+  const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
+  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from(SLIP_BUCKET).upload(path, file, { upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+// Short-lived signed URL so only the transaction parties can view a slip.
+export async function getSignedSlipUrl(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from(SLIP_BUCKET).createSignedUrl(path, 3600);
+  if (error) {
+    logger.warn('getSignedSlipUrl failed', { error: error.message });
+    return null;
+  }
+  return data.signedUrl;
+}
+
+// Seller (who owns the PromptPay account) confirms the money arrived. This is
+// the real verification step — it unlocks shipping. A SlipOK/EasySlip API call
+// could perform this automatically in the future.
+export async function confirmPaymentReceived(txId: string): Promise<void> {
+  const confirmedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from('transactions')
+    .update({ payment_confirmed: true, payment_confirmed_at: confirmedAt })
+    .eq('id', txId);
+  if (error) logger.warn('confirmPaymentReceived failed', { error: error.message });
+  const tx = TRANSACTIONS.find((t) => t.id === txId);
+  if (tx) {
+    tx.payment_confirmed = true;
+    tx.payment_confirmed_at = confirmedAt;
+    notifyPaymentConfirmed(tx.buyer_id, txId);
+  }
 }
 
 export async function createOrder(input: NewOrderInput): Promise<Transaction> {
@@ -416,6 +464,9 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
         delivery_method: input.delivery_method,
         shipping_address: input.shipping_address || null,
         seller_promptpay_id: input.listing.seller?.promptpay_id || null,
+        payment_slip_path: input.payment_slip_path || null,
+        payment_ref: input.payment_ref || null,
+        payment_confirmed: false,
       })
       .select('*')
       .single();
@@ -443,6 +494,9 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
       shipping_cost_thb: shipping,
       status: 'paid_in_escrow',
       delivery_method: input.delivery_method,
+      payment_slip_path: input.payment_slip_path || null,
+      payment_ref: input.payment_ref || null,
+      payment_confirmed: false,
       tracking_number: null,
       courier: null,
       shipped_at: null,
@@ -688,6 +742,17 @@ export function notifyOrderShipped(buyerId: string, orderId: string, courier: st
     type: 'shipment',
     title: 'Order shipped',
     message: `Your order has been shipped via ${courier}`,
+    link: `/order/${orderId}`,
+    read: false,
+  });
+}
+
+export function notifyPaymentConfirmed(buyerId: string, orderId: string) {
+  return createNotification({
+    user_id: buyerId,
+    type: 'order',
+    title: 'Payment confirmed',
+    message: 'The seller confirmed your payment. Your order is now protected by escrow.',
     link: `/order/${orderId}`,
     read: false,
   });

@@ -18,7 +18,7 @@ import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
-import { updateProfile, hydrateUserTransactions, hydrateUserOffers, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse } from '@/lib/api';
+import { updateProfile, hydrateUserTransactions, hydrateUserOffers, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived, getSignedSlipUrl } from '@/lib/api';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import OfferCard from '@/components/OfferCard';
 import { toast } from 'sonner';
@@ -57,6 +57,19 @@ export default function SellerDashboardPage() {
   };
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
+
+  const handleViewSlip = useCallback(async (path?: string) => {
+    if (!path) { toast.error('No payment slip on this order.'); return; }
+    const url = await getSignedSlipUrl(path);
+    if (url) window.open(url, '_blank', 'noopener');
+    else toast.error('Could not open the slip.');
+  }, []);
+
+  const handleConfirmPayment = useCallback(async (orderId: string) => {
+    await confirmPaymentReceived(orderId);
+    toast.success('Payment confirmed — you can now ship the order.');
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (tab && TABS_DEF.some(t => t.id === tab)) {
@@ -257,7 +270,24 @@ export default function SellerDashboardPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-full">{s.status}</span>
-                        {s.status === 'paid_in_escrow' && (
+                        {s.status === 'paid_in_escrow' && !s.payment_confirmed && (
+                          <>
+                            <span className="block text-[11px] text-amber-400 mt-1">Payment needs verification</span>
+                            <button
+                              onClick={() => handleViewSlip(s.payment_slip_path)}
+                              className="block mt-2 text-xs text-zinc-300 hover:text-white hover:underline"
+                            >View payment slip{s.payment_ref ? ` (ref ${s.payment_ref})` : ''}</button>
+                            <button
+                              onClick={() => handleConfirmPayment(s.id)}
+                              className="block mt-1 text-xs text-emerald-400 hover:underline"
+                            >Confirm payment received</button>
+                            <Link
+                              to={`/order/${s.id}`}
+                              className="block mt-1 text-xs text-zinc-500 hover:text-white"
+                            >View Order</Link>
+                          </>
+                        )}
+                        {s.status === 'paid_in_escrow' && s.payment_confirmed && (
                           <>
                             <button
                               onClick={() => setShipModalOrder(s.id)}

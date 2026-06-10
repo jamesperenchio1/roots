@@ -124,6 +124,10 @@ export interface Transaction {
   tracking_number?: string;
   courier?: string;
   shipment_photo_url?: string;
+  payment_slip_path?: string;
+  payment_ref?: string;
+  payment_confirmed?: boolean;
+  payment_confirmed_at?: string;
   delivery_method: DeliveryOption;
   shipped_at?: string;
   delivered_at?: string;
