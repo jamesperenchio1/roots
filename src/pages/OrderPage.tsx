@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2 } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2, MapPin } from 'lucide-react';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { updateOrderStatus, uploadDisputeEvidence, hasReviewed } from '@/lib/api';
@@ -181,6 +181,36 @@ export default function OrderPage() {
                 <span>{tx.courier}</span>
               </div>
               <p className="text-sm text-zinc-400">Tracking: {tx.tracking_number}</p>
+              {tx.shipment_photo_url && (
+                <div className="mt-3">
+                  <p className="text-xs text-zinc-500 mb-1.5">Photo at shipment</p>
+                  <a href={tx.shipment_photo_url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={tx.shipment_photo_url}
+                      alt="Packed shipment"
+                      className="w-full max-w-xs h-40 object-cover rounded-lg border border-white/10"
+                    />
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tx.delivery_method === 'pickup' && tx.listing?.pickup_lat != null && tx.listing?.pickup_lng != null && (
+            <div className="border-t border-white/5 pt-4">
+              <div className="flex items-center gap-2 text-sm mb-1">
+                <MapPin className="w-4 h-4 text-zinc-500" />
+                <span>Pickup location</span>
+              </div>
+              {tx.listing.pickup_location && <p className="text-sm text-zinc-400 mb-1">{tx.listing.pickup_location}</p>}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${tx.listing.pickup_lat},${tx.listing.pickup_lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-emerald-400 hover:underline"
+              >
+                Open exact pin in Maps →
+              </a>
             </div>
           )}
 

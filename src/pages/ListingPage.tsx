@@ -195,8 +195,11 @@ export default function ListingPage() {
               </div>
               {listing.pickup_province && (
                 <div className="flex items-center gap-3 text-sm text-zinc-400">
-                  <MapPin className="w-4 h-4" />
-                  <span>Pickup: {listing.pickup_province}</span>
+                  <MapPin className="w-4 h-4 shrink-0" />
+                  <span>
+                    Pickup: {listing.pickup_province}
+                    {listing.pickup_location && <span className="text-zinc-500"> · {listing.pickup_location}</span>}
+                  </span>
                 </div>
               )}
               <div className="flex items-center gap-3 text-sm text-zinc-400">

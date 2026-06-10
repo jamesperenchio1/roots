@@ -71,6 +71,9 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     delivery_options: (r.delivery_options as DeliveryOption[] | undefined) || ['ship'],
     shipping_cost_thb: (r.shipping_cost_thb as number | undefined) || undefined,
     pickup_province: (r.pickup_province as string | undefined) || undefined,
+    pickup_location: (r.pickup_location as string | undefined) || undefined,
+    pickup_lat: (r.pickup_lat as number | undefined) ?? undefined,
+    pickup_lng: (r.pickup_lng as number | undefined) ?? undefined,
     status: (r.status as Listing['status'] | undefined) || 'active',
     created_at: r.created_at as string,
     last_photo_update_at: (r.last_photo_update_at as string | undefined) || (r.created_at as string),
@@ -186,6 +189,9 @@ export interface NewListingInput {
   delivery_options: string[];
   shipping_cost_thb?: number;
   pickup_province?: string;
+  pickup_location?: string;
+  pickup_lat?: number;
+  pickup_lng?: number;
   photos: string[];
   tags?: string[];
 }
@@ -207,6 +213,9 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
       delivery_options: input.delivery_options,
       shipping_cost_thb: input.shipping_cost_thb,
       pickup_province: input.pickup_province,
+      pickup_location: input.pickup_location,
+      pickup_lat: input.pickup_lat,
+      pickup_lng: input.pickup_lng,
       image_url: input.photos[0] || null,
       photos: input.photos,
       tags: input.tags || [],

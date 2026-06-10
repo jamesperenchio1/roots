@@ -77,6 +77,9 @@ export interface Listing {
   delivery_options: DeliveryOption[];
   shipping_cost_thb?: number;
   pickup_province?: string;
+  pickup_location?: string;
+  pickup_lat?: number;
+  pickup_lng?: number;
   status: ListingStatus;
   created_at: string;
   last_photo_update_at: string;
@@ -120,6 +123,7 @@ export interface Transaction {
   omise_charge_id?: string;
   tracking_number?: string;
   courier?: string;
+  shipment_photo_url?: string;
   delivery_method: DeliveryOption;
   shipped_at?: string;
   delivered_at?: string;
