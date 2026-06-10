@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getTransactionsWithDetails, WATCHLIST, DISPUTES, SPECIES } from '@/data/mockData';
-import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers } from '@/lib/api';
+import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers, hydrateUserDisputes } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
@@ -55,6 +55,14 @@ export default function DashboardPage() {
     if (activeTab !== 'purchases' || !user) return;
     let cancelled = false;
     hydrateUserOffers().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
+    return () => { cancelled = true; };
+  }, [activeTab, user?.id]);
+
+  // Re-fetch disputes when the Disputes tab opens
+  useEffect(() => {
+    if (activeTab !== 'disputes' || !user) return;
+    let cancelled = false;
+    hydrateUserDisputes().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
     return () => { cancelled = true; };
   }, [activeTab, user?.id]);
 

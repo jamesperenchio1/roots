@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
 import { supabase } from '@/lib/supabase';
-import { mapProfile, hydrateUserTransactions, hydrateUserNotifications, hydrateUserOffers } from '@/lib/api';
+import { mapProfile, hydrateUserTransactions, hydrateUserNotifications, hydrateUserOffers, hydrateUserPriceAlerts, hydrateUserDisputes } from '@/lib/api';
 
 interface SignupInput {
   email: string;
@@ -64,6 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hydrateUserTransactions();
           hydrateUserNotifications(uid);
           hydrateUserOffers();
+          hydrateUserPriceAlerts();
+          hydrateUserDisputes();
         }
       }
     });
@@ -95,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await hydrateUserTransactions();
       await hydrateUserNotifications(p.id);
       await hydrateUserOffers();
+      await hydrateUserPriceAlerts();
+      await hydrateUserDisputes();
     }
     setIsLoading(false);
     return !!p;

@@ -2,9 +2,9 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircle, XCircle, Ban, Hammer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, SPECIES } from '@/data/mockData';
-import { updateOrderStatus } from '@/lib/api';
+import { updateOrderStatus, hydrateUserDisputes } from '@/lib/api';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isLocalAdmin } = useAuth();
@@ -77,6 +77,12 @@ function Overview() {
 
 function Disputes() {
   const [disputes, setDisputes] = useState(DISPUTES);
+
+  useEffect(() => {
+    let cancelled = false;
+    hydrateUserDisputes().then(() => { if (!cancelled) setDisputes([...DISPUTES]); });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleResolve = async (disputeId: string, resolution: 'buyer' | 'seller' | 'partial') => {
     const dispute = disputes.find(d => d.id === disputeId);

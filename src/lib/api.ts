@@ -3,8 +3,8 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, getListingByPlantId, MESSAGES, getListingById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Message } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, MESSAGES, getListingById } from '@/data/mockData';
+import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, Message } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 
@@ -146,9 +146,10 @@ let profileCache: Record<string, Profile> = {};
 
 export async function hydratePublicData(): Promise<void> {
   try {
-    const [{ data: profs }, { data: rows }] = await Promise.all([
+    const [{ data: profs }, { data: rows }, { data: reviewRows }] = await Promise.all([
       supabase.from('profiles').select('*'),
       supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }),
+      supabase.from('reviews').select('*').order('created_at', { ascending: false }),
     ]);
     profileCache = {};
     (profs || []).forEach((p) => {
@@ -157,6 +158,7 @@ export async function hydratePublicData(): Promise<void> {
       upsertById(USERS, mapped);
     });
     (rows || []).forEach((r) => upsertById(LISTINGS, mapListing(r, profileCache)));
+    (reviewRows || []).forEach((r) => upsertById(REVIEWS, mapReview(r)));
   } catch (e) {
     // Offline / not configured — fall back to seed-only catalog.
     logger.warn('hydratePublicData failed, using seed data only', { error: e instanceof Error ? e.message : String(e) });
@@ -228,6 +230,76 @@ export async function hydrateUserOffers(): Promise<void> {
     (data || []).forEach((r) => upsertById(OFFERS, mapOffer(r)));
   } catch (e) {
     logger.warn('hydrateUserOffers failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+function mapReview(r: DbRow): Review {
+  return {
+    id: r.id as string,
+    transaction_id: r.transaction_id as string,
+    listing_id: r.listing_id as string,
+    reviewer_id: r.reviewer_id as string,
+    seller_id: r.seller_id as string,
+    rating: r.rating as number,
+    comment: (r.comment as string) || '',
+    tags: (r.tags as string[]) || [],
+    created_at: r.created_at as string,
+    reviewer: USERS.find((u) => u.id === (r.reviewer_id as string)),
+  };
+}
+
+function mapPriceAlert(r: DbRow): PriceAlert {
+  return {
+    id: r.id as string,
+    user_id: r.user_id as string,
+    species_id: r.species_id as string,
+    size_category: (r.size_category as PriceAlert['size_category']) ?? undefined,
+    threshold_thb: r.threshold_thb as number,
+    direction: r.direction as PriceAlert['direction'],
+    triggered_at: (r.triggered_at as string | undefined) || undefined,
+    created_at: r.created_at as string,
+  };
+}
+
+export async function hydrateUserPriceAlerts(): Promise<void> {
+  // RLS limits the result to the caller's own alerts.
+  try {
+    const { data, error } = await supabase.from('price_alerts').select('*');
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(PRICE_ALERTS, mapPriceAlert(r)));
+  } catch (e) {
+    logger.warn('hydrateUserPriceAlerts failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+function mapDispute(r: DbRow): Dispute {
+  return {
+    id: r.id as string,
+    transaction_id: r.transaction_id as string,
+    opened_by: r.opened_by as Dispute['opened_by'],
+    reason: r.reason as Dispute['reason'],
+    description: (r.description as string) || '',
+    evidence_urls: (r.evidence_urls as string[]) || [],
+    status: r.status as Dispute['status'],
+    admin_notes: (r.admin_notes as string | undefined) || undefined,
+    resolution_amount_thb: (r.resolution_amount_thb as number | undefined) ?? undefined,
+    created_at: r.created_at as string,
+    resolved_at: (r.resolved_at as string | undefined) || undefined,
+  };
+}
+
+export async function hydrateUserDisputes(): Promise<void> {
+  // RLS returns disputes where the caller is a party to the transaction, or all
+  // disputes if the caller is an admin.
+  try {
+    const { data, error } = await supabase
+      .from('disputes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(DISPUTES, mapDispute(r)));
+  } catch (e) {
+    logger.warn('hydrateUserDisputes failed', { error: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -834,22 +906,26 @@ export function getUserPriceAlerts(userId: string): PriceAlert[] {
 export async function createPriceAlert(
   data: Omit<PriceAlert, 'id' | 'created_at'>
 ): Promise<PriceAlert> {
-  const alert: PriceAlert = {
-    ...data,
-    id: `pa-${crypto.randomUUID().slice(0, 8)}`,
-    created_at: new Date().toISOString(),
-  };
-  const { error } = await supabase.from('price_alerts').insert({
-    user_id: data.user_id,
-    species_id: data.species_id,
-    size_category: data.size_category || null,
-    threshold_thb: data.threshold_thb,
-    direction: data.direction,
-  });
+  // Insert and read back so the local copy uses the DB-generated id — otherwise
+  // a later hydrate duplicates the alert and delete (matched by id) misses.
+  const { data: row, error } = await supabase
+    .from('price_alerts')
+    .insert({
+      user_id: data.user_id,
+      species_id: data.species_id,
+      size_category: data.size_category || null,
+      threshold_thb: data.threshold_thb,
+      direction: data.direction,
+    })
+    .select('*')
+    .single();
   if (error) {
     logger.warn('createPriceAlert supabase failed, using local only', { error: error.message });
   }
-  PRICE_ALERTS.push(alert);
+  const alert: PriceAlert = row
+    ? mapPriceAlert(row)
+    : { ...data, id: `pa-${crypto.randomUUID().slice(0, 8)}`, created_at: new Date().toISOString() };
+  upsertById(PRICE_ALERTS, alert);
   return alert;
 }
 
