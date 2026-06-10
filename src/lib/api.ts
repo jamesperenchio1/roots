@@ -418,6 +418,35 @@ export async function getSignedSlipUrl(path: string): Promise<string | null> {
   return data.signedUrl;
 }
 
+// Ask the verify-slip edge function to auto-verify a slip via SlipOK. Returns:
+//  'verified' — SlipOK confirmed a genuine, amount-matching slip (the function
+//               already flipped payment_confirmed server-side);
+//  'failed'   — a slip was checked but didn't pass (amount/recipient/dup);
+//  'manual'   — SlipOK isn't configured or was unreachable; fall back to the
+//               seller's manual confirmation. Never throws.
+export async function requestSlipVerification(transactionId: string): Promise<'verified' | 'failed' | 'manual'> {
+  try {
+    const { data, error } = await supabase.functions.invoke('verify-slip', { body: { transactionId } });
+    if (error) {
+      logger.warn('verify-slip invoke failed', { error: error.message });
+      return 'manual';
+    }
+    const status = (data?.status as string) || 'manual';
+    if (status === 'verified') {
+      const tx = TRANSACTIONS.find((t) => t.id === transactionId);
+      if (tx) {
+        tx.payment_confirmed = true;
+        tx.payment_confirmed_at = new Date().toISOString();
+      }
+      return 'verified';
+    }
+    return status === 'failed' ? 'failed' : 'manual';
+  } catch (e) {
+    logger.warn('verify-slip threw', { error: e instanceof Error ? e.message : String(e) });
+    return 'manual';
+  }
+}
+
 // Seller (who owns the PromptPay account) confirms the money arrived. This is
 // the real verification step — it unlocks shipping. A SlipOK/EasySlip API call
 // could perform this automatically in the future.

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { getListingById, PLANT_IMAGES } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { createOrder, uploadPaymentSlip } from '@/lib/api';
+import { createOrder, uploadPaymentSlip, requestSlipVerification } from '@/lib/api';
 import { generatePromptPayQR } from '@/lib/promptpay';
 import { validateShippingAddress } from '@/lib/validation';
 
@@ -79,7 +79,15 @@ export default function CheckoutPage() {
         payment_slip_path: slipPath,
         payment_ref: refNumber.trim() || undefined,
       });
-      toast.success('Slip submitted — the seller will verify your payment, then ship.');
+      // Try automated SlipOK verification; falls back to manual seller confirm.
+      const verdict = await requestSlipVerification(tx.id);
+      if (verdict === 'verified') {
+        toast.success('Payment verified automatically — your order is protected by escrow.');
+      } else if (verdict === 'failed') {
+        toast.info("We couldn't auto-verify your slip; the seller will review it manually.");
+      } else {
+        toast.success('Slip submitted — the seller will verify your payment, then ship.');
+      }
       navigate(`/order/${tx.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not place the order.');

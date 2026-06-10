@@ -179,8 +179,14 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
   to a private `payment-slips` bucket (was previously discarded). The order is
   created `payment_confirmed=false`; the **seller** reviews the slip (signed URL)
   and confirms receipt against their own bank, which unlocks shipping. Closes the
-  one-click "I've paid" self-confirm hole. A SlipOK/EasySlip API could later
-  automate the seller's confirm step.
+  one-click "I've paid" self-confirm hole.
+- ✅ **Automated SlipOK verification** — the `verify-slip` edge function (called
+  from checkout) downloads the slip, sends it to SlipOK, and on a genuine,
+  amount-matching slip flips `payment_confirmed` server-side (service role) so no
+  seller action is needed. Gated behind `SLIPOK_*` secrets; without them it
+  returns `manual` and the seller-confirm path is used. A DB trigger
+  (`guard_payment_confirmed`) ensures only the seller or the edge function — not
+  the buyer — can set `payment_confirmed`.
 
 **Next up (suggestions):**
 
@@ -204,11 +210,16 @@ review for this cluster). Each Vercel preview/prod deploy is automatic.
 - [ ] Create the **missing tables** above with proper RLS + hydration
 - [ ] Storage buckets exist/public with a 5MB limit (`listing-photos`)
 - [ ] Tighten RLS policies (esp. `updateProfile`); add RLS policy tests
-- [x] **PromptPay trust model:** buyer uploads a required payment slip; the
-      seller verifies it against their bank and confirms receipt before shipping.
-      *Next:* automate confirmation with a SlipOK/EasySlip API call (the seller's
-      "Confirm payment received" action is the integration point), and tighten
-      the `payment-slips` storage SELECT policy to the two transaction parties.
+- [x] **PromptPay trust model:** buyer uploads a required payment slip; it is
+      auto-verified via SlipOK when configured, else the seller confirms receipt
+      manually before shipping. `payment_confirmed` is protected by a DB trigger
+      (only the seller or the service-role edge function may set it — the buyer
+      cannot forge it).
+      - **To enable auto-verification:** set `SLIPOK_BRANCH_ID` and
+        `SLIPOK_API_KEY` as secrets on the `verify-slip` edge function. Until
+        then it returns `manual` and the seller-confirm flow is used.
+      - *Next:* tighten the `payment-slips` storage SELECT policy to the two
+        transaction parties; consider EasySlip/RDCW as alternative providers.
 - [ ] Enable email verification (pilot auto-confirms accounts)
 - [ ] Hide `loginAsLocalAdmin()` dev bypass before public launch
 - [ ] Configure Supabase auth email templates + Storage CORS + custom domain
