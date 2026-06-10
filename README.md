@@ -97,22 +97,18 @@ uploads (listing photos, shipment photos, dispute evidence).
 | `watchlist`    | user_id, watch_type, target_id |
 | `notifications`| user_id, type, title, message, link, read — RLS owner-only read/update/delete, any-authenticated insert. Hydrated per-user at login; bell/panel react via an external store |
 | `offers`       | listing/buyer/seller, offer_price_thb, message, status, counter_price_thb — RLS both-parties read, buyer-only insert, either-party update. Hydrated at login + on dashboard tabs |
+| `reviews`      | transaction/listing/reviewer/seller, rating, comment, tags — RLS public read, author-only write. Hydrated for all sellers at boot (shown on public pages) |
+| `price_alerts` | user_id, species_id, size_category, threshold_thb, direction — RLS owner-only. Hydrated per-user at login |
+| `disputes`     | transaction_id, opened_by, reason, description, evidence_urls, status, admin_notes, resolution_amount_thb — RLS parties-or-admin read, party insert, admin-only resolve. Hydrated at login + admin view |
 
-### Tables the code USES but that DO NOT EXIST yet ⚠️
+### All code-referenced tables now exist ✅
 
-`src/lib/api.ts` calls `.from(...)` on these, wrapped in try/catch that logs a
-warning and falls back to the in-memory array. **Create these (with RLS + a
-hydration path) to make the corresponding feature durable:**
-
-| Missing table  | Feature it backs              | UI status |
-| -------------- | ----------------------------- | --------- |
-| `reviews`      | Seller reviews                | UI built (`ReviewForm`, `ReviewSection`) |
-| `price_alerts` | Price-drop alerts             | UI built (in dashboard) |
-| `disputes`     | Dispute resolution            | UI built (`DisputePage`) |
-
-> `offers` and `notifications` previously lived here and are now **durable** —
-> use them as the reference pattern (create table + RLS, add `hydrate*` in
-> `api.ts`, call it from `useAuth`/the relevant page) when wiring up the rest.
+Every table that `src/lib/api.ts` writes to is now real and durable. The
+reference pattern for adding any future persistent feature is: **create the
+table (+RLS) → add a `map*` + `hydrate*` in `api.ts` → call `hydrate*` from
+`useAuth` (per-user) or `hydratePublicData` (public) and/or the relevant page
+when its tab opens.** The `transfers` array (provenance chain) is the only
+remaining in-memory-only structure and is derived, not user-written.
 
 > Migrations are applied via the Supabase MCP `apply_migration` tool against
 > project `daacilgagkphafpjdcte`. There is no local `supabase/migrations/`
@@ -176,14 +172,19 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
   DB id so respond/withdraw target the right row after a reload.
 - ✅ **Bundle optimization** — split `react` and `@supabase/supabase-js` into
   separate cacheable vendor chunks; app chunk ~540KB → ~294KB.
+- ✅ **Durable reviews / price_alerts / disputes** — the last three ephemeral
+  features now persist (tables + RLS + hydration). All social features survive
+  reload.
 
-**Next up:**
+**Next up (suggestions):**
 
-1. Make `reviews`, `price_alerts`, and `disputes` durable using the same
-   "create table (+RLS) + `hydrate*` + call from `useAuth`/page" pattern that
-   `offers`/`notifications` now demonstrate.
-2. Further perf: the largest remaining chunk is `recharts` (~415KB) — consider a
-   lighter charting lib or lazy-mounting charts below the fold.
+1. Tighten the production checklist items below (email verification, admin
+   bypass, storage-bucket listing policy, PromptPay slip verification).
+2. Perf: the largest remaining chunk is `recharts` (~415KB) — consider a lighter
+   charting lib or lazy-mounting charts below the fold.
+3. Optional realtime: `notifications`/`offers` could use Supabase realtime
+   subscriptions (like the seller-transactions channel) for live updates without
+   a reload.
 
 **Workflow note:** development happens on `claude/exciting-allen-2j8tm2`, and
 finished features are pushed **directly to `main`** (the owner opted out of PR
