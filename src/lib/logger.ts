@@ -1,8 +1,9 @@
 /**
  * Simple structured logger.
- * In production, this should be wired to an error tracking service
- * (e.g. Sentry, LogRocket, or a custom endpoint).
+ * Errors and warnings are forwarded to Sentry when a DSN is configured.
  */
+
+import { Scope, captureException, captureMessage } from '@sentry/react';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -14,7 +15,17 @@ interface LogEntry {
   error?: Error;
 }
 
-const isDev = import.meta.env.DEV;
+function envBool(value: unknown): boolean {
+  return value === true || value === 'true';
+}
+
+function isDev(): boolean {
+  return envBool(import.meta.env.DEV);
+}
+
+function sentryEnabled(): boolean {
+  return !isDev() && Boolean(import.meta.env.VITE_SENTRY_DSN);
+}
 
 class Logger {
   private buffer: LogEntry[] = [];
@@ -40,18 +51,18 @@ class Logger {
       console.error(prefix, message, context || '', error || '');
     } else if (level === 'warn') {
       console.warn(prefix, message, context || '');
-    } else if (isDev) {
+    } else if (isDev()) {
       console.log(prefix, message, context || '');
     }
 
-    // In production, send errors to tracking service
-    if (!isDev && level === 'error') {
-      this.sendToRemote(entry);
+    // Forward to Sentry
+    if (sentryEnabled()) {
+      this.sendToSentry(entry);
     }
   }
 
   debug(message: string, context?: Record<string, unknown>) {
-    if (isDev) this.log('debug', message, context);
+    if (isDev()) this.log('debug', message, context);
   }
 
   info(message: string, context?: Record<string, unknown>) {
@@ -70,10 +81,21 @@ class Logger {
     return [...this.buffer];
   }
 
-  private sendToRemote(entry: LogEntry) {
-    // TODO: Wire to Sentry, LogRocket, or custom endpoint
-    // fetch('/api/log', { method: 'POST', body: JSON.stringify(entry) });
-    console.warn('[Logger] Remote logging not configured', entry);
+  private sendToSentry(entry: LogEntry) {
+    try {
+      const scope = new Scope();
+      if (entry.context) scope.setContext('logger', entry.context);
+      if (entry.level === 'error') {
+        captureException(entry.error || new Error(entry.message), scope);
+      } else if (entry.level === 'warn') {
+        captureMessage(entry.message, { level: 'warning', extra: entry.context });
+      } else {
+        captureMessage(entry.message, { level: entry.level, extra: entry.context });
+      }
+    } catch (e) {
+      // Fail silently so logging never crashes the app.
+      console.warn('[Logger] Sentry send failed', e);
+    }
   }
 }
 

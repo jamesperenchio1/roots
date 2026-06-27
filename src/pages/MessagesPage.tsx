@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageSquare, Send, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { getUserThreads, getThreadMessages, sendMessage, markThreadRead } from '@/lib/api';
+import { getUserThreads, getThreadMessages, sendMessage, markThreadRead, hydrateUserMessages } from '@/lib/api';
 import { getListingById, getUserById } from '@/data/mockData';
 import type { Message } from '@/types';
 import { toast } from 'sonner';
@@ -49,15 +49,25 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Keep threads in sync when user changes
+  // Hydrate messages when the user is known, then keep threads in sync.
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+    let cancelled = false;
+    setLoading(true);
+    hydrateUserMessages(user.id).then(() => {
+      if (cancelled) return;
       setThreads(getUserThreads(user.id));
-    }
-  }, [user?.id]);
+      if (threadId) {
+        setMessages(getThreadMessages(threadId));
+      }
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, threadId]);
 
   // Load messages for active thread and mark as read
   useEffect(() => {
@@ -189,7 +199,13 @@ export default function MessagesPage() {
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {threads.length === 0 ? (
+          {loading && threads.length === 0 && (
+            <div className="text-center py-12 px-4">
+              <MessageSquare className="w-8 h-8 text-zinc-600 mx-auto mb-3 animate-pulse" />
+              <p className="text-zinc-500 text-sm">Loading conversations…</p>
+            </div>
+          )}
+          {!loading && threads.length === 0 ? (
             <div className="text-center py-12 px-4">
               <MessageSquare className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
               <p className="text-zinc-500 text-sm mb-2">No conversations yet</p>

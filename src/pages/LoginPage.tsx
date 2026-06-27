@@ -98,18 +98,20 @@ export default function LoginPage() {
           <Link to={`/signup${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">Sign up</Link>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/5">
-          <button
-            onClick={handleLocalAdmin}
-            className="w-full flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-3 rounded-lg text-sm hover:bg-amber-500/20 transition-colors"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            Dev: Login as Local Admin
-          </button>
-          <p className="text-xs text-zinc-600 text-center mt-2">
-            This bypass is only available in development mode.
-          </p>
-        </div>
+        {import.meta.env.DEV && (
+          <div className="mt-8 pt-6 border-t border-white/5">
+            <button
+              onClick={handleLocalAdmin}
+              className="w-full flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-3 rounded-lg text-sm hover:bg-amber-500/20 transition-colors"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Dev: Login as Local Admin
+            </button>
+            <p className="text-xs text-zinc-600 text-center mt-2">
+              This bypass is only available in development mode.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

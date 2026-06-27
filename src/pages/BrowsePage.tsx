@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
+import { subscribeListings, getListingsVersion } from '@/lib/api';
 
 function seededRandom(seed: string, index: number): number {
   let hash = 0;
@@ -12,6 +13,7 @@ import { Sparkline } from '@/components/PriceChart';
 import { usePagination } from '@/hooks/usePagination';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import { LazyImage } from '@/components/LazyImage';
+import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
 import type { Category, SizeCategory } from '@/types';
 
 const CATEGORIES: { value: Category | ''; label: string }[] = [
@@ -48,6 +50,9 @@ export default function BrowsePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const q = (searchParams.get('q') || '').toLowerCase().trim();
+
+  // Re-render when realtime listings change.
+  useSyncExternalStore(subscribeListings, getListingsVersion);
 
   // Simulate data loading for skeleton demo (removes after mount)
   useEffect(() => {
@@ -195,6 +200,8 @@ export default function BrowsePage() {
               >
                 <LazyImage
                   src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                  srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
+                  sizes={CARD_SIZES}
                   alt={listing.species?.scientific_name || 'Plant listing'}
                   aspectRatio="3/4"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"

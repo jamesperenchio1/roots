@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getTransactionsWithDetails, WATCHLIST, DISPUTES, SPECIES } from '@/data/mockData';
-import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers, hydrateUserDisputes } from '@/lib/api';
+import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers, hydrateUserDisputes, hydrateUserMessages, subscribeOffers, getOffersVersion } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
@@ -30,6 +30,9 @@ export default function DashboardPage() {
   const [localWatchlist, setLocalWatchlist] = useState(WATCHLIST.filter(w => w.user_id === user?.id));
   const [offersRefreshKey, setOffersRefreshKey] = useState(0);
   const [priceAlerts, setPriceAlerts] = useState(() => getUserPriceAlerts(user?.id || ''));
+
+  // Re-render when realtime offers change.
+  useSyncExternalStore(subscribeOffers, getOffersVersion);
 
   useEffect(() => {
     if (tab && TABS.some(t => t.id === tab)) {
@@ -63,6 +66,14 @@ export default function DashboardPage() {
     if (activeTab !== 'disputes' || !user) return;
     let cancelled = false;
     hydrateUserDisputes().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
+    return () => { cancelled = true; };
+  }, [activeTab, user?.id]);
+
+  // Re-fetch messages when the Messages tab opens
+  useEffect(() => {
+    if (activeTab !== 'messages' || !user) return;
+    let cancelled = false;
+    hydrateUserMessages(user.id).then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
     return () => { cancelled = true; };
   }, [activeTab, user?.id]);
 

@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { logger } from './logger';
 
 describe('logger', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('logs info messages', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     logger.info('test message', { key: 'value' });

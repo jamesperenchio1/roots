@@ -10,6 +10,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import ScrollToTop from '@/components/ScrollToTop';
 import AuthGuard from '@/components/AuthGuard';
 import AdminGuard from '@/components/AdminGuard';
+import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const BrowsePage = lazy(() => import('@/pages/BrowsePage'));
@@ -113,6 +114,7 @@ function AppContent() {
       <Footer />
       <Toaster />
       <ScrollToTop />
+      <PwaUpdatePrompt />
     </div>
   );
 }

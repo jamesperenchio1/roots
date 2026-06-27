@@ -1,7 +1,20 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
 import { supabase } from '@/lib/supabase';
-import { mapProfile, hydrateUserTransactions, hydrateUserNotifications, hydrateUserOffers, hydrateUserPriceAlerts, hydrateUserDisputes } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import {
+  mapProfile,
+  hydrateUserTransactions,
+  hydrateUserNotifications,
+  hydrateUserOffers,
+  hydrateUserPriceAlerts,
+  hydrateUserDisputes,
+  hydrateUserMessages,
+  subscribeToNotifications,
+  subscribeToOffers,
+  subscribeToListings,
+  subscribeToTransactions,
+} from '@/lib/api';
 
 interface SignupInput {
   email: string;
@@ -23,6 +36,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ ok: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   isLoading: boolean;
+  isRestoring: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -37,6 +51,7 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => ({ ok: false }),
   updatePassword: async () => ({ ok: false }),
   isLoading: false,
+  isRestoring: true,
 });
 
 async function fetchProfile(id: string): Promise<Profile | null> {
@@ -48,10 +63,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [isLocalAdmin, setIsLocalAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   // Restore an existing session on load and react to auth changes.
   const isLocalAdminRef = useRef(isLocalAdmin);
   isLocalAdminRef.current = isLocalAdmin;
+
+  const startSubscriptions = useCallback((uid: string) => {
+    unsubscribeRef.current?.();
+    const unsubs: (() => void)[] = [
+      subscribeToNotifications(uid),
+      subscribeToOffers(uid),
+      subscribeToListings(),
+      subscribeToTransactions(uid),
+    ];
+    unsubscribeRef.current = () => unsubs.forEach((u) => u());
+  }, []);
+
+  const stopSubscriptions = useCallback(() => {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -66,22 +99,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hydrateUserOffers();
           hydrateUserPriceAlerts();
           hydrateUserDisputes();
+          hydrateUserMessages(uid);
+          startSubscriptions(uid);
         }
       }
+      if (active) setIsRestoring(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const p = await fetchProfile(session.user.id);
-        if (p) setUser(p);
+        if (p) {
+          setUser(p);
+          startSubscriptions(session.user.id);
+        }
       } else if (!isLocalAdminRef.current) {
         setUser(null);
+        stopSubscriptions();
       }
     });
     return () => {
       active = false;
       sub.subscription.unsubscribe();
+      stopSubscriptions();
     };
-  }, []);
+  }, [startSubscriptions, stopSubscriptions]);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -99,6 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await hydrateUserOffers();
       await hydrateUserPriceAlerts();
       await hydrateUserDisputes();
+      await hydrateUserMessages(p.id);
+      startSubscriptions(p.id);
     }
     setIsLoading(false);
     return !!p;
@@ -142,6 +185,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginAsLocalAdmin = useCallback(() => {
+    if (!import.meta.env.DEV) {
+      logger.warn('loginAsLocalAdmin blocked in production');
+      return;
+    }
     const adminUser: Profile = {
       id: 'local-admin',
       display_name: 'Local Dev Admin',
@@ -161,7 +208,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.signOut();
     setUser(null);
     setIsLocalAdmin(false);
-  }, []);
+    stopSubscriptions();
+  }, [stopSubscriptions]);
 
   const refreshProfile = useCallback(async () => {
     if (user && !isLocalAdmin) {
@@ -182,7 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     updatePassword,
     isLoading,
-  }), [user, isLocalAdmin, login, signup, loginAsLocalAdmin, logout, refreshProfile, resetPassword, updatePassword, isLoading]);
+    isRestoring,
+  }), [user, isLocalAdmin, login, signup, loginAsLocalAdmin, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 
 function seededRandom(seed: string, index: number): number {
   let hash = 0;
@@ -18,7 +18,7 @@ import {
   getActiveListings, getTransactionsWithDetails, PLANT_IMAGES, USERS,
   getSpeciesPriceStats
 } from '@/data/mockData';
-import { updateProfile, hydrateUserTransactions, hydrateUserOffers, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived, getSignedSlipUrl } from '@/lib/api';
+import { updateProfile, hydrateUserTransactions, hydrateUserOffers, withdrawListing, getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived, getSignedSlipUrl, subscribeOffers, getOffersVersion } from '@/lib/api';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import OfferCard from '@/components/OfferCard';
 import { toast } from 'sonner';
@@ -41,6 +41,9 @@ export default function SellerDashboardPage() {
   const [activeTab, setActiveTab] = useState(tab && TABS_DEF.some(t => t.id === tab) ? tab : 'listings');
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Re-render when realtime offers change.
+  useSyncExternalStore(subscribeOffers, getOffersVersion);
   const [shipModalOrder, setShipModalOrder] = useState<string | null>(null);
   const [withdrawConfirm, setWithdrawConfirm] = useState<string | null>(null);
   const [qrChecklist, setQrChecklist] = useState<Record<string, boolean>>(() => {

@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { Leaf, RefreshCw, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 
 interface Props {
   children: ReactNode;
@@ -24,7 +25,9 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
-    // In production, send to error tracking service here
+    if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+      Sentry.captureException(error, { contexts: { react: errorInfo as unknown as Record<string, unknown> } });
+    }
   }
 
   render() {

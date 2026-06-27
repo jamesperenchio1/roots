@@ -17,6 +17,7 @@ import MakeOfferModal from '@/components/MakeOfferModal';
 import ShareButtons from '@/components/ShareButtons';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import ProvenanceInfo from '@/components/ProvenanceInfo';
+import { getSrcSet, RESPONSIVE_WIDTHS, HERO_SIZES } from '@/lib/images';
 
 export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
@@ -105,6 +106,8 @@ export default function ListingPage() {
               >
                 <img
                   src={mainImage}
+                  srcSet={getSrcSet(mainImage, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
+                  sizes={HERO_SIZES}
                   alt={listing.species?.scientific_name || 'Plant listing'}
                   className="w-full h-full object-cover"
                 />
@@ -148,7 +151,7 @@ export default function ListingPage() {
                   onClick={() => setActiveImage(i)}
                   className={`relative aspect-square rounded-lg overflow-hidden bg-zinc-800 transition-all ${activeImage === i ? 'ring-2 ring-emerald-500 opacity-100' : 'opacity-70 hover:opacity-100'}`}
                 >
-                  <img src={src} alt={`Gallery image ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img src={src} srcSet={getSrcSet(src, { widths: [96, 192, 384], resize: 'cover' })} sizes="96px" alt={`Gallery image ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   {i === 0 && qrUrl && (
                     <span className="absolute bottom-1 left-1 bg-purple-500/80 text-[9px] text-white px-1 rounded">QR</span>
                   )}
@@ -325,6 +328,8 @@ export default function ListingPage() {
           </button>
           <img
             src={mainImage}
+            srcSet={getSrcSet(mainImage, { widths: RESPONSIVE_WIDTHS, resize: 'contain' })}
+            sizes={HERO_SIZES}
             alt={listing?.species?.scientific_name || 'Plant listing'}
             onClick={(e) => e.stopPropagation()}
             className="max-h-[90vh] max-w-[92vw] object-contain rounded-lg"

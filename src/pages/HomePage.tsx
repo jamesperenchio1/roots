@@ -1,9 +1,11 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, TrendingUp, Shield, Search, CreditCard, Clock } from 'lucide-react';
 import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES, getListingById } from '@/data/mockData';
+import { subscribeListings, getListingsVersion } from '@/lib/api';
 import { PriceChart } from '@/components/PriceChart';
 import { LazyImage } from '@/components/LazyImage';
+import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 export default function HomePage() {
@@ -11,9 +13,12 @@ export default function HomePage() {
   const [listings, setListings] = useState(() => getActiveListings().slice(0, 8));
   const market = getMarketOverview();
 
+  // Re-render when realtime listings change.
+  const listingsVersion = useSyncExternalStore(subscribeListings, getListingsVersion);
+
   useEffect(() => {
     setListings(getActiveListings().slice(0, 8));
-  }, []);
+  }, [listingsVersion]);
   const { getRecentlyViewed } = useRecentlyViewed();
   const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
   const recentlyViewed = recentlyViewedIds.map(id => getListingById(id)).filter(Boolean);
@@ -94,6 +99,8 @@ export default function HomePage() {
                 <Link to={`/listing/${listing!.id}`} key={listing!.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
                   <LazyImage
                     src={listing!.photos?.[0]?.storage_path || PLANT_IMAGES[listing!.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                    srcSet={getSrcSet(listing!.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
+                    sizes={CARD_SIZES}
                     alt={listing!.species?.scientific_name || 'Plant listing'}
                     aspectRatio="3/4"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
@@ -141,6 +148,8 @@ export default function HomePage() {
               <Link to={`/listing/${listing.id}`} key={listing.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
                 <LazyImage
                   src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                  srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
+                  sizes={CARD_SIZES}
                   alt={listing.species?.scientific_name || 'Plant listing'}
                   aspectRatio="3/4"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2, MapPin } from 'lucide-react';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
+import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { updateOrderStatus, uploadDisputeEvidence, hasReviewed } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -161,7 +162,7 @@ export default function OrderPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} alt={tx.listing?.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} srcSet={getSrcSet(tx.listing?.photos?.[0]?.storage_path, { widths: [64, 128, 256], resize: 'cover' })} sizes="64px" alt={tx.listing?.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || 'Your plant'}</p>
@@ -203,6 +204,8 @@ export default function OrderPage() {
                   <a href={tx.shipment_photo_url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={tx.shipment_photo_url}
+                      srcSet={getSrcSet(tx.shipment_photo_url, { widths: [320, 640], resize: 'cover' })}
+                      sizes="320px"
                       alt="Packed shipment"
                       className="w-full max-w-xs h-40 object-cover rounded-lg border border-white/10"
                     />

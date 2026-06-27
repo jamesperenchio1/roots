@@ -836,6 +836,139 @@ export function getProfileFromCache(id: string): Profile | undefined {
   return profileCache[id];
 }
 
+// ---------- realtime subscriptions ----------
+// Single active channels per topic so repeated logins don't leak subscriptions.
+const realtimeChannels: Record<string, ReturnType<typeof supabase.channel>> = {};
+
+function ensureRealtimeChannel(key: string, builder: () => ReturnType<typeof supabase.channel>): () => void {
+  if (realtimeChannels[key]) {
+    supabase.removeChannel(realtimeChannels[key]);
+  }
+  const channel = builder();
+  realtimeChannels[key] = channel;
+  return () => {
+    supabase.removeChannel(channel);
+    if (realtimeChannels[key] === channel) delete realtimeChannels[key];
+  };
+}
+
+export function subscribeToNotifications(userId: string): () => void {
+  return ensureRealtimeChannel(`notifications-${userId}`, () =>
+    supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const n = payload.new as Notification;
+            upsertById(NOTIFICATIONS, n);
+          } else if (payload.eventType === 'UPDATE') {
+            const n = payload.new as Notification;
+            const local = NOTIFICATIONS.find(x => x.id === n.id);
+            if (local) Object.assign(local, n);
+            else NOTIFICATIONS.push(n);
+          } else if (payload.eventType === 'DELETE') {
+            const id = (payload.old as Notification).id;
+            const idx = NOTIFICATIONS.findIndex(n => n.id === id);
+            if (idx >= 0) NOTIFICATIONS.splice(idx, 1);
+          }
+          bumpNotifications();
+        }
+      )
+      .subscribe()
+  );
+}
+
+// External store for offers (mirrors the notifications pattern).
+let offersVersion = 0;
+const offerListeners = new Set<() => void>();
+function bumpOffers() {
+  offersVersion++;
+  offerListeners.forEach((l) => l());
+}
+export function subscribeOffers(cb: () => void): () => void {
+  offerListeners.add(cb);
+  return () => { offerListeners.delete(cb); };
+}
+export function getOffersVersion(): number {
+  return offersVersion;
+}
+
+export function subscribeToOffers(userId: string): () => void {
+  return ensureRealtimeChannel(`offers-${userId}`, () =>
+    supabase
+      .channel(`offers-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'offers', filter: `buyer_id=eq.${userId}` },
+        () => { hydrateUserOffers().then(() => bumpOffers()); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'offers', filter: `seller_id=eq.${userId}` },
+        () => { hydrateUserOffers().then(() => bumpOffers()); }
+      )
+      .subscribe()
+  );
+}
+
+// External store for listings so Browse/Home/Market react to new/updated listings.
+let listingsVersion = 0;
+const listingListeners = new Set<() => void>();
+function bumpListings() {
+  listingsVersion++;
+  listingListeners.forEach((l) => l());
+}
+export function subscribeListings(cb: () => void): () => void {
+  listingListeners.add(cb);
+  return () => { listingListeners.delete(cb); };
+}
+export function getListingsVersion(): number {
+  return listingsVersion;
+}
+
+export function subscribeToListings(): () => void {
+  return ensureRealtimeChannel('listings-global', () =>
+    supabase
+      .channel('listings-global')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'listings' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const row = payload.new as Record<string, unknown>;
+            upsertById(LISTINGS, mapListing(row, profileCache));
+          } else if (payload.eventType === 'DELETE') {
+            const id = (payload.old as Record<string, unknown>).id as string;
+            const idx = LISTINGS.findIndex(l => l.id === id);
+            if (idx >= 0) LISTINGS.splice(idx, 1);
+          }
+          bumpListings();
+        }
+      )
+      .subscribe()
+  );
+}
+
+export function subscribeToTransactions(userId: string): () => void {
+  return ensureRealtimeChannel(`transactions-${userId}`, () =>
+    supabase
+      .channel(`transactions-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `buyer_id=eq.${userId}` },
+        () => { hydrateUserTransactions(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `seller_id=eq.${userId}` },
+        () => { hydrateUserTransactions(); }
+      )
+      .subscribe()
+  );
+}
+
 // ---------- reviews ----------
 export function getReviewsBySeller(sellerId: string): Review[] {
   return REVIEWS.filter((r) => r.seller_id === sellerId).map((r) => ({
@@ -1038,6 +1171,38 @@ export function checkPriceAlerts(speciesId: string, currentPrice: number): Price
     if (pa.direction === 'below') return currentPrice <= pa.threshold_thb;
     return currentPrice >= pa.threshold_thb;
   });
+}
+
+function mapMessage(r: DbRow): Message {
+  const senderId = r.sender_id as string;
+  return {
+    id: r.id as string,
+    thread_id: r.thread_id as string,
+    sender_id: senderId,
+    recipient_id: r.recipient_id as string,
+    listing_id: (r.listing_id as string | undefined) || undefined,
+    content: (r.content as string) || '',
+    flagged_contact_info: !!r.flagged_contact_info,
+    created_at: r.created_at as string,
+    read_at: (r.read_at as string | undefined) || undefined,
+    sender: profileCache[senderId] || USERS.find(u => u.id === senderId),
+  };
+}
+
+export async function hydrateUserMessages(userId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    // Insert in chronological order so upsertById is stable.
+    (data || []).reverse().forEach((r) => upsertById(MESSAGES, mapMessage(r)));
+  } catch (e) {
+    logger.warn('hydrateUserMessages failed', { error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 // ---------- messaging ----------

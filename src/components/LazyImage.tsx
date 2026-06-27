@@ -5,6 +5,8 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   containerClassName?: string;
   aspectRatio?: string;
   priority?: boolean;
+  srcSet?: string;
+  sizes?: string;
 }
 
 export function LazyImage({
@@ -14,6 +16,8 @@ export function LazyImage({
   containerClassName,
   aspectRatio,
   priority = false,
+  srcSet,
+  sizes,
   style,
   ...props
 }: LazyImageProps) {
@@ -30,6 +34,8 @@ export function LazyImage({
       {!loaded && <div className="absolute inset-0 animate-pulse bg-zinc-800" />}
       <img
         src={src}
+        srcSet={srcSet}
+        sizes={sizes}
         alt={alt}
         loading={priority ? 'eager' : 'lazy'}
         decoding={priority ? 'auto' : 'async'}
