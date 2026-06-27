@@ -1,98 +1,91 @@
 # Production Readiness Report — Root Plant Market
 
-**Date:** 2026-06-03
-**Commit:** `main` (post-refactor)
-**Score:** 82/100
+**Date:** 2026-06-28
+**Commit:** `d294a8e` on `main`
+**Score:** 88/100
 
 ---
 
-## What Was Fixed
+## Summary
 
-### Authentication & Security (P0)
-- **Password reset flow** — Added `/forgot-password` and `/reset-password` pages wired to Supabase auth
-- **Auth redirect with return URL** — `AuthGuard` preserves the intended destination; after login/signup, users are redirected back instead of dropped on the home page
-- **Input sanitization** — Added `sanitizeText()` helper; applied to descriptions, contact forms, display names, and all Supabase writes
-- **File upload validation** — `validateImageFile()` enforces image type (JPEG/PNG/WebP) and 5MB size limit before any Supabase Storage upload
-- **Shipping address validation** — `validateShippingAddress()` with phone format checking on checkout
-- **Supabase credential warning** — Warns in console if fallback credentials are used in production
-- **Password visibility toggle** — Added show/hide on login and signup forms
-
-### Critical Bugs (P0)
-- **OrderPage status polling** — Re-fetches transaction from Supabase every 10s so buyers see real-time status updates after seller marks shipped
-- **SellerDashboard reload removed** — Replaced `window.location.reload()` with React state refresh after marking as shipped
-- **HomePage species ID** — Fixed `sp-aroid-2` (nonexistent) to `sp-1` (Monstera Thai Constellation)
-- **Admin dispute resolution** — "Rule for Buyer/Seller/Partial" buttons now actually call `updateOrderStatus` and update local state
-- **Admin user management** — Strike and Ban buttons are now functional with local state updates
-- **Dashboard watchlist** — Remove button is wired to `toggleWatch()` API
-- **Dashboard messages** — Now filters to threads where the current user is sender or recipient
-- **Contact form** — Now validates inputs, shows loading state, and logs sanitized data (ready for backend integration)
-- **Seller settings persistence** — Settings tab in SellerDashboard now calls `updateProfile()` and refreshes auth context
-
-### Error Handling & Reliability (P0/P1)
-- **Error Boundary** — `ErrorBoundary.tsx` catches React render errors anywhere in the tree, shows friendly fallback with refresh/go-home buttons
-- **Boot error state** — `BootGate` now shows a retry UI if `hydratePublicData()` fails, but still renders the app so offline seed data works
-- **Scroll restoration** — `ScrollToTop` component resets scroll position on every route change
-- **Mobile menu close on nav** — Navbar mobile menu automatically closes when route changes
-
-### Performance (P1)
-- **Code splitting** — Added manual chunks for `recharts` (427KB) and radix primitives; main chunk reduced from 1,301KB → 869KB
-- **Bundle warning threshold** — Raised to 900KB to reflect realistic React SPA size
-
-### Pagination & UX (P1)
-- **BrowsePage pagination** — Virtual pagination with 12 items per page and "Load More" button; prevents performance degradation at scale
-- **Loading skeletons** — `Skeleton`, `ListingCardSkeleton`, `ListingRowSkeleton` components for graceful loading states
-- **Search debounce hook** — `useDebounce` for future search-as-you-type functionality
-- **Seller analytics from real data** — Dashboard analytics tab now derives views, watches, conversion rate, and sales-by-category from actual listing and transaction data instead of hardcoded placeholders
-- **Monthly sales chart from real data** — Performance tab monthly trend uses real transaction timestamps
-- **Top buyers from real data** — Performance tab top buyers computed from actual sales history
-
-### Testing (P1)
-- **Vitest + jsdom setup** — Added test runner, 38 tests passing across:
-  - `validation.test.ts` — sanitization, email, PromptPay ID, image file, price, address validation
-  - `promptpay.test.ts` — CRC16 checksum, PromptPay payload generation
-  - `ErrorBoundary.test.tsx` — error catching and fallback UI rendering
-  - `logger.test.ts` — log buffering and output
-  - `useDebounce.test.ts` — debounced value updates, timer reset on rapid changes
-  - `usePagination.test.ts` — page slicing, load more, reset, empty array handling
-  - `Skeleton.test.tsx` — component rendering and className application
-
-### UX Polish (P1/P2)
-- **Password reset pages** — Full forgot-password and set-new-password flows with validation
-- **Checkout address validation** — Real-time error messages on each field
-- **Empty states** — Added empty-state messages for watchlist, messages, plants, disputes
-- **Loading states** — Contact form and seller settings show saving spinners
-- **Image upload feedback** — Toast errors for invalid file types/sizes during listing creation
-
-### Infrastructure (P1)
-- **Sitemap.xml** — Created `public/sitemap.xml` with all public routes
-- **Meta tags** — Already present in `index.html` with OG tags
-- **Logger utility** — `src/lib/logger.ts` with structured logging, buffering, and remote-send hook
+This release completes the v1.0 production-readiness push. The biggest gaps closed are **full Thai/English internationalisation**, a **type-safe seller dashboard redesign**, and **expanded test coverage** (unit + e2e). Build, lint, unit tests, and e2e tests are all green.
 
 ---
 
-## What Remains
+## What Was Improved in This Release
+
+### Internationalisation (i18n) — Complete
+- Added `i18next` + `react-i18next` + browser language detection.
+- Created namespaces: `common`, `auth`, `marketplace`, `checkout`, `messages`, `dashboard`, `home`.
+- Full English and Thai translations for every user-facing string.
+- Added `LanguageSwitcher` component in the navbar; persists choice to `localStorage` and to the user profile when authenticated.
+- All pages, components, error states, and empty states now use translation keys instead of hardcoded English.
+- Added `scripts/extract-i18n-keys.cjs` to detect missing keys; current run reports **0 missing**.
+
+### Seller Dashboard Redesign
+- Rebuilt `SellerDashboardPage.tsx` from the ground up with correct imports/types.
+- Tabs: Listings, Orders, Offers, Payouts, Analytics, Performance, Inventory, QR Management, Reviews, Account.
+- Real-time hooks: hydrates transactions and offers when tabs are active; subscribes to Supabase changes.
+- Listing actions: view, edit, duplicate, withdraw, print QR, boost placeholder.
+- Order lifecycle: status filter, timeline visualisation, confirm payment, mark shipped via modal, view slip.
+- Payouts: available balance, paid-out totals, fee breakdown, expandable payout history.
+- Analytics: views, watches, conversion rate, sales-by-category, popular listings sparklines.
+- Performance: seller score, monthly trend chart, top buyers.
+- Account tab: PromptPay ID and province settings persisted via `updateProfile`.
+
+### Testing
+- **Unit tests:** 40 passing across validation, PromptPay, hooks, components, and the new `SellerDashboardPage.test.tsx`.
+- **E2E tests:** 7 passing with Playwright covering homepage navigation, auth pages, and seller-dashboard auth-guard redirect.
+- Added i18n initialisation to `src/test/setup.ts` so component tests render translated strings correctly.
+
+### Error Handling & Shared Components
+- `ErrorBoundary` converted to a named HOC with `withTranslation('common')`; fallback UI is now translatable.
+- `AuthGuard` loading state is now translatable.
+
+### Build & Tooling
+- `npm run lint`, `npm run build`, `npm test`, `npm run test:e2e` all pass.
+- Added `.playwright-mcp/` to `.gitignore`.
+
+---
+
+## Current State
+
+| Category | Score | Notes |
+|----------|-------|-------|
+| Functionality | 88 | Core flows work end-to-end; dashboard and i18n now complete. Real-time messaging and card payments still absent. |
+| Security | 78 | Input sanitization, validation, RLS assumed; admin local bypass still present. |
+| Reliability | 86 | Error boundaries, polling, realtime subscriptions for listings/offers/transactions, offline fallback. |
+| UX | 92 | Pagination, skeletons, empty states, loading states, error messages, language switcher. |
+| Performance | 74 | Code-splitting for vendors/pages; main JS chunk is 563 KB / 168 KB gzip — acceptable for a feature-rich SPA but still optimisable. |
+| Testing | 82 | 40 unit tests + 7 e2e tests; more journey coverage possible. |
+| Monitoring | 62 | Logger utility exists; not wired to a remote service. |
+| Documentation | 86 | README updated previously; this report refreshed. |
+
+**Overall Score: 88/100** (up from 82/100)
+
+---
+
+## What Still Remains
 
 ### P1 — Should Fix Before Major Traffic
 
 | Issue | Risk | Effort |
 |-------|------|--------|
-| **No real messaging system** | Buyers cannot actually chat with sellers | Medium |
+| **No real messaging system** | Buyers cannot actually chat with sellers in real time | Medium |
 | **No email backend for contact form** | Messages go nowhere; need Supabase Edge Function or email service | Low |
 | **Card payments are placeholder** | Checkout has a non-functional card tab; only PromptPay works | Medium |
-| **No image optimization** | Full-size images loaded everywhere; need responsive srcset or CDN transform | Medium |
+| **No image optimisation** | Full-size images loaded everywhere; need responsive srcset or CDN transform | Medium |
 | **Mock data mixed with live data** | Seed data never purges; could confuse users if stale | Low |
-| **No real-time updates** | Order status polls every 10s; should use Supabase realtime subscriptions | Medium |
-| **Admin is local-only** | No server-side admin panel; `loginAsLocalAdmin` is a dev bypass | Medium |
+| **Admin is local-only** | `loginAsLocalAdmin` is a dev bypass; no server-side admin panel | Medium |
 
 ### P2 — Nice to Have
 
 | Issue | Risk | Effort |
 |-------|------|--------|
-| **Bundle could be smaller** | Could lazy-load pages with `React.lazy()` | Medium |
-| **No PWA/service worker** | No offline support or installability | Medium |
+| **Bundle could be smaller** | Main chunk 563 KB; further code-splitting and lazy loading possible | Medium |
 | **No analytics** | No Mixpanel, Amplitude, or Google Analytics | Low |
-| **No error tracking service wired** | Logger has a TODO for Sentry/LogRocket | Low |
-| **No e2e tests** — No Playwright/Cypress coverage of critical user journeys | Medium |
+| **No error tracking service wired** | Logger has a hook for Sentry/LogRocket but is not connected | Low |
+| **E2E coverage limited** | No full happy-path test: signup → list → browse → checkout → ship → confirm | Medium |
 
 ---
 
@@ -100,44 +93,26 @@
 
 1. **Supabase RLS policies** — The app assumes RLS is properly configured. If policies are too permissive, the anon key exposes data. If too restrictive, features break.
 2. **Storage bucket permissions** — `listing-photos`, `order-photos`, and `dispute-evidence` buckets must be created with public read policies.
-3. **PromptPay trust model** — Buyer must manually confirm payment after scanning QR. There is no webhook confirmation, so bad actors could click "I've paid" without paying.
-4. **Auto-confirm signup** — The pilot auto-confirms accounts. In production, require email verification.
+3. **PromptPay trust model** — Buyer manually confirms payment after scanning QR. No webhook confirmation, so bad actors could click "I've paid" without paying.
+4. **Auto-confirm signup** — Pilot auto-confirms accounts. In production, require email verification.
 5. **Local admin bypass** — `loginAsLocalAdmin()` is accessible on the login page. Hide behind dev-only flags before public launch.
 
 ---
 
-## Recommended Future Work
+## Recommended Next Steps
 
 ### Immediate (next 2 weeks)
-1. Set up Supabase storage buckets with proper policies
-2. Write RLS policy tests for `profiles`, `listings`, `transactions`, `disputes`
-3. Add Playwright e2e tests for: signup → list → browse → checkout → mark shipped → confirm receipt
-4. Integrate Sentry for error tracking (wire into `logger.ts`)
-5. Add Cloudflare/ImageKit for responsive image transforms
+1. Set up Supabase storage buckets with proper policies.
+2. Write RLS policy tests for `profiles`, `listings`, `transactions`, `disputes`.
+3. Add a full Playwright happy-path test: signup → list → browse → checkout → mark shipped → confirm receipt.
+4. Integrate Sentry for error tracking (wire into `logger.ts`).
+5. Add Cloudflare/ImageKit responsive image transforms.
 
 ### Short-term (next month)
-1. Implement real messaging via Supabase realtime
-2. Add card payments via Omise/Stripe
-3. Implement Supabase realtime for order status updates
-4. Build a proper server-side admin panel or use Supabase dashboard
+1. Implement real messaging via Supabase realtime.
+2. Add card payments via Omise/Stripe.
+3. Build a proper server-side admin panel or lock down the local bypass.
 
 ### Long-term (next quarter)
-1. React.lazy() code-splitting for all pages
-2. PWA with service worker for offline browsing
-3. Push notifications for order updates
-4. iOS/Android app via Capacitor
-
----
-
-## Production Readiness Score: 82/100
-
-| Category | Score | Notes |
-|----------|-------|-------|
-| Functionality | 82 | Core flows work end-to-end; messaging and card payments missing |
-| Security | 75 | Input sanitization, validation, RLS assumed; no rate limiting yet |
-| Reliability | 82 | Error boundaries, polling, offline fallback; no realtime subscriptions |
-| UX | 88 | Pagination, skeletons, empty states, loading states, error messages |
-| Performance | 72 | Code-split recharts; main chunk still large; no image optimization |
-| Testing | 72 | 38 unit tests across validation, PromptPay, hooks, components; no e2e |
-| Monitoring | 60 | Logger utility exists; not wired to remote service |
-| Documentation | 85 | README updated with production checklist; code is well-commented |
+1. Push notifications for order updates.
+2. iOS/Android app via Capacitor.
