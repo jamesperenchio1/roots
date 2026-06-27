@@ -1,5 +1,6 @@
 import { useState, useCallback, useSyncExternalStore } from 'react';
 import { Bell } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getUnreadCount, subscribeNotifications, getNotificationsVersion } from '@/lib/api';
 import NotificationPanel from './NotificationPanel';
 
@@ -8,6 +9,7 @@ interface NotificationBellProps {
 }
 
 export default function NotificationBell({ userId }: NotificationBellProps) {
+  const { t } = useTranslation(['common']);
   const [open, setOpen] = useState(false);
 
   const toggle = useCallback(() => {
@@ -26,7 +28,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
       <button
         onClick={toggle}
         className="relative p-2 text-zinc-400 hover:text-white transition-colors"
-        aria-label="Notifications"
+        aria-label={t('common:nav.notifications')}
       >
         <Bell className="w-5 h-5" />
         {unread > 0 && (

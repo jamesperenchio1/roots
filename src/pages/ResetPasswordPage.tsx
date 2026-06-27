@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Leaf, Lock, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [done, setDone] = useState(false);
@@ -24,11 +26,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('common:errors.minLength', { count: 6 }));
       return;
     }
     if (password !== confirm) {
-      setError('Passwords do not match');
+      setError(t('common:errors.passwordMismatch', 'Passwords do not match'));
       return;
     }
     const res = await updatePassword(password);
@@ -36,7 +38,7 @@ export default function ResetPasswordPage() {
       setDone(true);
       setTimeout(() => navigate('/login'), 2000);
     } else {
-      setError(res.error || 'Could not update password.');
+      setError(res.error || t('common:errors.generic'));
     }
   };
 
@@ -46,18 +48,18 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Leaf className="w-6 h-6 text-emerald-400" />
-            <span className="text-xl font-semibold">ROOT</span>
+            <span className="text-xl font-semibold">ROOTS</span>
           </Link>
-          <h1 className="text-2xl font-light tracking-tight mb-2">Set New Password</h1>
-          <p className="text-zinc-500 text-sm">Choose a strong password for your account.</p>
+          <h1 className="text-2xl font-light tracking-tight mb-2">{t('auth:resetPassword.title')}</h1>
+          <p className="text-zinc-500 text-sm">{t('auth:resetPassword.subtitle')}</p>
         </div>
 
         {done ? (
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
             <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-            <h2 className="text-lg font-medium mb-1">Password Updated</h2>
+            <h2 className="text-lg font-medium mb-1">{t('auth:resetPassword.success')}</h2>
             <p className="text-sm text-zinc-500">
-              Redirecting you to login…
+              {t('common:errors.redirecting', 'Redirecting…')}
             </p>
           </div>
         ) : (
@@ -68,28 +70,28 @@ export default function ResetPasswordPage() {
               </div>
             )}
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">New Password</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:resetPassword.newPassword')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  placeholder={t('auth:signup.passwordHint')}
                   className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">Confirm Password</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:resetPassword.confirmPassword')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                 <input
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Re-enter password"
+                  placeholder={t('auth:resetPassword.confirmPassword')}
                   className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                   required
                 />
@@ -100,7 +102,7 @@ export default function ResetPasswordPage() {
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-11 rounded-lg"
               disabled={isLoading}
             >
-              {isLoading ? 'Updating…' : 'Update Password'}
+              {isLoading ? t('common:actions.loading') : t('auth:resetPassword.submit')}
             </Button>
           </form>
         )}

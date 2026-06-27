@@ -68,7 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore an existing session on load and react to auth changes.
   const isLocalAdminRef = useRef(isLocalAdmin);
-  isLocalAdminRef.current = isLocalAdmin;
+  useEffect(() => {
+    isLocalAdminRef.current = isLocalAdmin;
+  }, [isLocalAdmin]);
 
   const startSubscriptions = useCallback((uid: string) => {
     unsubscribeRef.current?.();
@@ -145,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(false);
     return !!p;
-  }, []);
+  }, [startSubscriptions]);
 
   const signup = useCallback(async (input: SignupInput): Promise<{ ok: boolean; error?: string }> => {
     setIsLoading(true);
@@ -240,6 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext);
 }

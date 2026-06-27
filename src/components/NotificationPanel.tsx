@@ -12,6 +12,7 @@ import {
   Star,
   Info,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Notification, NotificationType } from '@/types';
 import {
   getNotifications,
@@ -33,18 +34,7 @@ const ICON_MAP: Record<NotificationType, React.ElementType> = {
   system: Info,
 };
 
-function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  if (seconds < 60) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
-}
+
 
 interface NotificationPanelProps {
   userId: string;
@@ -53,8 +43,22 @@ interface NotificationPanelProps {
 }
 
 export default function NotificationPanel({ userId, open, onClose }: NotificationPanelProps) {
+  const { t } = useTranslation(['common']);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const formatRelativeTime = (dateStr: string): string => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    if (seconds < 60) return t('common:notifications.time.justNow');
+    if (minutes < 60) return t('common:notifications.time.minutesAgo', { count: minutes });
+    if (hours < 24) return t('common:notifications.time.hoursAgo', { count: hours });
+    if (days < 7) return t('common:notifications.time.daysAgo', { count: days });
+    return new Date(dateStr).toLocaleDateString();
+  };
   useSyncExternalStore(subscribeNotifications, getNotificationsVersion);
   const items = getNotifications(userId);
 
@@ -77,7 +81,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
 
   const handleMarkAll = async () => {
     await markAllNotificationsRead(userId);
-    toast.success('All notifications marked as read');
+    toast.success(t('common:notifications.markAllToast'));
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -99,14 +103,14 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
       className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-        <h3 className="text-sm font-semibold text-white">Notifications</h3>
+        <h3 className="text-sm font-semibold text-white">{t('common:nav.notifications')}</h3>
         {items.some(n => !n.read) && (
           <button
             onClick={handleMarkAll}
             className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
           >
             <Check className="w-3 h-3" />
-            Mark all as read
+            {t('common:notifications.markAll')}
           </button>
         )}
       </div>
@@ -115,7 +119,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
         {items.length === 0 ? (
           <div className="px-4 py-8 text-center text-zinc-500 text-sm">
             <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            No notifications yet
+            {t('common:notifications.empty')}
           </div>
         ) : (
           <ul className="divide-y divide-white/5">
@@ -150,7 +154,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
                       <button
                         onClick={(e) => handleMarkRead(e, n.id)}
                         className="p-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
-                        title="Mark as read"
+                        title={t('common:notifications.markRead')}
                       >
                         <Check className="w-3 h-3" />
                       </button>
@@ -158,7 +162,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
                     <button
                       onClick={(e) => handleDelete(e, n.id)}
                       className="p-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors"
-                      title="Delete"
+                      title={t('common:actions.delete')}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>

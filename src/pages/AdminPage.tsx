@@ -1,5 +1,6 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircle, XCircle, Ban, Hammer } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, SPECIES } from '@/data/mockData';
 import { updateOrderStatus, hydrateUserDisputes } from '@/lib/api';
@@ -7,14 +8,15 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation(['common']);
   const { isLocalAdmin } = useAuth();
   const location = useLocation();
   const tabs = [
-    { id: '', label: 'Overview', icon: Shield },
-    { id: 'disputes', label: 'Disputes', icon: AlertTriangle },
-    { id: 'users', label: 'Users', icon: UsersIcon },
-    { id: 'transactions', label: 'Transactions', icon: DollarSign },
-    { id: 'species', label: 'Species', icon: Leaf },
+    { id: '', labelKey: 'overview', icon: Shield },
+    { id: 'disputes', labelKey: 'disputes', icon: AlertTriangle },
+    { id: 'users', labelKey: 'users', icon: UsersIcon },
+    { id: 'transactions', labelKey: 'transactions', icon: DollarSign },
+    { id: 'species', labelKey: 'species', icon: Leaf },
   ];
 
   return (
@@ -24,12 +26,12 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
             <p className="text-sm text-amber-400">
-              Local dev admin session — disable ENABLE_LOCAL_ADMIN before deploying
+              {t('common:admin.localAdminWarning')}
             </p>
           </div>
         )}
 
-        <h1 className="text-2xl font-light tracking-tight mb-6">Admin Dashboard</h1>
+        <h1 className="text-2xl font-light tracking-tight mb-6">{t('common:admin.title')}</h1>
 
         <div className="flex overflow-x-auto gap-1 mb-6 pb-2 scrollbar-hide">
           {tabs.map(tab => (
@@ -39,7 +41,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${location.pathname === `/admin/${tab.id}` ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               <tab.icon className="w-4 h-4" />
-              {tab.label}
+              {t(`common:admin.tabs.${tab.labelKey}`)}
             </Link>
           ))}
         </div>
@@ -51,22 +53,25 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Overview() {
+  const { t } = useTranslation(['common']);
   const stats = getDashboardStats();
+  const statItems = [
+    { labelKey: 'gmvToday', value: `${stats.gmv_today.toLocaleString()} THB`, color: 'text-emerald-400' },
+    { labelKey: 'gmvWeek', value: `${stats.gmv_week.toLocaleString()} THB`, color: 'text-white' },
+    { labelKey: 'gmvMonth', value: `${stats.gmv_month.toLocaleString()} THB`, color: 'text-white' },
+    { labelKey: 'activeListings', value: stats.active_listings.toString(), color: 'text-blue-400' },
+    { labelKey: 'disputeRate', value: `${stats.dispute_rate}%`, color: 'text-red-400' },
+    { labelKey: 'totalUsers', value: stats.user_count.toString(), color: 'text-purple-400' },
+    { labelKey: 'pendingDisputes', value: stats.pending_disputes.toString(), color: 'text-amber-400' },
+    { labelKey: 'pendingPayouts', value: stats.pending_payouts.toString(), color: 'text-cyan-400' },
+  ];
+
   return (
     <div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'GMV Today', value: `${stats.gmv_today.toLocaleString()} THB`, color: 'text-emerald-400' },
-          { label: 'GMV This Week', value: `${stats.gmv_week.toLocaleString()} THB`, color: 'text-white' },
-          { label: 'GMV This Month', value: `${stats.gmv_month.toLocaleString()} THB`, color: 'text-white' },
-          { label: 'Active Listings', value: stats.active_listings.toString(), color: 'text-blue-400' },
-          { label: 'Dispute Rate', value: `${stats.dispute_rate}%`, color: 'text-red-400' },
-          { label: 'Total Users', value: stats.user_count.toString(), color: 'text-purple-400' },
-          { label: 'Pending Disputes', value: stats.pending_disputes.toString(), color: 'text-amber-400' },
-          { label: 'Pending Payouts', value: stats.pending_payouts.toString(), color: 'text-cyan-400' },
-        ].map((stat, i) => (
+        {statItems.map((stat, i) => (
           <div key={i} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 mb-1">{stat.label}</p>
+            <p className="text-xs text-zinc-500 mb-1">{t(`common:admin.stats.${stat.labelKey}`)}</p>
             <p className={`text-xl font-semibold ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
@@ -76,6 +81,7 @@ function Overview() {
 }
 
 function Disputes() {
+  const { t } = useTranslation(['common']);
   const [disputes, setDisputes] = useState(DISPUTES);
 
   useEffect(() => {
@@ -103,9 +109,9 @@ function Disputes() {
             }
           : d
       ));
-      toast.success(`Dispute resolved in favor of ${resolution === 'buyer' ? 'buyer' : resolution === 'seller' ? 'seller' : 'partial'}`);
+      toast.success(t('common:admin.disputes.resolvedToast', { resolution: t(`common:admin.disputes.resolutions.${resolution}`) }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to resolve dispute');
+      toast.error(err instanceof Error ? err.message : t('common:admin.disputes.resolveError'));
     }
   };
 
@@ -114,16 +120,16 @@ function Disputes() {
       {disputes.map(d => (
         <div key={d.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Dispute #{d.id.slice(-4)}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${d.status === 'open' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{d.status}</span>
+            <span className="text-sm font-medium">{t('common:admin.disputes.id', { id: d.id.slice(-4) })}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${d.status === 'open' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{t(`common:admin.disputes.status.${d.status}`)}</span>
           </div>
-          <p className="text-xs text-zinc-500 mb-1">Reason: {d.reason} | Opened by: {d.opened_by}</p>
+          <p className="text-xs text-zinc-500 mb-1">{t('common:admin.disputes.meta', { reason: d.reason, openedBy: d.opened_by })}</p>
           <p className="text-sm text-zinc-400 mb-3">{d.description}</p>
           {d.evidence_urls.length > 0 && (
             <div className="flex gap-2 mb-3">
               {d.evidence_urls.map((url, i) => (
                 <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
-                  <img src={url} alt="Dispute evidence" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img src={url} alt={t('common:admin.disputes.evidenceAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 </a>
               ))}
             </div>
@@ -134,24 +140,24 @@ function Disputes() {
                 onClick={() => handleResolve(d.id, 'buyer')}
                 className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors"
               >
-                <CheckCircle className="w-3 h-3" /> Rule for Buyer
+                <CheckCircle className="w-3 h-3" /> {t('common:admin.disputes.ruleBuyer')}
               </button>
               <button
                 onClick={() => handleResolve(d.id, 'seller')}
                 className="flex items-center gap-1 text-xs bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
               >
-                <XCircle className="w-3 h-3" /> Rule for Seller
+                <XCircle className="w-3 h-3" /> {t('common:admin.disputes.ruleSeller')}
               </button>
               <button
                 onClick={() => handleResolve(d.id, 'partial')}
                 className="flex items-center gap-1 text-xs bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/20 transition-colors"
               >
-                <Hammer className="w-3 h-3" /> Partial Refund
+                <Hammer className="w-3 h-3" /> {t('common:admin.disputes.partialRefund')}
               </button>
             </div>
           )}
           {d.status !== 'open' && d.resolved_at && (
-            <p className="text-xs text-zinc-600">Resolved: {d.resolved_at.slice(0, 10)} — {d.resolution_amount_thb?.toLocaleString()} THB</p>
+            <p className="text-xs text-zinc-600">{t('common:admin.disputes.resolvedAt', { date: d.resolved_at.slice(0, 10), amount: d.resolution_amount_thb?.toLocaleString() })}</p>
           )}
         </div>
       ))}
@@ -160,16 +166,17 @@ function Disputes() {
 }
 
 function UsersPage() {
+  const { t } = useTranslation(['common']);
   const [users, setUsers] = useState(USERS);
 
   const handleStrike = (userId: string) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, strike_count: u.strike_count + 1 } : u));
-    toast.success('Strike added');
+    toast.success(t('common:admin.users.strikeToast'));
   };
 
   const handleBan = (userId: string) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: true } : u));
-    toast.success('User banned');
+    toast.success(t('common:admin.users.banToast'));
   };
 
   return (
@@ -182,25 +189,25 @@ function UsersPage() {
             </div>
             <div>
               <p className="text-sm font-medium">{u.display_name}</p>
-              <p className="text-xs text-zinc-500">{u.location} | {u.sales_count} sales | Rating: {u.rating}</p>
+              <p className="text-xs text-zinc-500">{t('common:admin.users.meta', { location: u.location, sales: u.sales_count, rating: u.rating })}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {u.strike_count > 0 && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{u.strike_count} strikes</span>}
-            {u.is_banned && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Banned</span>}
+            {u.strike_count > 0 && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{t('common:admin.users.strikes', { count: u.strike_count })}</span>}
+            {u.is_banned && <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{t('common:admin.users.banned')}</span>}
             {!u.is_banned && (
               <>
                 <button
                   onClick={() => handleStrike(u.id)}
                   className="text-xs bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/20 transition-colors"
                 >
-                  Strike
+                  {t('common:admin.users.strike')}
                 </button>
                 <button
                   onClick={() => handleBan(u.id)}
                   className="text-xs bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
                 >
-                  <Ban className="w-3 h-3 inline mr-1" /> Ban
+                  <Ban className="w-3 h-3 inline mr-1" /> {t('common:admin.users.ban')}
                 </button>
               </>
             )}
@@ -212,6 +219,7 @@ function UsersPage() {
 }
 
 function Transactions() {
+  const { t } = useTranslation(['common']);
   const txs = getTransactionsWithDetails();
   return (
     <div className="space-y-2">
@@ -225,7 +233,7 @@ function Transactions() {
             tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
             tx.status === 'disputed' ? 'bg-red-500/10 text-red-400' :
             'bg-amber-500/10 text-amber-400'
-          }`}>{tx.status}</span>
+          }`}>{t(`common:status.${tx.status}`)}</span>
         </div>
       ))}
     </div>
@@ -233,6 +241,7 @@ function Transactions() {
 }
 
 function SpeciesAdmin() {
+  const { t } = useTranslation(['common']);
   return (
     <div className="space-y-2">
       {SPECIES.slice(0, 10).map(s => (
@@ -241,7 +250,7 @@ function SpeciesAdmin() {
             <p className="text-sm font-medium">{s.scientific_name}</p>
             <p className="text-xs text-zinc-500">{s.common_name_en} | {s.category}</p>
           </div>
-          <button className="text-xs text-zinc-500 hover:text-white transition-colors">Edit</button>
+          <button className="text-xs text-zinc-500 hover:text-white transition-colors">{t('common:actions.edit')}</button>
         </div>
       ))}
     </div>

@@ -1,0 +1,30 @@
+{
+  "title": "Messages",
+  "newMessage": "New message",
+  "noThreads": "No conversations yet",
+  "startConversation": "Start a conversation from a listing",
+  "typeMessage": "Type a message...",
+  "send": "Send",
+  "unread": "Unread",
+  "markRead": "Mark as read",
+  "offer": "Offer",
+  "contactFlag": "Contact info detected — shared safely inside the app",
+  "relative": {
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  },
+  "errors": {
+    "recipient": "Could not determine message recipient",
+    "sendFailed": "Failed to send message"
+  },
+  "loading": "Loading conversations…",
+  "emptyState": {
+    "title": "Select a conversation",
+    "description": "Choose a thread from the sidebar to start messaging"
+  },
+  "reLabel": "Re: {{name}}",
+  "noMessages": "No messages yet. Send the first message!",
+  "sendAria": "Send message"
+}

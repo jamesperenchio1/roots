@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   return {
     base: './',
     plugins: [
-    inspectAttr(),
+    ...(mode === 'development' ? [inspectAttr()] : []),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => {
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router', 'react-router-dom'],
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-recharts': ['recharts'],
           'vendor-radix': [

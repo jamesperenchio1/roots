@@ -1,0 +1,861 @@
+{
+  "appName": "ROOTS",
+  "tagline": "Thailand's plant marketplace",
+  "nav": {
+    "browse": "Browse",
+    "market": "Market Data",
+    "about": "About",
+    "contact": "Contact",
+    "sell": "Sell",
+    "dashboard": "Dashboard",
+    "sellerDashboard": "Seller Dashboard",
+    "messages": "Messages",
+    "notifications": "Notifications",
+    "menu": "Menu",
+    "admin": "Admin",
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out",
+    "scan": "Scan QR",
+    "search": "Search plants..."
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "duplicate": "Duplicate",
+    "archive": "Archive",
+    "withdraw": "Withdraw",
+    "relist": "Relist",
+    "markSold": "Mark sold",
+    "boost": "Boost",
+    "print": "Print",
+    "download": "Download",
+    "view": "View",
+    "send": "Send",
+    "apply": "Apply",
+    "clear": "Clear",
+    "loadMore": "Load more",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "copy": "Copy",
+    "share": "Share",
+    "close": "Close",
+    "retry": "Retry",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "uploading": "Uploading...",
+    "remove": "Remove",
+    "addNew": "Add new",
+    "seeAll": "See all",
+    "learnMore": "Learn more",
+    "contactUs": "Contact us",
+    "rememberMe": "Remember me",
+    "accept": "Accept",
+    "reject": "Reject",
+    "counter": "Counter"
+  },
+  "status": {
+    "active": "Active",
+    "sold": "Sold",
+    "withdrawn": "Withdrawn",
+    "draft": "Draft",
+    "pending": "Pending",
+    "paid": "Paid",
+    "packed": "Packed",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "completed": "Completed",
+    "refunded": "Refunded",
+    "cancelled": "Cancelled",
+    "disputed": "Disputed"
+  },
+  "empty": {
+    "title": "Nothing here yet",
+    "description": "When something appears, you'll see it here.",
+    "cta": "Browse plants"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "notFound": "Page not found",
+    "unauthorized": "Please log in to continue",
+    "required": "This field is required",
+    "invalid": "Invalid value",
+    "minLength": "Must be at least {{count}} characters",
+    "maxLength": "Must be at most {{count}} characters",
+    "invalidEmail": "Please enter a valid email",
+    "invalidPhone": "Please enter a valid phone number",
+    "invalidPrice": "Please enter a valid price",
+    "fileTooLarge": "File is too large (max {{size}}MB)",
+    "invalidFileType": "Please upload an image file",
+    "passwordMismatch": "Passwords do not match",
+    "redirecting": "Redirecting…"
+  },
+  "currency": "THB",
+  "language": {
+    "en": "English",
+    "th": "ไทย",
+    "switch": "Switch language"
+  },
+  "unknown": "Unknown Plant",
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "We have encountered an unexpected error. Please try refreshing the page.",
+    "refresh": "Refresh Page",
+    "goHome": "Go Home"
+  },
+  "authGuard": {
+    "loading": "Loading your account…"
+  },
+  "speciesAutocomplete": {
+    "useCustom": "Use \"{{query}}\" as custom species",
+    "customHint": "This species will be added to our database",
+    "noMatches": "No matches found. Keep typing to add as custom."
+  },
+  "weather": {
+    "unavailable": "Weather unavailable for {{city}}",
+    "humidity": "humidity",
+    "title": "Weather — {{city}}",
+    "rain": "rain"
+  },
+  "share": {
+    "copied": "Link copied to clipboard",
+    "copyFailed": "Failed to copy link",
+    "qrFailed": "Failed to generate QR code",
+    "copyLink": "Copy link",
+    "showQR": "Show QR code",
+    "qrTitle": "Share QR Code",
+    "qrAlt": "QR Code"
+  },
+  "plantCare": {
+    "noInfo": "No care info available",
+    "careLevelTitle": "Care level: {{level}}",
+    "wateringTitle": "Watering: {{level}}",
+    "lightTitle": "Light: {{level}}",
+    "title": "Plant Care Guide",
+    "careLevel": "Care: {{level}}",
+    "water": "Water: {{level}}",
+    "light": "Light: {{level}} {{detail}}",
+    "fallbackNote": "Showing locally-sourced care tips. Connect to Perenual for detailed guides."
+  },
+  "reviews": {
+    "anonymous": "Anonymous",
+    "noneYet": "No reviews yet.",
+    "sellerReviews": "Seller Reviews",
+    "count_one": "{{count}} review",
+    "count_other": "{{count}} reviews",
+    "all": "All",
+    "viewAll": "View all {{count}} reviews",
+    "noTagMatch": "No reviews match this tag."
+  },
+  "notifications": {
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    },
+    "markAllToast": "All notifications marked as read",
+    "markAll": "Mark all as read",
+    "empty": "No notifications yet",
+    "markRead": "Mark as read"
+  },
+  "printTag": {
+    "title": "Print Plant Tag",
+    "alt": {
+      "qr": "QR"
+    },
+    "plant": "Plant",
+    "scanHint": "Scan for provenance · root.market",
+    "instructions": "Print this on sticker paper or card stock. Cut along the edge and attach to the plant pot.",
+    "print": "Print Tag"
+  },
+  "pwaUpdate": {
+    "title": "Update available",
+    "description": "A new version of Root is ready. Reload to get the latest features and fixes.",
+    "reload": "Reload",
+    "dismiss": "Dismiss"
+  },
+  "about": {
+    "title": "About Root",
+    "intro": "Root is Thailand's plant marketplace built on two simple ideas: every plant deserves a permanent identity, and every buyer deserves to know what a fair price looks like. We are not a rare-plant club. We are for the basil cutting and the variegated monstera and everything between.",
+    "origin": {
+      "title": "How We Started",
+      "p1": "In 2022, Thawanrat bought a Monstera Thai Constellation from a Facebook group for 18,000 THB. Six months later she sold it for 12,000. Was that fair? She had no idea — there was no price data, no market reference, just whatever the buyer was willing to pay.",
+      "p2": "Meanwhile, Pongsiri was tracking his plant collection in a spreadsheet, manually logging every purchase, every propagation, every sale. He dreamed of a system where each plant carried its own history — not in a spreadsheet, but physically, on the plant itself.",
+      "p3": "They met at a plant swap in Chatuchak and spent the next 18 months building Root. The QR provenance system was first: every plant gets a unique QR code at listing, and every ownership transfer is recorded permanently. Then came the price history graphs — inspired by Steam's marketplace — showing real transaction data so buyers and sellers could make informed decisions.",
+      "p4": "Root launched in Bangkok in early 2024. Within three months we had sellers in Chiang Mai, Phuket, Khon Kaen, and Udon Thani. Today we list everything from 10-baht basil seedlings to 45,000-baht specimen plants. If it grows in Thailand, it has a home here."
+    },
+    "values": {
+      "title": "What We Believe",
+      "transparency": {
+        "title": "Transparency First",
+        "desc": "Every sale feeds into public price history. No hidden deals, no whisper networks. The market decides what a plant is worth."
+      },
+      "provenance": {
+        "title": "Permanent Provenance",
+        "desc": "Every plant gets a QR code at first listing. Scan it and see its entire ownership history — every seller, every price, forever."
+      },
+      "data": {
+        "title": "Data for Everyone",
+        "desc": "Before you buy, see 180 days of price history. Before you sell, see where your price sits against the market median."
+      },
+      "escrow": {
+        "title": "Escrow Protection",
+        "desc": "Pay via PromptPay, funds held in escrow until you confirm delivery with a QR scan. Sellers get paid, buyers get protection."
+      },
+      "fee": {
+        "title": "8% Flat Fee",
+        "desc": "No listing fees, no monthly subscriptions, no featured placement charges. We take 8% when you sell. That is it."
+      },
+      "everyPlant": {
+        "title": "For Every Plant",
+        "desc": "From a 10-baht basil cutting to a 50,000-baht variegated monstera. If it grows, it belongs here."
+      }
+    },
+    "stats": {
+      "plantsListed": "Plants Listed",
+      "happyBuyers": "Happy Buyers",
+      "sellersActive": "Sellers Active",
+      "gmvToDate": "GMV to Date"
+    },
+    "team": {
+      "title": "The Team",
+      "thawanrat": {
+        "role": "Founder & CEO",
+        "bio": "Plant collector turned marketplace builder. Grew her first monstera from a cutting in 2018."
+      },
+      "pongsiri": {
+        "role": "Head of Engineering",
+        "bio": "Built Thailand's first QR plant provenance system. Former fintech engineer."
+      },
+      "malai": {
+        "role": "Community Lead",
+        "bio": "Manages seller onboarding and dispute resolution. 15 years in Thai e-commerce."
+      },
+      "chanida": {
+        "role": "Botanical Advisor",
+        "bio": "Agricultural scientist ensuring species data accuracy across the platform."
+      }
+    },
+    "cta": {
+      "title": "Join the marketplace",
+      "description": "Whether you are selling your first propagation or running a full nursery, Root gives you the tools to sell with transparency and confidence.",
+      "createAccount": "Create Account",
+      "sellerDashboard": "Seller Dashboard"
+    }
+  },
+  "admin": {
+    "localAdminWarning": "Local dev admin session — disable ENABLE_LOCAL_ADMIN before deploying",
+    "title": "Admin Dashboard",
+    "tabs": {
+      "overview": "Overview",
+      "disputes": "Disputes",
+      "users": "Users",
+      "transactions": "Transactions",
+      "species": "Species"
+    },
+    "stats": {
+      "gmvToday": "GMV Today",
+      "gmvWeek": "GMV This Week",
+      "gmvMonth": "GMV This Month",
+      "activeListings": "Active Listings",
+      "disputeRate": "Dispute Rate",
+      "totalUsers": "Total Users",
+      "pendingDisputes": "Pending Disputes",
+      "pendingPayouts": "Pending Payouts"
+    },
+    "disputes": {
+      "resolvedToast": "Dispute resolved in favor of {{resolution}}",
+      "resolveError": "Failed to resolve dispute",
+      "id": "Dispute #{{id}}",
+      "meta": "Reason: {{reason}} | Opened by: {{openedBy}}",
+      "evidenceAlt": "Dispute evidence",
+      "ruleBuyer": "Rule for Buyer",
+      "ruleSeller": "Rule for Seller",
+      "partialRefund": "Partial Refund",
+      "resolvedAt": "Resolved: {{date}} — {{amount}} THB",
+      "resolutions": {
+        "buyer": "buyer",
+        "seller": "seller",
+        "partial": "partial"
+      },
+      "status": {
+        "open": "open",
+        "resolved_buyer": "resolved_buyer",
+        "resolved_seller": "resolved_seller",
+        "resolved_partial": "resolved_partial"
+      }
+    },
+    "users": {
+      "strikeToast": "Strike added",
+      "banToast": "User banned",
+      "meta": "{{location}} | {{sales}} sales | Rating: {{rating}}",
+      "strikes": "{{count}} strikes",
+      "banned": "Banned",
+      "strike": "Strike",
+      "ban": "Ban"
+    }
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "We are here to help. Reach out any time.",
+    "channels": {
+      "email": "Email",
+      "responseTime": "Response within 24 hours",
+      "office": "Office",
+      "hours": "Support Hours",
+      "timezone": "ICT (Bangkok time)"
+    },
+    "form": {
+      "title": "Send a Message",
+      "successTitle": "Message sent!",
+      "successMessage": "We will get back to you within 24 hours.",
+      "name": "Name",
+      "email": "Email",
+      "topic": "Topic",
+      "message": "Message",
+      "required": "Please fill in all fields",
+      "successToast": "Message sent! We will reply within 24 hours.",
+      "sending": "Sending…",
+      "send": "Send Message"
+    },
+    "faq": {
+      "title": "Common Questions",
+      "startSelling": "How do I start selling?",
+      "startSellingAnswer": "Create an account, go to Seller Dashboard, and click \"New Listing\". You will need a PromptPay ID for payouts.",
+      "damaged": "What if my plant arrives damaged?",
+      "damagedAnswer": "Open a dispute within 48 hours of delivery. Upload photos and our team will review within 24 hours.",
+      "qr": "How does the QR provenance work?",
+      "qrAnswer": "When you list a plant, we generate a unique QR code. Attach it to the plant. Every future owner can scan it to see full history.",
+      "commonPlants": "Can I sell common plants like basil?",
+      "commonPlantsAnswer": "Absolutely. Root is for every plant — from 10-baht basil cuttings to rare variegated monsters.",
+      "paid": "When do I get paid as a seller?",
+      "paidAnswer": "Funds are released 48 hours after delivery confirmation (or auto-confirmed). Payouts process within 1-2 business days."
+    },
+    "topics": {
+      "general": "General Question",
+      "buying": "Buying Help",
+      "selling": "Selling Help",
+      "dispute": "Dispute Question",
+      "bug": "Bug Report",
+      "partnership": "Partnership"
+    }
+  },
+  "fees": {
+    "title": "Simple, Transparent Fees",
+    "subtitle": "8% from sellers only. No hidden costs, no monthly fees.",
+    "buyers": {
+      "title": "Buyers",
+      "price": "Free",
+      "features": {
+        "browse": "Browse all listings",
+        "priceHistory": "View price history graphs",
+        "watchlist": "Use watchlist & alerts",
+        "escrow": "Escrow protection included",
+        "qrVerification": "QR provenance verification"
+      }
+    },
+    "sellers": {
+      "title": "Sellers",
+      "price": "8%",
+      "note": "of sale price only when sold",
+      "features": {
+        "freeListings": "Unlimited free listings",
+        "qrTag": "QR provenance tag generation",
+        "priceHistory": "Price history integration",
+        "escrow": "Escrow & dispute handling",
+        "promptPay": "PromptPay payouts"
+      }
+    },
+    "example": {
+      "title": "Example Breakdown",
+      "soldFor": "Plant sold for",
+      "platformFee": "Platform fee (8%)",
+      "youReceive": "You receive"
+    },
+    "noCharges": {
+      "title": "We don't charge for:",
+      "listingFees": "Listing fees",
+      "subscriptions": "Monthly subscriptions",
+      "featured": "Featured placement",
+      "withdrawal": "Withdrawal fees",
+      "currencyConversion": "Currency conversion"
+    }
+  },
+  "howItWorksPage": {
+    "title": "How Root Works",
+    "subtitle": "Buy and sell plants the easy way. QR verification, escrow protection, and price history so you know you are getting a fair deal.",
+    "steps": {
+      "browse": {
+        "title": "1. Browse & Buy",
+        "desc": "Explore rare plants from sellers across Thailand. Every listing shows a price history graph so you know if you're getting a fair deal. Filter by species, size, price, and location."
+      },
+      "sellerQr": {
+        "title": "2. Seller Lists with QR Tag",
+        "desc": "When a seller creates a listing, we generate a unique QR code for that physical plant. The seller prints and attaches it to the pot. This QR becomes the plant's permanent digital identity."
+      },
+      "escrow": {
+        "title": "3. Secure Escrow Payment",
+        "desc": "Pay via PromptPay or card. Your money is held in escrow — the seller only receives it after you confirm delivery. Platform fee is 8%, taken from the seller's side only."
+      },
+      "ship": {
+        "title": "4. Seller Ships with QR",
+        "desc": "The seller packs the plant with its QR tag attached and ships via your chosen courier. You'll receive a tracking number to monitor delivery."
+      },
+      "scan": {
+        "title": "5. You Scan to Confirm",
+        "desc": "When the plant arrives, scan the QR code with your phone to verify it's the same plant from the listing. Upload 1-3 receipt photos, then confirm delivery to release funds."
+      },
+      "priceHistory": {
+        "title": "6. Price History Updates",
+        "desc": "Your purchase price is anonymously added to the species price history graph. Future buyers can see market trends, and you can track your plant's value over time."
+      }
+    },
+    "cta": {
+      "title": "Ready to start?",
+      "description": "Create an account to browse, buy, sell, and start building your plant's provenance history.",
+      "signUp": "Sign Up",
+      "browse": "Browse Plants"
+    }
+  },
+  "notFound": {
+    "message": "This page doesn't exist or has moved.",
+    "backHome": "Back to home"
+  },
+  "plantQr": {
+    "loading": "Loading provenance…",
+    "currentOwner": "Current Owner",
+    "unknown": "Unknown",
+    "alt": {
+      "plantPhoto": "Plant photo",
+      "qr": "QR"
+    },
+    "verified": "VERIFIED PROVENANCE",
+    "unknownPlant": "Unknown Plant",
+    "since": "Since {{date}}",
+    "owners_one": "{{count}} owner",
+    "owners_other": "{{count}} owners",
+    "totalSales": "{{value}} THB total sales",
+    "scanToVerify": "Scan to verify",
+    "downloadQr": "Download QR",
+    "printTag": "Print Tag",
+    "shareTitle": "Provenance for {{name}}",
+    "plant": "Plant",
+    "provenance": {
+      "title": "What is Root Provenance?",
+      "description": "A unique QR tag — a plant's digital birth certificate — that records its full history of owners and sales, so buyers can verify a seller's claims and rare plants keep their value across owners.",
+      "tags": {
+        "verifiedOwnership": "Verified ownership",
+        "fraudProtection": "Fraud protection",
+        "careHistory": "Care history",
+        "resaleValue": "Resale value"
+      },
+      "link": "Read the full white paper →"
+    },
+    "chain": {
+      "title": "Provenance Chain"
+    },
+    "from": "From: {{name}}",
+    "to": "To: {{name}}",
+    "price": "{{value}} THB",
+    "priceHistory": {
+      "title": "This Plant's Price History",
+      "note": "Individual plant price history overlaid against species average"
+    },
+    "incidents": {
+      "title": "Incident History"
+    },
+    "events": {
+      "registered": "Plant registered",
+      "currentOwnership": "Current ownership",
+      "sale": "Sale",
+      "transfer": "Transfer"
+    },
+    "disputes": {
+      "resolved": "resolved",
+      "transitDamage": "Transit damage claim — resolved for seller"
+    },
+    "owners": "{{count}} owner(s)"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: {{date}}",
+    "collect": {
+      "title": "1. Information We Collect",
+      "intro": "We collect the following information to operate Root Plant Market:",
+      "categories": {
+        "account": "Account",
+        "accountData": "Email, display name, password hash, profile photo (optional)",
+        "shipping": "Shipping",
+        "shippingData": "Name, address, district, province, postal code, phone number",
+        "payment": "Payment",
+        "paymentData": "PromptPay ID (phone or national ID number) — we do not store bank details",
+        "listings": "Listings",
+        "listingsData": "Photos, descriptions, pricing, plant species information",
+        "transactions": "Transactions",
+        "transactionsData": "Purchase history, sale history, dispute records",
+        "usage": "Usage",
+        "usageData": "Pages visited, searches made, device type, IP address"
+      }
+    },
+    "use": {
+      "title": "2. How We Use Your Information",
+      "items": {
+        "marketplace": "To provide the marketplace service — connecting buyers and sellers",
+        "payments": "To process payments via Omise PromptPay",
+        "qr": "To generate QR provenance codes for plants",
+        "priceHistory": "To calculate and display aggregate price history (anonymous)",
+        "disputes": "To resolve disputes between users",
+        "notifications": "To send order updates, payment confirmations, and platform notifications",
+        "fraud": "To detect fraud, abuse, and market manipulation"
+      }
+    },
+    "share": {
+      "title": "3. What We Share",
+      "intro": "We do not sell your personal data. We only share:",
+      "items": {
+        "shipping": "Seller to buyer (post-payment): Your shipping address is shared with the seller only after you pay",
+        "contact": "Buyer to seller (post-payment): Your display name and contact details are shared with the seller",
+        "omise": "Omise: Payment processing data is shared with our payment provider Omise",
+        "legal": "Legal: We may disclose data if required by Thai law or court order"
+      }
+    },
+    "priceData": {
+      "title": "4. Price Data and Anonymity",
+      "text": "All price history data displayed on Root is fully anonymous. We aggregate sale prices by species and date. Individual transactions, buyer identities, and seller identities are never shown in price graphs. Even logged-in users cannot see who bought or sold at a specific price point."
+    },
+    "retention": {
+      "title": "5. Data Retention",
+      "text": "We retain your account data as long as you maintain an account. Transaction records are retained for 7 years for tax and legal compliance. If you delete your account, your display name is anonymized in provenance chains but the transaction record itself is preserved as it forms part of plant history."
+    },
+    "security": {
+      "title": "6. Security",
+      "text": "We use industry-standard security measures: Supabase Row-Level Security on all database tables, HTTPS encryption, HMAC-signed QR codes, and webhook signature verification for payment processing. However, no internet transmission is 100% secure."
+    },
+    "rights": {
+      "title": "7. Your Rights",
+      "text": "Under Thai personal data protection law (PDPA), you have the right to access, correct, delete, and port your personal data. Contact us at privacy@root.market to exercise these rights. We will respond within 30 days."
+    },
+    "contact": {
+      "title": "8. Contact",
+      "text": "For privacy-related questions, email privacy@root.market or write to Root Plant Market Co., Ltd., 88/19 Soi Sukhumvit 24, Klongton, Klongtoey, Bangkok 10110."
+    }
+  },
+  "provenance": {
+    "title": "Root Provenance",
+    "description": "A permanent, verifiable record of a plant's identity and ownership — a digital birth certificate that travels with the plant for life.",
+    "features": {
+      "verified": {
+        "title": "Verified identity",
+        "desc": "Each plant gets a unique QR tag tied to its first listing and photos."
+      },
+      "history": {
+        "title": "Full history",
+        "desc": "Every sale and owner is recorded, so the chain of custody is never lost."
+      },
+      "fraud": {
+        "title": "Fraud protection",
+        "desc": "Buyers can confirm a plant is the one that was actually listed and sold."
+      }
+    },
+    "sections": {
+      "why": {
+        "title": "Why provenance matters for plants",
+        "text": "The second-hand and collector plant market runs on trust. A buyer paying a premium for a highly-variegated Monstera or a mature aroid is trusting the seller's claims about the plant's maturity, variegation stability, and care history — claims that are easy to exaggerate and hard to verify. Provenance replaces \"trust me\" with a record."
+      },
+      "how": {
+        "title": "How it works",
+        "items": {
+          "0": "When a plant is listed, Root generates a unique QR code and ties it to the listing's photos, species, and seller.",
+          "1": "The seller attaches the printed QR tag to the physical plant before shipping.",
+          "2": "Each completed sale appends a new entry to the plant's chain — the new owner, date, and price.",
+          "3": "Anyone scanning the tag sees the plant's full timeline: who grew it, when it changed hands, and for how much."
+        }
+      },
+      "protects": {
+        "title": "What it protects against",
+        "text": "Provenance makes it far harder to pass off a different (often lesser) plant than the one advertised, to fake a plant's age or lineage, or to launder a stolen specimen. Sellers build a verifiable reputation through real, recorded sales rather than screenshots."
+      },
+      "privacy": {
+        "title": "Ownership & privacy",
+        "text": "The chain records pseudonymous seller/buyer handles and transaction metadata — not your home address or payment details. You control what's shown on your public profile."
+      }
+    },
+    "cta": {
+      "description": "Every plant on Root can carry its own provenance tag.",
+      "button": "List a plant"
+    },
+    "whatIsThis": "What is this?",
+    "readMore": "Read the full white paper →"
+  },
+  "qrScanner": {
+    "errors": {
+      "invalid": "Not a valid Root provenance QR",
+      "camera": "Could not access camera. Try upload mode instead.",
+      "upload": "Could not read QR from image. Try manual entry.",
+      "manual": "Enter a valid plant ID starting with p-"
+    },
+    "title": "Scan Plant QR",
+    "subtitle": "Verify a plant's provenance by scanning its Root QR tag",
+    "modes": {
+      "camera": "Camera",
+      "upload": "Upload",
+      "manual": "Type ID"
+    },
+    "cameraHint": "Point camera at the QR tag on the plant pot",
+    "uploadButton": "Choose QR photo",
+    "uploadHint": "Upload a photo of the QR tag",
+    "manualLabel": "Plant ID",
+    "manualPlaceholder": "e.g. p-123 or plant-abc",
+    "lookUp": "Look Up Plant",
+    "whatIs": {
+      "title": "What is a Root QR tag?",
+      "description": "Every plant sold on Root gets a unique QR code. Scan it to instantly verify the plant's identity, see its full ownership history, and confirm it came from a trusted seller. It's like a digital birth certificate for your plant."
+    }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last updated: {{date}}",
+    "acceptance": {
+      "title": "1. Acceptance of Terms",
+      "text": "By accessing or using Root Plant Market (\"Root\", \"we\", \"us\"), you agree to be bound by these Terms of Service. If you do not agree, you may not use the platform. Root is a marketplace connecting buyers and sellers of plants within Thailand. We are not a party to any transaction between users."
+    },
+    "eligibility": {
+      "title": "2. Eligibility",
+      "text": "You must be at least 18 years old and resident in Thailand to use Root. By creating an account, you represent that you meet these requirements. Accounts registered by automated methods are not permitted."
+    },
+    "account": {
+      "title": "3. Account Registration",
+      "text": "You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorized use. Root reserves the right to suspend accounts that violate these terms or receive multiple valid reports from other users."
+    },
+    "listing": {
+      "title": "4. Listing and Selling",
+      "intro": "When you create a listing on Root, you agree that:",
+      "rules": {
+        "ownership": "You are the legal owner of the plant or authorized to sell it",
+        "accuracy": "The description, photos, and condition are accurate and not misleading",
+        "cites": "The plant is not illegally collected from wild populations (CITES restrictions apply)",
+        "shipWithin48h": "You will ship the plant within 48 hours of payment confirmation",
+        "attachQr": "You will attach the QR provenance tag to the physical plant before shipping"
+      }
+    },
+    "buying": {
+      "title": "5. Buying",
+      "intro": "When you purchase a plant on Root, you agree that:",
+      "rules": {
+        "payWithin15m": "You will complete payment within 15 minutes of initiating checkout",
+        "confirmWithin48h": "You will confirm receipt within 48 hours of delivery (or auto-confirm)",
+        "livingOrganism": "You understand plants are living organisms and some stress from shipping is normal",
+        "openDispute": "You will open disputes within 48 hours of delivery if there are issues"
+      }
+    },
+    "fees": {
+      "title": "6. Fees",
+      "text": "Root charges an 8% platform fee on the sale price, deducted from the seller's payout. There are no listing fees, no monthly fees, and no buyer fees. Payouts are processed to the seller's registered PromptPay ID within 1-2 business days of transaction completion."
+    },
+    "prohibited": {
+      "title": "7. Prohibited Items",
+      "text": "The following may not be listed on Root: illegally collected wild plants (without proper permits), plants restricted under CITES Appendix I, seeds of invasive species, synthetic/chemical plant growth regulators offered for human consumption, and any item that violates Thai law."
+    },
+    "disputes": {
+      "title": "8. Disputes and Refunds",
+      "text": "Disputes must be opened within 48 hours of delivery. Root's dispute resolution team will review evidence from both parties. Decisions may result in full refund to buyer, full release to seller, or partial refund. All decisions are final. Root reserves the right to ban users who abuse the dispute system."
+    },
+    "provenance": {
+      "title": "9. QR Provenance",
+      "text": "The QR code system is a feature for tracking plant ownership history. Root does not guarantee the accuracy of information entered by users. The QR code remains active even if a user deletes their account, as ownership history is permanent."
+    },
+    "liability": {
+      "title": "10. Limitation of Liability",
+      "text": "Root is a marketplace platform, not a seller. We are not liable for the quality, safety, or legality of plants listed. Our total liability to you for any claim arising from your use of Root shall not exceed the amount you paid to Root in fees in the 12 months preceding the claim."
+    },
+    "governingLaw": {
+      "title": "11. Governing Law",
+      "text": "These Terms are governed by the laws of Thailand. Any dispute shall be resolved in the courts of Bangkok."
+    }
+  },
+  "shippingGuide": {
+    "title": "How to Ship Plants Safely",
+    "subtitle": "A step-by-step guide for Thai plant sellers. Follow these 7 steps and your plants will arrive alive, healthy, and happy — every time.",
+    "progress": {
+      "label": "Your progress",
+      "reset": "Reset"
+    },
+    "reset": {
+      "title": "Reset Progress?",
+      "description": "This will clear all checked steps. You cannot undo this.",
+      "cancel": "Cancel",
+      "confirm": "Reset"
+    },
+    "proTips": "Pro Tips",
+    "stepCompleted": "I have completed this step",
+    "checklist": {
+      "title": "Packing Checklist",
+      "print": "Print",
+      "tip": "Tip: Print this page and keep it by your packing station.",
+      "items": {
+        "0": "Damp sphagnum moss ready",
+        "1": "Plastic wrap / zip bags",
+        "2": "Rubber bands or twine",
+        "3": "Sturdy cardboard box",
+        "4": "Packing peanuts or paper",
+        "5": "Strong packing tape",
+        "6": "FRAGILE labels",
+        "7": "Bamboo stakes for support",
+        "8": "Plant watered 2 days ago",
+        "9": "Dead leaves removed",
+        "10": "Roots rinsed (if bare-root)",
+        "11": "Soil secured (if potted)",
+        "12": "Roots wrapped in moss",
+        "13": "Moss sealed in plastic bag",
+        "14": "Stem tied to stake",
+        "15": "Delicate leaves wrapped",
+        "16": "Vines coiled and secured",
+        "17": "5cm bottom cushion in box",
+        "18": "Plant centered upright",
+        "19": "All gaps filled",
+        "20": "Shake test passed",
+        "21": "Box sealed H-tape method",
+        "22": "FRAGILE on all 6 sides",
+        "23": "THIS SIDE UP arrows",
+        "24": "Sender + receiver addresses",
+        "25": "Tracking photo taken",
+        "26": "Buyer messaged tracking #"
+      }
+    },
+    "steps": {
+      "gatherMaterials": {
+        "title": "Gather Materials",
+        "description": "Before you touch the plant, make sure you have everything ready. Thai heat means speed matters — you do not want the plant sitting half-packed while you hunt for tape.",
+        "details": {
+          "0": "Sphagnum moss (damp, not soaking) — the gold standard for root hydration during transit",
+          "1": "Plastic wrap or zip-lock bags — seal moisture in, keep roots happy",
+          "2": "Rubber bands or twine — secure wraps without crushing stems",
+          "3": "Sturdy cardboard box — plant should not touch any wall; 5cm cushion minimum on all sides",
+          "4": "Packing peanuts, crumpled newspaper, or bubble wrap — fill every gap so nothing shifts",
+          "5": "Strong packing tape — the H-pattern taping method prevents box failure",
+          "6": "\"FRAGILE — LIVE PLANTS\" labels — make it obvious to handlers",
+          "7": "Bamboo skewers or plant stakes — prevent stem breakage in transit"
+        },
+        "tips": {
+          "0": "Buy moss in advance from Shopee/Lazada garden shops — it is cheaper than nurseries",
+          "1": "Save boxes from your own plant deliveries — they are already sized right",
+          "2": "If shipping aroid cuttings, pre-cut moss squares (10x10cm) to speed up packing"
+        }
+      },
+      "preparePlant": {
+        "title": "Prepare the Plant",
+        "description": "A well-prepped plant survives 3-day shipping across Thailand. A rushed plant dies in Bangkok traffic. Take your time here.",
+        "details": {
+          "0": "Water the plant 2 days before shipping — not the day of. Wet soil + sealed box = root rot.",
+          "1": "Remove dead, yellowing, or damaged leaves — reduces stress and weight",
+          "2": "For bare-root shipping (recommended for aroids, hoyas, orchids):",
+          "3": "  – Gently remove the plant from its pot",
+          "4": "  – Shake off loose soil, rinse roots gently with room-temperature water",
+          "5": "  – Trim any mushy or dead roots with clean scissors",
+          "6": "For potted shipping (cacti, succulents, established plants):",
+          "7": "  – Secure soil surface with plastic wrap around the pot",
+          "8": "  – Tape the wrap to prevent spillage — Thai couriers are not gentle"
+        },
+        "tips": {
+          "0": "Take a clear photo of the plant before packing — insurance for disputes",
+          "1": "For variegated plants, mark which side faced the light so buyer knows",
+          "2": "If roots are long, coil them loosely — do not fold or crimp"
+        }
+      },
+      "protectRoots": {
+        "title": "Protect the Roots",
+        "description": "Roots are the plant lifeline during shipping. In Thailand's heat, dry roots die in hours. Keep them hydrated but not waterlogged.",
+        "details": {
+          "0": "Take a generous handful of damp sphagnum moss — squeeze until a few drops come out",
+          "1": "Wrap the moss completely around the root ball or bare roots",
+          "2": "Seal the moss wrap inside a plastic bag or cling film",
+          "3": "Secure with a rubber band — tight enough to hold, loose enough to not damage",
+          "4": "For potted plants: wrap the entire pot in plastic, tape the top soil layer",
+          "5": "Double-bag if shipping during Songkran or rainy season — humidity is your enemy"
+        },
+        "tips": {
+          "0": "Add a drop of hydrogen peroxide to the moss water — prevents mold in sealed bags",
+          "1": "For long transits (south to north Thailand), use slightly more moss",
+          "2": "Label the bag \"ROOTS — KEEP MOIST\" so buyer knows not to discard it"
+        }
+      },
+      "securePlant": {
+        "title": "Secure the Plant",
+        "description": "Stems break. Leaves tear. Thai courier vans bounce. Your job is to make the plant immobile inside the box.",
+        "details": {
+          "0": "Insert bamboo skewers or stakes into the soil alongside the stem",
+          "1": "Gently tie the stem to the stake with soft plant tie or twine — not wire",
+          "2": "Wrap delicate leaves in soft tissue paper — prevents bruising and drying",
+          "3": "For trailing plants (pothos, hoyas): coil vines loosely and secure with paper loops",
+          "4": "For tall plants: add a second stake crossing the first — creates a cage",
+          "5": "Cover the entire plant with a loose plastic bag (with small air holes) — humidity tent"
+        },
+        "tips": {
+          "0": "Use biodegradable plant ties — buyers appreciate eco-conscious sellers",
+          "1": "For velvet-leaf plants (gloriosum, melanochrysum), add extra tissue between leaves",
+          "2": "If the plant has a new unfurling leaf, support it with a cotton ball wrap"
+        }
+      },
+      "boxItUp": {
+        "title": "Box It Up",
+        "description": "The box is your plant's home for 1–3 days. Make it a fortress. Shake test is mandatory — if you hear movement, add more padding.",
+        "details": {
+          "0": "Choose a box where the plant does not touch any wall — 5cm minimum clearance",
+          "1": "Line the bottom with 5cm of cushioning — packing peanuts or crumpled paper",
+          "2": "Place the wrapped plant in the center — upright, stable, no tilt",
+          "3": "Fill all gaps with packing material — every empty space is a damage risk",
+          "4": "Add a layer of cushioning on top before sealing",
+          "5": "Close the box and do the shake test — no movement sound = perfect",
+          "6": "Seal with H-tape method: tape across the center seam, then tape perpendicular at both ends"
+        },
+        "tips": {
+          "0": "For expensive plants (5,000+ THB), double-box — inner box with plant, outer box with 3cm gap filled",
+          "1": "Write \"OPEN THIS SIDE\" on the correct flap so buyer does not slice the plant",
+          "2": "Include a silica gel packet if shipping in rainy season — but keep it away from roots"
+        }
+      },
+      "labelSeal": {
+        "title": "Label & Seal",
+        "description": "Your package will pass through 3–6 handlers who do not care about plants. Labels are the only thing protecting your shipment.",
+        "details": {
+          "0": "Write \"FRAGILE — LIVE PLANTS\" in large letters on all 6 sides of the box",
+          "1": "Add \"THIS SIDE UP\" arrows — prevents upside-down handling",
+          "2": "Include sender address (your address) and buyer address clearly on top",
+          "3": "Tape over the addresses with clear tape — prevents smudging in rain",
+          "4": "Add a \"DO NOT CRUSH\" label if the box is lightweight",
+          "5": "Include a small note inside with: your contact, care instructions, and a thank you"
+        },
+        "tips": {
+          "0": "Use a permanent marker — ballpoint ink smears in Thai humidity",
+          "1": "Print labels on A4 paper and tape them on — looks more professional than handwriting",
+          "2": "Add a \"Handle with Care\" sticker if you have one — visual reinforcement works"
+        }
+      },
+      "chooseCourier": {
+        "title": "Choose Courier & Ship",
+        "description": "Thailand has excellent courier options for plants. Pick based on your buyer's location and your budget. Same-day or next-day is always best for live plants.",
+        "details": {
+          "0": "Kerry Express — Fast, reliable, handles fragile well. Best for Bangkok metro and major cities.",
+          "1": "Flash Express — Cheapest option, decent for non-fragile plants. Longer transit times.",
+          "2": "J&T Express — Good tracking, wide coverage. Solid middle-ground choice.",
+          "3": "Thailand Post EMS — Best for rural addresses (isan, deep south). Slower but reaches everywhere.",
+          "4": "Grab Express — Same-day for Bangkok/major cities. Expensive but plants arrive fresh.",
+          "5": "Always ship Monday–Thursday — avoids weekend warehouse sitting",
+          "6": "Drop off before 2 PM for same-day pickup by most couriers",
+          "7": "Take a photo of the sealed box with tracking label before handing over"
+        },
+        "tips": {
+          "0": "Kerry Express has a \"Kerry Express Care\" option — worth the extra 20 THB for plants",
+          "1": "Flash Express pickup is free from your home — schedule via their app",
+          "2": "Always message the buyer the tracking number within 1 hour of drop-off"
+        }
+      }
+    }
+  }
+}

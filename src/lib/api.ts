@@ -596,7 +596,7 @@ export async function fetchProvenance(plantId: string): Promise<{ listing: Listi
       transferred_at: r.completed_at || r.created_at,
     }));
     return { listing, transfers };
-  } catch (e) {
+  } catch {
     return { listing, transfers: [] };
   }
 }
@@ -641,7 +641,7 @@ export async function createDispute(input: {
 }
 
 export async function updateProfile(userId: string, patch: Partial<Profile>): Promise<void> {
-  const cleanPatch: Record<string, any> = {};
+  const cleanPatch: Record<string, unknown> = {};
   if (patch.display_name !== undefined) cleanPatch.display_name = sanitizeText(patch.display_name, 50);
   if (patch.promptpay_id !== undefined) cleanPatch.promptpay_id = patch.promptpay_id ? sanitizeText(patch.promptpay_id, 20) : null;
   if (patch.language_preference !== undefined) cleanPatch.language_preference = patch.language_preference;

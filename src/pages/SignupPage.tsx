@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isValidEmail } from '@/lib/validation';
 
 export default function SignupPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,27 +25,27 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     if (!email || !password || !displayName) {
-      setError('Display name, email and password are required');
+      setError(t('common:errors.required'));
       return;
     }
     if (!isValidEmail(email)) {
-      setError('Please enter a valid email address');
+      setError(t('common:errors.invalidEmail'));
       return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('common:errors.minLength', { count: 6 }));
       return;
     }
     if (displayName.length < 2 || displayName.length > 50) {
-      setError('Display name must be 2–50 characters');
+      setError(t('common:errors.maxLength', { count: 50 }));
       return;
     }
     const res = await signup({ email, password, displayName, promptpayId, location });
     if (res.ok) {
-      toast.success(`Welcome to Root, ${displayName}!`);
+      toast.success(t('auth:signup.success'));
       navigate(redirect);
     } else {
-      setError(res.error || 'Could not create account');
+      setError(res.error || t('common:errors.generic'));
     }
   };
 
@@ -53,10 +55,10 @@ export default function SignupPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Leaf className="w-6 h-6 text-emerald-400" />
-            <span className="text-xl font-semibold">ROOT</span>
+            <span className="text-xl font-semibold">ROOTS</span>
           </Link>
-          <h1 className="text-2xl font-light tracking-tight mb-2">Create account</h1>
-          <p className="text-zinc-500 text-sm">Join Thailand's plant marketplace</p>
+          <h1 className="text-2xl font-light tracking-tight mb-2">{t('auth:signup.title')}</h1>
+          <p className="text-zinc-500 text-sm">{t('auth:signup.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -66,18 +68,18 @@ export default function SignupPage() {
             </div>
           )}
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Display Name</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.displayName')}</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your display name"
+              placeholder={t('auth:signup.displayName')}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               required
             />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Email</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.email')}</label>
             <input
               type="email"
               value={email}
@@ -88,13 +90,13 @@ export default function SignupPage() {
             />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Password</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.password')}</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 6 characters"
+                placeholder={t('auth:signup.passwordHint')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 pr-10 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                 required
               />
@@ -102,6 +104,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                aria-label={showPassword ? t('auth:login.hidePassword') : t('auth:login.showPassword')}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -109,7 +112,7 @@ export default function SignupPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">PromptPay <span className="text-zinc-600">(to sell)</span></label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.promptpayId')}</label>
               <input
                 type="text"
                 value={promptpayId}
@@ -119,24 +122,24 @@ export default function SignupPage() {
               />
             </div>
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">Province</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.location')}</label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="Bangkok"
+                placeholder={t('auth:signup.location')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
           </div>
           <Button type="submit" disabled={isLoading} className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-11 rounded-lg">
-            {isLoading ? 'Creating…' : 'Create Account'}
+            {isLoading ? t('common:actions.loading') : t('auth:signup.submit')}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-zinc-500">
-          Already have an account?{' '}
-          <Link to={`/login${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">Sign in</Link>
+          {t('auth:signup.hasAccount')}{' '}
+          <Link to={`/login${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">{t('auth:signup.login')}</Link>
         </div>
       </div>
     </div>

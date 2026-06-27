@@ -1,9 +1,11 @@
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Star, Store, MapPin, Calendar } from 'lucide-react';
 import { getUserById, getActiveListings, PLANT_IMAGES } from '@/data/mockData';
 import ReviewSection from '@/components/ReviewSection';
 
 export default function SellerPage() {
+  const { t } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const seller = getUserById(id || '');
   const listings = getActiveListings().filter(l => l.seller_id === id);
@@ -11,8 +13,8 @@ export default function SellerPage() {
   if (!seller) {
     return (
       <div className="pt-24 pb-16 px-4 text-center">
-        <h1 className="text-2xl mb-4">Seller not found</h1>
-        <Link to="/browse" className="text-emerald-400 hover:underline">Back to browse</Link>
+        <h1 className="text-2xl mb-4">{t('marketplace:seller.notFound')}</h1>
+        <Link to="/browse" className="text-emerald-400 hover:underline">{t('marketplace:seller.backToBrowse')}</Link>
       </div>
     );
   }
@@ -21,7 +23,7 @@ export default function SellerPage() {
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
         <Link to="/browse" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="w-4 h-4" /> {t('common:actions.back')}
         </Link>
 
         {/* Seller Profile */}
@@ -29,7 +31,7 @@ export default function SellerPage() {
           <div className="flex items-start gap-4">
             <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center text-2xl font-light shrink-0 overflow-hidden">
               {seller.avatar_url ? (
-                <img src={seller.avatar_url} alt={`${seller.display_name} avatar`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img src={seller.avatar_url} alt={t('marketplace:seller.avatarAlt', { name: seller.display_name })} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 seller.display_name.charAt(0)
               )}
@@ -39,11 +41,11 @@ export default function SellerPage() {
               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 mb-3">
                 {seller.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {seller.location}</span>}
                 {seller.rating && <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400" /> {seller.rating}</span>}
-                <span className="flex items-center gap-1"><Store className="w-3.5 h-3.5" /> {seller.sales_count} sales</span>
-                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Member since {new Date(seller.created_at).getFullYear()}</span>
+                <span className="flex items-center gap-1"><Store className="w-3.5 h-3.5" /> {t('marketplace:seller.salesCount', { count: seller.sales_count })}</span>
+                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('marketplace:seller.memberSince', { year: new Date(seller.created_at).getFullYear() })}</span>
               </div>
               <p className="text-sm text-zinc-400">
-                Trusted seller with {seller.sales_count}+ completed transactions and a {seller.rating} rating.
+                {t('marketplace:seller.trustedDescription', { count: seller.sales_count, rating: seller.rating })}
               </p>
             </div>
           </div>
@@ -55,7 +57,7 @@ export default function SellerPage() {
         </div>
 
         {/* Active Listings */}
-        <h2 className="text-lg font-medium mb-4">Active Listings ({listings.length})</h2>
+        <h2 className="text-lg font-medium mb-4">{t('marketplace:seller.activeListingsCount', { count: listings.length })}</h2>
         {listings.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {listings.map(l => (
@@ -63,7 +65,7 @@ export default function SellerPage() {
                 <div className="aspect-[3/4] overflow-hidden">
                   <img
                     src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                    alt={l.species?.scientific_name || 'Plant listing'}
+                    alt={l.species?.scientific_name || t('marketplace:browse.listingAlt')}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -73,7 +75,7 @@ export default function SellerPage() {
                   <p className="text-xs text-zinc-500 mb-1 truncate">{l.species?.scientific_name}</p>
                   <p className="font-medium mb-2 truncate">{l.species?.common_name_en}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} THB</span>
+                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
                     <span className="text-xs text-zinc-600">{l.size_category}</span>
                   </div>
                 </div>
@@ -81,7 +83,7 @@ export default function SellerPage() {
             ))}
           </div>
         ) : (
-          <p className="text-zinc-500">No active listings from this seller.</p>
+          <p className="text-zinc-500">{t('marketplace:seller.noActiveListings')}</p>
         )}
       </div>
     </div>

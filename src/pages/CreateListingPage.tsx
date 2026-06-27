@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, QrCode, CheckCircle, Info, X, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
@@ -15,12 +16,6 @@ import type { Listing, Category } from '@/types';
 interface PhotoItem { file: File; preview: string; }
 
 const SIZES = ['S', 'M', 'L', 'XL'] as const;
-const SIZE_LABELS: Record<string, string> = {
-  S: 'Small (under 15cm)',
-  M: 'Medium (15-40cm)',
-  L: 'Large (40-80cm)',
-  XL: 'Extra Large (80cm+)',
-};
 
 // Broad tag vocabulary used for autocomplete. Sellers can still type anything
 // not in here and add it as a custom tag.
@@ -35,6 +30,7 @@ const TAG_VOCAB = [
 ];
 
 export default function CreateListingPage() {
+  const { t } = useTranslation(['marketplace', 'common']);
   const [step, setStep] = useState<'form' | 'qr'>('form');
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
   const [speciesQuery, setSpeciesQuery] = useState('');
@@ -53,7 +49,7 @@ export default function CreateListingPage() {
   const tagSuggestions = (() => {
     const q = tagInput.trim().toLowerCase();
     if (!q) return [];
-    return TAG_VOCAB.filter(t => t.includes(q) && !tags.includes(t)).slice(0, 6);
+    return TAG_VOCAB.filter(tTag => tTag.includes(q) && !tags.includes(tTag)).slice(0, 6);
   })();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -117,13 +113,13 @@ export default function CreateListingPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!speciesQuery) e.species = 'Select or enter a species';
-    if (!price || !isValidPrice(parseInt(price))) e.price = 'Minimum price is 10 THB, maximum 10M THB';
-    if (!size) e.size = 'Select a size';
-    if (!description || description.length < 20) e.description = 'Minimum 20 characters';
-    if (delivery.length === 0) e.delivery = 'Select at least one delivery method';
-    if (delivery.includes('pickup') && !province) e.province = 'Required for pickup';
-    if (photoCount < 1) e.photos = 'At least 1 photo required';
+    if (!speciesQuery) e.species = t('marketplace:create.errors.species');
+    if (!price || !isValidPrice(parseInt(price))) e.price = t('marketplace:create.errors.price');
+    if (!size) e.size = t('marketplace:create.errors.size');
+    if (!description || description.length < 20) e.description = t('marketplace:create.errors.description');
+    if (delivery.length === 0) e.delivery = t('marketplace:create.errors.delivery');
+    if (delivery.includes('pickup') && !province) e.province = t('marketplace:create.errors.province');
+    if (photoCount < 1) e.photos = t('marketplace:create.errors.photos');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -132,7 +128,7 @@ export default function CreateListingPage() {
     e.preventDefault();
     if (!validate()) return;
     if (!user || isLocalAdmin) {
-      toast.error('Please sign up as a seller to create a real listing.');
+      toast.error(t('marketplace:create.signUpSeller'));
       navigate('/signup');
       return;
     }
@@ -165,42 +161,44 @@ export default function CreateListingPage() {
       setCreated(listing);
       setProvenanceQR(qr);
       setStep('qr');
-      toast.success('Listing published to the market!');
+      toast.success(t('marketplace:create.published'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not create listing');
+      toast.error(err instanceof Error ? err.message : t('marketplace:create.createFailed'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const currency = t('common:currency');
 
   if (step === 'qr') {
     return (
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-md mx-auto text-center">
           <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-light mb-2">Listing Created!</h1>
+          <h1 className="text-2xl font-light mb-2">{t('marketplace:create.successTitle')}</h1>
           <p className="text-zinc-500 mb-2">
-            Your {species?.common_name_en || speciesQuery} is now live on Root.
+            {t('marketplace:create.successSubtitle', { name: species?.common_name_en || speciesQuery })}
           </p>
           <p className="text-sm text-zinc-600 mb-6">
-            Buyers can find it, compare prices, and purchase with escrow protection.
+            {t('marketplace:create.successDescription')}
           </p>
 
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2 justify-center">
               <QrCode className="w-4 h-4 text-purple-400" />
-              Provenance QR Code
+              {t('marketplace:create.provenanceQrTitle')}
             </h3>
             <div className="w-48 h-48 bg-white rounded-xl mx-auto mb-3 p-3 flex items-center justify-center">
               {provenanceQR
-                ? <img src={provenanceQR} alt="Provenance QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
+                ? <img src={provenanceQR} alt={t('marketplace:create.provenanceQrAlt')} loading="lazy" decoding="async" className="w-full h-full object-contain" />
                 : <QrCode className="w-28 h-28 text-zinc-900" />}
             </div>
             <p className="text-xs text-emerald-400 mb-2">
-              Auto-downloaded to your device.
+              {t('marketplace:create.autoDownloaded')}
             </p>
             <p className="text-xs text-zinc-500 mb-4">
-              Print and attach this QR tag to the plant pot. Every future owner can scan it to see its full history.
+              {t('marketplace:create.printInstructions')}
             </p>
             <div className="flex gap-2 justify-center">
               <a
@@ -208,41 +206,41 @@ export default function CreateListingPage() {
                 download={`root-provenance-${created?.id || 'qr'}.png`}
                 className="inline-flex items-center bg-emerald-500 hover:bg-emerald-600 text-black text-sm px-4 py-2 rounded-md font-medium"
               >
-                Download Again
+                {t('common:actions.download')}
               </a>
-              <Button type="button" variant="outline" className="border-white/10 text-sm" onClick={() => window.print()}>Print Tag</Button>
+              <Button type="button" variant="outline" className="border-white/10 text-sm" onClick={() => window.print()}>{t('common:actions.print')}</Button>
             </div>
           </div>
 
           {/* Print-only QR tag template */}
           <div className="hidden print:block">
             <div className="text-center py-10">
-              <h1 className="text-2xl font-bold mb-2">Root Provenance Tag</h1>
+              <h1 className="text-2xl font-bold mb-2">{t('marketplace:create.provenanceTagTitle')}</h1>
               <p className="text-sm mb-6">{species?.common_name_en || speciesQuery}</p>
               <div className="w-64 h-64 bg-white rounded-xl mx-auto p-4 mb-4">
-                <img src={provenanceQR} alt="Provenance QR" loading="lazy" decoding="async" className="w-full h-full object-contain" />
+                <img src={provenanceQR} alt={t('marketplace:create.provenanceQrAlt')} loading="lazy" decoding="async" className="w-full h-full object-contain" />
               </div>
-              <p className="text-xs text-zinc-500">Scan to verify authenticity and view full history</p>
+              <p className="text-xs text-zinc-500">{t('marketplace:create.scanInstruction')}</p>
               <p className="text-xs text-zinc-500 mt-1">{window.location.origin}/#/p/{created?.id}</p>
             </div>
           </div>
 
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 text-left mb-6">
-            <h4 className="text-sm font-medium mb-2">What happens next?</h4>
+            <h4 className="text-sm font-medium mb-2">{t('marketplace:create.nextStepsTitle')}</h4>
             <ol className="text-sm text-zinc-500 space-y-1.5 list-decimal list-inside">
-              <li>Attach the QR tag to your plant</li>
-              <li>When a buyer purchases, you will ship with the QR attached</li>
-              <li>Buyer scans QR on arrival to confirm authenticity</li>
-              <li>Funds release to your PromptPay automatically</li>
+              <li>{t('marketplace:create.nextSteps.attach')}</li>
+              <li>{t('marketplace:create.nextSteps.ship')}</li>
+              <li>{t('marketplace:create.nextSteps.scan')}</li>
+              <li>{t('marketplace:create.nextSteps.funds')}</li>
             </ol>
           </div>
 
           <div className="flex gap-3 justify-center">
             <Link to="/seller-dashboard" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
-              Go to Dashboard
+              {t('marketplace:create.goToDashboard')}
             </Link>
             <Link to={created ? `/listing/${created.id}` : '/browse'} className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
-              View Listing
+              {t('marketplace:create.viewListing')}
             </Link>
           </div>
         </div>
@@ -254,21 +252,21 @@ export default function CreateListingPage() {
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <Link to="/seller-dashboard" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Seller Dashboard
+          <ArrowLeft className="w-4 h-4" /> {t('common:nav.sellerDashboard')}
         </Link>
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-light tracking-tight">Create Listing</h1>
-            <p className="text-sm text-zinc-500">List any plant — from basil to variegated monsters</p>
+            <h1 className="text-2xl font-light tracking-tight">{t('marketplace:create.title')}</h1>
+            <p className="text-sm text-zinc-500">{t('marketplace:create.subtitle')}</p>
           </div>
-          <span className="text-xs text-zinc-600 bg-zinc-800/50 px-3 py-1 rounded-full">Step 1 of 2</span>
+          <span className="text-xs text-zinc-600 bg-zinc-800/50 px-3 py-1 rounded-full">{t('marketplace:create.stepIndicator')}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Photos */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Photos <span className="text-zinc-500 font-normal">(1-10)</span></label>
+            <label className="text-sm font-medium mb-2 block">{t('marketplace:create.photosLabel')}</label>
             <input
               ref={fileInputRef}
               type="file"
@@ -280,16 +278,16 @@ export default function CreateListingPage() {
             <div className="grid grid-cols-5 gap-2">
               {photos.map((p, i) => (
                 <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-2 border-emerald-500/50 group">
-                  <img src={p.preview} alt={`Photo ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img src={p.preview} alt={t('marketplace:create.photoAlt', { index: i + 1 })} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removePhoto(i)}
                     className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Remove photo"
+                    aria-label={t('common:actions.remove')}
                   >
                     <X className="w-3 h-3 text-white" />
                   </button>
-                  {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-emerald-400 py-0.5">Main</span>}
+                  {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-emerald-400 py-0.5">{t('marketplace:create.mainPhoto')}</span>}
                 </div>
               ))}
               {photos.length < 10 && (
@@ -299,13 +297,13 @@ export default function CreateListingPage() {
                   className="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-white/20 flex flex-col items-center justify-center gap-1 transition-colors"
                 >
                   <Camera className="w-5 h-5 text-zinc-600" />
-                  <span className="text-[10px] text-zinc-600">Add</span>
+                  <span className="text-[10px] text-zinc-600">{t('marketplace:create.addPhoto')}</span>
                 </button>
               )}
             </div>
             {photoCount > 0 && (
               <p className="text-xs text-emerald-400/80 mt-1 inline-flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> {photoCount} photo{photoCount > 1 ? 's' : ''} ready
+                <CheckCircle className="w-3 h-3" /> {t('marketplace:create.photosReady', { count: photoCount })}
               </p>
             )}
             {errors.photos && <p className="text-xs text-red-400 mt-1">{errors.photos}</p>}
@@ -316,13 +314,13 @@ export default function CreateListingPage() {
             <SpeciesAutocomplete
               value={speciesQuery}
               onChange={handleSpeciesChange}
-              label="Plant Species *"
-              placeholder="Type 'basil', 'monstera', 'pothos'..."
+              label={t('marketplace:create.speciesLabel')}
+              placeholder={t('marketplace:create.speciesPlaceholder')}
             />
             {species && (
               <div className="mt-2 flex items-center gap-2 text-xs">
                 <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full capitalize">{species.category}</span>
-                <span className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">Care: {species.care_level}</span>
+                <span className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">{t('marketplace:create.careLabel')}: {species.care_level}</span>
                 <span className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">{species.common_name_th}</span>
               </div>
             )}
@@ -332,26 +330,26 @@ export default function CreateListingPage() {
           {/* Price with Market Context */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Price (THB) *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.priceLabel')}</label>
               <input
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="e.g. 500"
+                placeholder={t('marketplace:create.pricePlaceholder')}
                 min="10"
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               />
               {errors.price && <p className="text-xs text-red-400 mt-1">{errors.price}</p>}
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Size *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.sizeLabel')}</label>
               <select
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="">Select size</option>
-                {SIZES.map(s => <option key={s} value={s}>{SIZE_LABELS[s]}</option>)}
+                <option value="">{t('marketplace:create.selectSize')}</option>
+                {SIZES.map(s => <option key={s} value={s}>{t(`marketplace:create.sizeLabels.${s}`)}</option>)}
               </select>
               {errors.size && <p className="text-xs text-red-400 mt-1">{errors.size}</p>}
             </div>
@@ -367,13 +365,16 @@ export default function CreateListingPage() {
               <div className="flex items-center gap-2">
                 <Info className="w-4 h-4" />
                 <span>
-                  Your price is <strong>{Math.abs(pricePosition).toFixed(0)}% {pricePosition > 0 ? 'above' : 'below'}</strong> the 30-day market median
-                  ({marketStats.median.toLocaleString()} THB)
+                  {Math.abs(pricePosition) < 20
+                    ? t('marketplace:create.pricePosition.similar', { percent: Math.abs(pricePosition).toFixed(0), median: marketStats.median.toLocaleString(), currency })
+                    : pricePosition > 50
+                      ? t('marketplace:create.pricePosition.above', { percent: Math.abs(pricePosition).toFixed(0), median: marketStats.median.toLocaleString(), currency })
+                      : t('marketplace:create.pricePosition.below', { percent: Math.abs(pricePosition).toFixed(0), median: marketStats.median.toLocaleString(), currency })}
                 </span>
               </div>
               {Math.abs(pricePosition) > 50 && (
                 <p className="text-xs mt-1 text-amber-400">
-                  Consider adjusting — extreme pricing may affect visibility
+                  {t('marketplace:create.pricePosition.warning')}
                 </p>
               )}
             </div>
@@ -381,23 +382,23 @@ export default function CreateListingPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Pot Size (cm, optional)</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.potSizeLabel')}</label>
               <input
                 type="number"
                 value={potSize}
                 onChange={(e) => setPotSize(e.target.value)}
-                placeholder="e.g. 15"
+                placeholder={t('marketplace:create.potSizePlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Pickup Province</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.provinceLabel')}</label>
               <select
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="">Select province</option>
+                <option value="">{t('marketplace:create.selectProvince')}</option>
                 {['Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya', 'Nonthaburi', 'Khon Kaen', 'Udon Thani', 'Nakhon Ratchasima', 'Rayong'].map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
@@ -408,7 +409,7 @@ export default function CreateListingPage() {
 
           {/* Delivery Options */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Delivery Options *</label>
+            <label className="text-sm font-medium mb-2 block">{t('marketplace:create.deliveryLabel')}</label>
             <div className="flex gap-3">
               {['ship', 'pickup'].map(opt => (
                 <button
@@ -421,7 +422,7 @@ export default function CreateListingPage() {
                       : 'border-white/10 hover:border-white/20'
                   }`}
                 >
-                  {opt === 'ship' ? 'Shipping' : 'Local Pickup'}
+                  {opt === 'ship' ? t('marketplace:listing.shipping') : t('marketplace:listing.pickup')}
                 </button>
               ))}
             </div>
@@ -431,13 +432,13 @@ export default function CreateListingPage() {
           {/* Precise pickup location */}
           {delivery.includes('pickup') && (
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Pickup Area / Landmark (optional)</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.pickupAreaLabel')}</label>
               <input
                 type="text"
                 value={pickupLocation}
                 onChange={(e) => setPickupLocation(e.target.value)}
                 maxLength={120}
-                placeholder="e.g. Near Ari BTS, Phahonyothin Soi 7"
+                placeholder={t('marketplace:create.pickupAreaPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
               <div className="flex items-center gap-3 mt-2">
@@ -447,65 +448,65 @@ export default function CreateListingPage() {
                   disabled={geoStatus === 'loading'}
                   className="text-xs px-3 py-1.5 rounded-lg border border-white/10 hover:border-emerald-500/50 text-zinc-300 disabled:opacity-50"
                 >
-                  {geoStatus === 'loading' ? 'Locating…' : pickupCoords ? 'Update pin' : '📍 Use my location'}
+                  {geoStatus === 'loading' ? t('common:actions.loading') : pickupCoords ? t('marketplace:create.updatePin') : t('marketplace:create.useLocation')}
                 </button>
                 {pickupCoords && (
                   <span className="text-xs text-emerald-400">
-                    Pinned: {pickupCoords.lat.toFixed(4)}, {pickupCoords.lng.toFixed(4)}
-                    <button type="button" onClick={() => setPickupCoords(null)} className="ml-2 text-zinc-500 hover:text-red-400">clear</button>
+                    {t('marketplace:create.pinned')} {pickupCoords.lat.toFixed(4)}, {pickupCoords.lng.toFixed(4)}
+                    <button type="button" onClick={() => setPickupCoords(null)} className="ml-2 text-zinc-500 hover:text-red-400">{t('common:actions.clear')}</button>
                   </span>
                 )}
-                {geoStatus === 'error' && <span className="text-xs text-red-400">Couldn’t get location</span>}
+                {geoStatus === 'error' && <span className="text-xs text-red-400">{t('marketplace:create.locationError')}</span>}
               </div>
-              <p className="text-xs text-zinc-500 mt-1">Buyers only see the exact pin after purchase. The area text shows publicly.</p>
+              <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.pickupNote')}</p>
             </div>
           )}
 
           {/* Shipping Cost */}
           {delivery.includes('ship') && (
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Shipping Cost (THB)</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.shippingCostLabel')}</label>
               <input
                 type="number"
                 min="0"
                 max="5000"
                 value={shippingCost}
                 onChange={(e) => setShippingCost(e.target.value)}
-                placeholder="e.g. 50"
+                placeholder={t('marketplace:create.shippingCostPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
-              <p className="text-xs text-zinc-500 mt-1">Set to 0 for free shipping</p>
+              <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.freeShippingNote')}</p>
             </div>
           )}
 
           {/* Description */}
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Description * <span className="text-zinc-500 font-normal">(min 20 chars)</span></label>
+            <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.descriptionLabel')}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your plant: condition, care history, variegation %, parent plant info, reason for selling..."
+              placeholder={t('marketplace:create.descriptionPlaceholder')}
               rows={5}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none"
             />
             <div className="flex justify-between mt-1">
               {errors.description && <p className="text-xs text-red-400">{errors.description}</p>}
-              <p className={`text-xs ml-auto ${description.length < 20 ? 'text-zinc-600' : 'text-emerald-400'}`}>{description.length} chars</p>
+              <p className={`text-xs ml-auto ${description.length < 20 ? 'text-zinc-600' : 'text-emerald-400'}`}>{t('marketplace:create.chars', { count: description.length })}</p>
             </div>
           </div>
 
           {/* Tags */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Tags</label>
+            <label className="text-sm font-medium mb-2 block">{t('marketplace:create.tagsLabel')}</label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {['variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly'].map(t => (
+              {['variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly'].map(tTag => (
                 <button
-                  key={t}
+                  key={tTag}
                   type="button"
-                  onClick={() => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(t) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
+                  onClick={() => setTags(prev => prev.includes(tTag) ? prev.filter(x => x !== tTag) : [...prev, tTag])}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(tTag) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
                 >
-                  {t}
+                  {tTag}
                 </button>
               ))}
             </div>
@@ -521,7 +522,7 @@ export default function CreateListingPage() {
                     if (v && !tags.includes(v) && tags.length < 10) { setTags([...tags, v]); setTagInput(''); }
                   }
                 }}
-                placeholder="Type to search tags, or add your own + Enter"
+                placeholder={t('marketplace:create.tagInputPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
               {tagInput.trim() && tagSuggestions.length > 0 && (
@@ -544,10 +545,10 @@ export default function CreateListingPage() {
             </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.map(t => (
-                  <span key={t} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
-                    {t}
-                    <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== t))} className="text-zinc-500 hover:text-white">×</button>
+                {tags.map(tTag => (
+                  <span key={tTag} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
+                    {tTag}
+                    <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== tTag))} className="text-zinc-500 hover:text-white">×</button>
                   </span>
                 ))}
               </div>
@@ -560,14 +561,14 @@ export default function CreateListingPage() {
               <Shield className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-zinc-300">
-                  <strong className="text-white">8% when you sell.</strong> No listing fees, no monthly fees.
+                  {t('marketplace:create.feeNotice')}
                 </p>
               </div>
             </div>
           </div>
 
           <Button type="submit" disabled={submitting} className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base">
-            {submitting ? 'Publishing…' : 'Create Listing & Generate QR'}
+            {submitting ? t('marketplace:create.publishing') : t('marketplace:create.submitButton')}
           </Button>
         </form>
       </div>

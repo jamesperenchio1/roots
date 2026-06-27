@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Droplets, Sun, Sprout } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -25,6 +26,7 @@ interface CareData {
 }
 
 export default function PlantCareCard({ speciesName, compact }: PlantCareCardProps) {
+  const { t } = useTranslation(['marketplace', 'common']);
   const [care, setCare] = useState<CareData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -98,7 +100,7 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
   if (!plant && !fb) {
     return (
       <div className={`bg-zinc-900/30 border border-white/5 rounded-xl ${compact ? 'px-3 py-2' : 'p-6'}`}>
-        <p className="text-xs text-zinc-500">No care info available</p>
+        <p className="text-xs text-zinc-500">{t('plantCare.noInfo')}</p>
       </div>
     );
   }
@@ -111,15 +113,15 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
   if (compact) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span title={`Care level: ${careLevel}`} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
+        <span title={t('plantCare.careLevelTitle', { level: careLevel })} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Sprout className="w-3 h-3 text-emerald-400" />
           {careLevel}
         </span>
-        <span title={`Watering: ${wateringToIcon(watering)}`} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
+        <span title={t('plantCare.wateringTitle', { level: wateringToIcon(watering) })} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Droplets className="w-3 h-3 text-sky-400" />
           {wateringToIcon(watering)}
         </span>
-        <span title={`Light: ${sunlight.join(', ')}`} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
+        <span title={t('plantCare.lightTitle', { level: sunlight.join(', ') })} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Sun className="w-3 h-3 text-amber-400" />
           {sunlightToEmoji(sunlight)}
         </span>
@@ -131,7 +133,7 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
     <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6">
       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
         <Sprout className="w-5 h-5 text-emerald-400" />
-        Plant Care Guide
+        {t('plantCare.title')}
       </h3>
 
       {description && (
@@ -141,15 +143,15 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
       <div className="flex flex-wrap gap-2 mb-4">
         <span className="inline-flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1.5 rounded-full text-xs text-zinc-300">
           <Sprout className="w-3.5 h-3.5 text-emerald-400" />
-          Care: {careLevel}
+          {t('plantCare.careLevel', { level: careLevel })}
         </span>
         <span className="inline-flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1.5 rounded-full text-xs text-zinc-300">
           <Droplets className="w-3.5 h-3.5 text-sky-400" />
-          Water: {wateringToIcon(watering)}
+          {t('plantCare.water', { level: wateringToIcon(watering) })}
         </span>
         <span className="inline-flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1.5 rounded-full text-xs text-zinc-300">
           <Sun className="w-3.5 h-3.5 text-amber-400" />
-          Light: {sunlightToEmoji(sunlight)} {sunlight.join(', ')}
+          {t('plantCare.light', { level: sunlightToEmoji(sunlight), detail: sunlight.join(', ') })}
         </span>
       </div>
 
@@ -168,7 +170,7 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
 
       {!plant && fb && (
         <p className="text-xs text-zinc-500 mt-3">
-          Showing locally-sourced care tips. Connect to Perenual for detailed guides.
+          {t('plantCare.fallbackNote')}
         </p>
       )}
     </div>

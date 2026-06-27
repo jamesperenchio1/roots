@@ -1,19 +1,19 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function PwaUpdatePrompt() {
+  const { t } = useTranslation(['common']);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
       if (r) {
-        // eslint-disable-next-line no-console
         console.log('[PWA] Service worker registered', r.scope);
       }
     },
     onRegisterError(error) {
-      // eslint-disable-next-line no-console
       console.error('[PWA] Service worker registration error', error);
     },
   });
@@ -35,22 +35,22 @@ export default function PwaUpdatePrompt() {
           <RefreshCw className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white">Update available</p>
+          <p className="text-sm font-medium text-white">{t('common:pwaUpdate.title')}</p>
           <p className="text-xs text-zinc-400 mt-0.5">
-            A new version of Root is ready. Reload to get the latest features and fixes.
+            {t('common:pwaUpdate.description')}
           </p>
           <div className="flex items-center gap-2 mt-3">
             <button
               onClick={reload}
               className="text-xs bg-white text-black px-3 py-1.5 rounded-lg font-medium hover:bg-zinc-200 transition-colors"
             >
-              Reload
+              {t('common:pwaUpdate.reload')}
             </button>
             <button
               onClick={dismiss}
               className="text-xs text-zinc-400 hover:text-white px-3 py-1.5 transition-colors flex items-center gap-1"
             >
-              <X className="w-3 h-3" /> Dismiss
+              <X className="w-3 h-3" /> {t('common:pwaUpdate.dismiss')}
             </button>
           </div>
         </div>

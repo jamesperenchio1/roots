@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Leaf, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +23,7 @@ export default function LoginPage() {
     if (success) {
       navigate(redirect);
     } else {
-      setError('Invalid email or password. New here? Create an account.');
+      setError(t('auth:login.error'));
     }
   };
 
@@ -36,10 +38,10 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Leaf className="w-6 h-6 text-emerald-400" />
-            <span className="text-xl font-semibold">ROOT</span>
+            <span className="text-xl font-semibold">ROOTS</span>
           </Link>
-          <h1 className="text-2xl font-light tracking-tight mb-2">Welcome back</h1>
-          <p className="text-zinc-500 text-sm">Sign in to your account</p>
+          <h1 className="text-2xl font-light tracking-tight mb-2">{t('auth:login.title')}</h1>
+          <p className="text-zinc-500 text-sm">{t('auth:login.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,7 +51,7 @@ export default function LoginPage() {
             </div>
           )}
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Email</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:login.email')}</label>
             <input
               type="email"
               value={email}
@@ -60,13 +62,13 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Password</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:login.password')}</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
+                placeholder={t('auth:login.passwordPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 pr-10 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                 required
               />
@@ -74,6 +76,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                aria-label={showPassword ? t('auth:login.hidePassword') : t('auth:login.showPassword')}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -82,20 +85,20 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer">
               <input type="checkbox" className="rounded bg-zinc-900 border-white/10" />
-              Remember me
+              {t('common:actions.rememberMe', 'Remember me')}
             </label>
             <Link to="/forgot-password" className="text-xs text-emerald-400 hover:underline">
-              Forgot password?
+              {t('auth:login.forgotPassword')}
             </Link>
           </div>
           <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-11 rounded-lg" disabled={isLoading}>
-            {isLoading ? 'Signing in…' : 'Sign In'}
+            {isLoading ? t('common:actions.loading') : t('auth:login.submit')}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-zinc-500">
-          Don't have an account?{' '}
-          <Link to={`/signup${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">Sign up</Link>
+          {t('auth:login.noAccount')}{' '}
+          <Link to={`/signup${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">{t('auth:login.signup')}</Link>
         </div>
 
         {import.meta.env.DEV && (

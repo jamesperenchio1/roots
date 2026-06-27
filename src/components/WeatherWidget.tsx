@@ -1,14 +1,40 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CloudRain, Droplets, Sun, Cloud, Wind, Thermometer, Umbrella } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getWeatherForCity, getCareTip, type WeatherData } from '@/lib/weather';
+import { getWeatherForCity, type WeatherData } from '@/lib/weather';
 
 interface WeatherWidgetProps {
   cityName: string;
   compact?: boolean;
 }
 
+function getCareTipKey(weather: WeatherData): string {
+  if (weather.temp > 35) return 'marketplace:weather.careTip.hot';
+  if (weather.temp < 20) return 'marketplace:weather.careTip.cool';
+  if (weather.condition === 'Thunderstorm' || weather.condition === 'Showers' || weather.rain_chance > 70) {
+    return 'marketplace:weather.careTip.rainy';
+  }
+  if (weather.humidity < 40) return 'marketplace:weather.careTip.dry';
+  if (weather.uv_index > 8) return 'marketplace:weather.careTip.uv';
+  return 'marketplace:weather.careTip.great';
+}
+
+function conditionKey(condition: string): string {
+  const lower = condition.toLowerCase();
+  if (lower.includes('clear')) return 'marketplace:weather.condition.clear';
+  if (lower.includes('partly cloudy')) return 'marketplace:weather.condition.partlyCloudy';
+  if (lower.includes('cloud')) return 'marketplace:weather.condition.cloudy';
+  if (lower.includes('drizzle') || lower.includes('rain')) return 'marketplace:weather.condition.rain';
+  if (lower.includes('shower')) return 'marketplace:weather.condition.showers';
+  if (lower.includes('thunder')) return 'marketplace:weather.condition.thunderstorm';
+  if (lower.includes('snow')) return 'marketplace:weather.condition.snow';
+  if (lower.includes('fog')) return 'marketplace:weather.condition.fog';
+  return 'marketplace:weather.condition.unknown';
+}
+
 export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps) {
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -72,13 +98,14 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
   if (error || !weather) {
     return (
       <div className={`bg-zinc-900/30 border border-white/5 rounded-xl ${compact ? 'px-4 py-3' : 'p-6'}`}>
-        <p className="text-xs text-zinc-500">Weather unavailable for {cityName}</p>
+        <p className="text-xs text-zinc-500">{t('weather.unavailable', { city: cityName })}</p>
       </div>
     );
   }
 
   const conditionIcon = getConditionIcon(weather.condition, compact ? 'w-5 h-5' : 'w-8 h-8');
-  const careTip = getCareTip(weather);
+  const careTipKey = getCareTipKey(weather);
+  const translatedCondition = t(conditionKey(weather.condition));
 
   if (compact) {
     return (
@@ -86,7 +113,7 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
         {conditionIcon}
         <div>
           <p className="text-sm font-medium text-white">{Math.round(weather.temp)}°C</p>
-          <p className="text-xs text-zinc-500">{weather.condition} · {weather.humidity}% humidity</p>
+          <p className="text-xs text-zinc-500">{translatedCondition} · {weather.humidity}% {t('weather.humidity')}</p>
         </div>
       </div>
     );
@@ -96,14 +123,14 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
     <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6">
       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
         <Thermometer className="w-5 h-5 text-emerald-400" />
-        Weather — {cityName}
+        {t('weather.title', { city: cityName })}
       </h3>
 
       <div className="flex items-center gap-4 mb-5">
         {conditionIcon}
         <div>
           <p className="text-2xl font-light text-white">{Math.round(weather.temp)}°C</p>
-          <p className="text-sm text-zinc-400">{weather.condition}</p>
+          <p className="text-sm text-zinc-400">{translatedCondition}</p>
         </div>
         <div className="ml-auto flex gap-4 text-xs text-zinc-500">
           <div className="flex items-center gap-1">
@@ -122,7 +149,7 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
           {weather.forecast.map((day) => (
             <div key={day.date} className="bg-zinc-900/50 rounded-lg p-3 text-center">
               <p className="text-xs text-zinc-500 mb-1">
-                {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                {new Date(day.date).toLocaleDateString(i18n.language, { weekday: 'short' })}
               </p>
               <div className="flex justify-center mb-1">
                 {getConditionIcon(day.condition, 'w-5 h-5')}
@@ -130,7 +157,7 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
               <p className="text-xs text-zinc-300">
                 {Math.round(day.temp_max)}° / {Math.round(day.temp_min)}°
               </p>
-              <p className="text-[10px] text-zinc-500">{day.rain_chance}% rain</p>
+              <p className="text-[10px] text-zinc-500">{day.rain_chance}% {t('weather.rain')}</p>
             </div>
           ))}
         </div>
@@ -138,7 +165,7 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
 
       <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-start gap-2">
         <SproutIcon className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-        <p className="text-xs text-emerald-300">{careTip}</p>
+        <p className="text-xs text-emerald-300">{t(careTipKey)}</p>
       </div>
     </div>
   );

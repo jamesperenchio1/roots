@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
 import PlantCareCard from '@/components/PlantCareCard';
@@ -20,6 +21,7 @@ import ProvenanceInfo from '@/components/ProvenanceInfo';
 import { getSrcSet, RESPONSIVE_WIDTHS, HERO_SIZES } from '@/lib/images';
 
 export default function ListingPage() {
+  const { t } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const listing = getListingById(id || '');
   const { user } = useAuth();
@@ -41,22 +43,22 @@ export default function ListingPage() {
   }, [listing, id, recordView]);
 
   const handleWatch = async () => {
-    if (!user) { toast.info('Log in to save plants to your watchlist.'); return; }
+    if (!user) { toast.info(t('marketplace:listing.loginToWatch')); return; }
     const next = !watched;
     setWatched(next);
     try {
       await toggleWatch(user.id, 'listing', id || '', next);
-      toast.success(next ? 'Added to your watchlist' : 'Removed from watchlist');
+      toast.success(next ? t('marketplace:listing.addedToWatchlist') : t('marketplace:listing.removedFromWatchlist'));
     } catch {
       setWatched(!next);
-      toast.error('Could not update watchlist');
+      toast.error(t('marketplace:listing.watchlistError'));
     }
   };
 
   const handleMessage = () => {
-    if (!user) { toast.info('Log in to message the seller.'); return; }
-    if (!listing?.seller_id) { toast.error('Seller unavailable for this listing.'); return; }
-    if (listing.seller_id === user.id) { toast.info("This is your own listing."); return; }
+    if (!user) { toast.info(t('marketplace:listing.loginToMessage')); return; }
+    if (!listing?.seller_id) { toast.error(t('marketplace:listing.sellerUnavailable')); return; }
+    if (listing.seller_id === user.id) { toast.info(t('marketplace:listing.ownListing')); return; }
     const threadId = getOrCreateThreadId(user.id, listing.seller_id, listing.id);
     navigate(`/messages/${threadId}`);
   };
@@ -64,8 +66,8 @@ export default function ListingPage() {
   if (!listing) {
     return (
       <div className="pt-24 pb-16 px-4 text-center">
-        <h1 className="text-2xl mb-4">Listing not found</h1>
-        <Link to="/browse" className="text-emerald-400 hover:underline">Back to browse</Link>
+        <h1 className="text-2xl mb-4">{t('marketplace:listing.notFound')}</h1>
+        <Link to="/browse" className="text-emerald-400 hover:underline">{t('marketplace:listing.backToBrowse')}</Link>
       </div>
     );
   }
@@ -102,13 +104,13 @@ export default function ListingPage() {
                 type="button"
                 onClick={() => setLightboxOpen(true)}
                 className="block w-full h-full cursor-zoom-in"
-                aria-label="Open full-size image"
+                aria-label={t('marketplace:listing.openFullImage')}
               >
                 <img
                   src={mainImage}
                   srcSet={getSrcSet(mainImage, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
                   sizes={HERO_SIZES}
-                  alt={listing.species?.scientific_name || 'Plant listing'}
+                  alt={listing.species?.scientific_name || t('marketplace:browse.listingAlt')}
                   className="w-full h-full object-cover"
                 />
               </button>
@@ -120,7 +122,7 @@ export default function ListingPage() {
                   <button
                     type="button"
                     onClick={goPrev}
-                    aria-label="Previous image"
+                    aria-label={t('marketplace:listing.previousImage')}
                     className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -128,7 +130,7 @@ export default function ListingPage() {
                   <button
                     type="button"
                     onClick={goNext}
-                    aria-label="Next image"
+                    aria-label={t('marketplace:listing.nextImage')}
                     className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -140,7 +142,7 @@ export default function ListingPage() {
               )}
               {activeImage === 0 && qrUrl && (
                 <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-center pointer-events-none">
-                  <p className="text-xs text-purple-300 font-medium">Verified Provenance — Scan to check history</p>
+                  <p className="text-xs text-purple-300 font-medium">{t('marketplace:listing.verifiedProvenance')}</p>
                 </div>
               )}
             </div>
@@ -151,7 +153,7 @@ export default function ListingPage() {
                   onClick={() => setActiveImage(i)}
                   className={`relative aspect-square rounded-lg overflow-hidden bg-zinc-800 transition-all ${activeImage === i ? 'ring-2 ring-emerald-500 opacity-100' : 'opacity-70 hover:opacity-100'}`}
                 >
-                  <img src={src} srcSet={getSrcSet(src, { widths: [96, 192, 384], resize: 'cover' })} sizes="96px" alt={`Gallery image ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img src={src} srcSet={getSrcSet(src, { widths: [96, 192, 384], resize: 'cover' })} sizes="96px" alt={t('marketplace:listing.galleryImage', { number: i + 1 })} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   {i === 0 && qrUrl && (
                     <span className="absolute bottom-1 left-1 bg-purple-500/80 text-[9px] text-white px-1 rounded">QR</span>
                   )}
@@ -175,10 +177,10 @@ export default function ListingPage() {
               </p>
               <div className="flex items-center justify-between">
                 <Link to={`/seller/${listing.seller_id}`} className="text-sm text-zinc-500 hover:text-white transition-colors">
-                  by {listing.seller?.display_name} {listing.seller?.rating ? `(${listing.seller.rating})` : ''}
+                  {t('marketplace:listing.bySeller', { name: listing.seller?.display_name, rating: listing.seller?.rating ? `(${listing.seller.rating})` : '' })}
                 </Link>
                 <ShareButtons
-                  title={`${listing.species?.common_name_en || 'Plant listing'} on Root`}
+                  title={t('marketplace:listing.shareTitle', { name: listing.species?.common_name_en || t('marketplace:browse.listingAlt') })}
                   url={typeof window !== 'undefined' ? window.location.href : ''}
                   description={listing.description}
                 />
@@ -192,19 +194,19 @@ export default function ListingPage() {
             </div>
 
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-semibold">{listing.price_thb.toLocaleString()} THB</span>
+              <span className="text-3xl font-semibold">{listing.price_thb.toLocaleString()} {t('common:currency')}</span>
               <span
-                title="Median is the middle price of all recent sales — more reliable than average because it is not skewed by one unusually cheap or expensive sale."
+                title={t('marketplace:listing.medianTooltip')}
                 className={`text-sm cursor-help ${parseFloat(pctDiff) > 0 ? 'text-red-400' : 'text-emerald-400'}`}
               >
-                {parseFloat(pctDiff) > 0 ? '+' : ''}{pctDiff}% vs 30d median
+                {t('marketplace:listing.vsMedian', { value: `${parseFloat(pctDiff) > 0 ? '+' : ''}${pctDiff}` })}
               </span>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_category} size</span>
+              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:listing.sizeLabel', { size: listing.size_category })}</span>
               {listing.size_cm_range && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.size_cm_range}</span>}
-              {listing.pot_size_cm && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.pot_size_cm}cm pot</span>}
+              {listing.pot_size_cm && <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:listing.potSize', { size: listing.pot_size_cm })}</span>}
               <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{listing.species?.category}</span>
               {listing.tags?.map(t => (
                 <span key={t} className="bg-emerald-500/10 px-3 py-1 rounded-full text-xs text-emerald-400">{t}</span>
@@ -226,10 +228,13 @@ export default function ListingPage() {
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <Truck className="w-4 h-4" />
                 <span>
-                  Delivery: {listing.delivery_options?.join(', ')}
+                  {t('marketplace:listing.deliveryLabel', { options: listing.delivery_options?.map(opt =>
+                    opt === 'ship' ? t('marketplace:listing.shipping') :
+                    opt === 'pickup' ? t('marketplace:listing.pickup') : opt
+                  ).join(', ') })}
                   {listing.delivery_options?.includes('ship') && (
                     <span className="text-emerald-400 ml-1">
-                      ({(listing.shipping_cost_thb ?? 0) === 0 ? 'Free' : `${listing.shipping_cost_thb} THB`} shipping)
+                      ({(listing.shipping_cost_thb ?? 0) === 0 ? t('marketplace:listing.freeShipping') : t('marketplace:listing.shippingCost', { cost: listing.shipping_cost_thb, currency: t('common:currency') })})
                     </span>
                   )}
                 </span>
@@ -238,18 +243,18 @@ export default function ListingPage() {
                 <div className="flex items-center gap-3 text-sm text-zinc-400">
                   <MapPin className="w-4 h-4 shrink-0" />
                   <span>
-                    Pickup: {listing.pickup_province}
+                    {t('marketplace:listing.pickupLabel', { province: listing.pickup_province })}
                     {listing.pickup_location && <span className="text-zinc-500"> · {listing.pickup_location}</span>}
                   </span>
                 </div>
               )}
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <Shield className="w-4 h-4" />
-                <span>Escrow protected — funds released after delivery confirmation</span>
+                <span>{t('marketplace:listing.escrowProtected')}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-zinc-400">
                 <QrCode className="w-4 h-4" />
-                <span>Comes with QR provenance tag</span>
+                <span>{t('marketplace:listing.qrTag')}</span>
                 <ProvenanceInfo />
               </div>
             </div>
@@ -258,7 +263,7 @@ export default function ListingPage() {
               <Link to={`/checkout/${listing.id}`} className="flex-1">
                 <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl">
                   <ShoppingCart className="w-4 h-4 mr-2" />
-                  Buy Now
+                  {t('marketplace:listing.buy')}
                 </Button>
               </Link>
               {listing.status === 'active' && user && user.id !== listing.seller_id && (
@@ -269,7 +274,7 @@ export default function ListingPage() {
                   className="h-12 px-4 rounded-xl border-white/10 hover:bg-white/5"
                 >
                   <Tag className="w-4 h-4 mr-2" />
-                  Make Offer
+                  {t('marketplace:listing.makeOffer')}
                 </Button>
               )}
               <Button type="button" onClick={handleWatch} variant="outline" className={`h-12 px-4 rounded-xl border-white/10 hover:bg-white/5 ${watched ? 'text-rose-400' : ''}`}>
@@ -284,9 +289,9 @@ export default function ListingPage() {
 
         {/* Price History */}
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6">
-          <h2 className="text-lg font-medium mb-1">Price History</h2>
+          <h2 className="text-lg font-medium mb-1">{t('marketplace:listing.priceHistory')}</h2>
           <p className="text-sm text-zinc-500 mb-4">
-            Historical sales data for {listing.species?.scientific_name} — {listing.size_category} size
+            {t('marketplace:listing.priceHistoryDescription', { species: listing.species?.scientific_name, size: listing.size_category })}
           </p>
           <PriceChart data={priceData} height={300} showVolume={true} />
           <div className="mt-6">
@@ -321,7 +326,7 @@ export default function ListingPage() {
           <button
             type="button"
             onClick={() => setLightboxOpen(false)}
-            aria-label="Close"
+            aria-label={t('common:actions.close')}
             className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 rounded-full p-2 text-white"
           >
             <X className="w-5 h-5" />
@@ -330,7 +335,7 @@ export default function ListingPage() {
             src={mainImage}
             srcSet={getSrcSet(mainImage, { widths: RESPONSIVE_WIDTHS, resize: 'contain' })}
             sizes={HERO_SIZES}
-            alt={listing?.species?.scientific_name || 'Plant listing'}
+            alt={listing?.species?.scientific_name || t('marketplace:browse.listingAlt')}
             onClick={(e) => e.stopPropagation()}
             className="max-h-[90vh] max-w-[92vw] object-contain rounded-lg"
           />
@@ -339,7 +344,7 @@ export default function ListingPage() {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); goPrev(); }}
-                aria-label="Previous image"
+                aria-label={t('marketplace:listing.previousImage')}
                 className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 rounded-full p-3 text-white"
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -347,7 +352,7 @@ export default function ListingPage() {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); goNext(); }}
-                aria-label="Next image"
+                aria-label={t('marketplace:listing.nextImage')}
                 className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 rounded-full p-3 text-white"
               >
                 <ChevronRight className="w-6 h-6" />

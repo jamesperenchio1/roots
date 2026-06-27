@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Leaf, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -17,7 +19,7 @@ export default function ForgotPasswordPage() {
     if (res.ok) {
       setSent(true);
     } else {
-      setError(res.error || 'Could not send reset email.');
+      setError(res.error || t('common:errors.generic'));
     }
   };
 
@@ -27,23 +29,21 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Leaf className="w-6 h-6 text-emerald-400" />
-            <span className="text-xl font-semibold">ROOT</span>
+            <span className="text-xl font-semibold">ROOTS</span>
           </Link>
-          <h1 className="text-2xl font-light tracking-tight mb-2">Reset Password</h1>
-          <p className="text-zinc-500 text-sm">
-            Enter your email and we will send you a link to reset your password.
-          </p>
+          <h1 className="text-2xl font-light tracking-tight mb-2">{t('auth:forgotPassword.title')}</h1>
+          <p className="text-zinc-500 text-sm">{t('auth:forgotPassword.subtitle')}</p>
         </div>
 
         {sent ? (
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
             <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-            <h2 className="text-lg font-medium mb-1">Check your inbox</h2>
+            <h2 className="text-lg font-medium mb-1">{t('auth:forgotPassword.success')}</h2>
             <p className="text-sm text-zinc-500 mb-4">
-              If an account exists for {email}, you will receive a password reset link shortly.
+              {t('auth:forgotPassword.success')}
             </p>
             <Link to="/login" className="text-emerald-400 hover:underline text-sm">
-              Back to login
+              {t('auth:forgotPassword.backToLogin')}
             </Link>
           </div>
         ) : (
@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
               </div>
             )}
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">Email</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:forgotPassword.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                 <input
@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-11 rounded-lg"
               disabled={isLoading}
             >
-              {isLoading ? 'Sending…' : 'Send Reset Link'}
+              {isLoading ? t('common:actions.loading') : t('auth:forgotPassword.submit')}
             </Button>
           </form>
         )}
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
         <div className="mt-6 text-center">
           <Link to="/login" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to login
+            {t('auth:forgotPassword.backToLogin')}
           </Link>
         </div>
       </div>

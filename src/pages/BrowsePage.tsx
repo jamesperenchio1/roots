@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
@@ -16,23 +17,23 @@ import { LazyImage } from '@/components/LazyImage';
 import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
 import type { Category, SizeCategory } from '@/types';
 
-const CATEGORIES: { value: Category | ''; label: string }[] = [
-  { value: '', label: 'All Categories' },
-  { value: 'aroid', label: 'Aroids' },
-  { value: 'hoya', label: 'Hoyas' },
-  { value: 'cactus', label: 'Cacti' },
-  { value: 'succulent', label: 'Succulents' },
-  { value: 'fern', label: 'Ferns' },
-  { value: 'orchid', label: 'Orchids' },
-  { value: 'other', label: 'Other' },
+const CATEGORIES: { value: Category | ''; labelKey: string }[] = [
+  { value: '', labelKey: 'marketplace:browse.categoryAll' },
+  { value: 'aroid', labelKey: 'marketplace:categories.aroid' },
+  { value: 'hoya', labelKey: 'marketplace:categories.hoya' },
+  { value: 'cactus', labelKey: 'marketplace:categories.cactus' },
+  { value: 'succulent', labelKey: 'marketplace:categories.succulent' },
+  { value: 'fern', labelKey: 'marketplace:categories.fern' },
+  { value: 'orchid', labelKey: 'marketplace:categories.orchid' },
+  { value: 'other', labelKey: 'marketplace:categories.other' },
 ];
 
-const SIZES: { value: SizeCategory | ''; label: string }[] = [
-  { value: '', label: 'All Sizes' },
-  { value: 'S', label: 'Small' },
-  { value: 'M', label: 'Medium' },
-  { value: 'L', label: 'Large' },
-  { value: 'XL', label: 'Extra Large' },
+const SIZES: { value: SizeCategory | ''; labelKey: string }[] = [
+  { value: '', labelKey: 'marketplace:browse.sizeAll' },
+  { value: 'S', labelKey: 'marketplace:browse.sizeSmall' },
+  { value: 'M', labelKey: 'marketplace:browse.sizeMedium' },
+  { value: 'L', labelKey: 'marketplace:browse.sizeLarge' },
+  { value: 'XL', labelKey: 'marketplace:browse.sizeExtraLarge' },
 ];
 
 const PROVINCES = ['', 'Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya', 'Nonthaburi'];
@@ -40,6 +41,7 @@ const PROVINCES = ['', 'Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya
 const PAGE_SIZE = 12;
 
 export default function BrowsePage() {
+  const { t } = useTranslation(['marketplace', 'common']);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [category, setCategory] = useState<Category | ''>('');
   const [size, setSize] = useState<SizeCategory | ''>('');
@@ -98,8 +100,10 @@ export default function BrowsePage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{q ? `Results for "${q}"` : 'All Plants'}</h1>
-            <p className="text-zinc-500">{total} listings — herbs to rare aroids</p>
+            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">
+              {q ? t('marketplace:browse.resultsForQuery', { query: q }) : t('marketplace:browse.allPlants')}
+            </h1>
+            <p className="text-zinc-500">{t('marketplace:browse.listingCount', { count: total })}</p>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -107,16 +111,16 @@ export default function BrowsePage() {
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
             >
-              <option value="newest">Newest</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
+              <option value="newest">{t('marketplace:browse.sortNewest')}</option>
+              <option value="price-low">{t('marketplace:browse.sortPriceLow')}</option>
+              <option value="price-high">{t('marketplace:browse.sortPriceHigh')}</option>
             </select>
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors ${filtersOpen ? 'bg-white/10 border-white/20' : 'bg-zinc-900 border-white/10 hover:border-white/20'}`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              Filters
+              {t('marketplace:browse.filters')}
             </button>
           </div>
         </div>
@@ -125,41 +129,41 @@ export default function BrowsePage() {
           <div className="bg-zinc-900/50 border border-white/10 rounded-xl p-6 mb-8">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">Category</label>
+                <label className="text-xs text-zinc-500 mb-1.5 block">{t('marketplace:browse.category')}</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as Category | '')}
                   className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
                 >
-                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">Size</label>
+                <label className="text-xs text-zinc-500 mb-1.5 block">{t('marketplace:browse.size')}</label>
                 <select
                   value={size}
                   onChange={(e) => setSize(e.target.value as SizeCategory | '')}
                   className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
                 >
-                  {SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  {SIZES.map(s => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">Province</label>
+                <label className="text-xs text-zinc-500 mb-1.5 block">{t('marketplace:browse.province')}</label>
                 <select
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
                   className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
                 >
-                  {PROVINCES.map(p => <option key={p} value={p}>{p || 'All Provinces'}</option>)}
+                  {PROVINCES.map(p => <option key={p} value={p}>{p || t('marketplace:browse.provinceAll')}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">Price Range (THB)</label>
+                <label className="text-xs text-zinc-500 mb-1.5 block">{t('marketplace:browse.priceRange')}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    placeholder="Min"
+                    placeholder={t('marketplace:browse.min')}
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
@@ -167,7 +171,7 @@ export default function BrowsePage() {
                   <span className="text-zinc-600">-</span>
                   <input
                     type="number"
-                    placeholder="Max"
+                    placeholder={t('marketplace:browse.max')}
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
@@ -180,7 +184,7 @@ export default function BrowsePage() {
                 onClick={() => { setCategory(''); setSize(''); setProvince(''); setMinPrice(''); setMaxPrice(''); }}
                 className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
               >
-                <X className="w-3 h-3" /> Clear all filters
+                <X className="w-3 h-3" /> {t('marketplace:browse.clearFilters')}
               </button>
             </div>
           </div>
@@ -202,7 +206,7 @@ export default function BrowsePage() {
                   src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
                   srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
                   sizes={CARD_SIZES}
-                  alt={listing.species?.scientific_name || 'Plant listing'}
+                  alt={listing.species?.scientific_name || t('marketplace:browse.listingAlt')}
                   aspectRatio="3/4"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
@@ -214,7 +218,9 @@ export default function BrowsePage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-emerald-400 font-semibold text-sm">{listing.price_thb.toLocaleString()} THB</span>
+                    <span className="text-emerald-400 font-semibold text-sm">
+                      {listing.price_thb.toLocaleString()} {t('common:currency')}
+                    </span>
                     <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{listing.size_category}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
@@ -227,8 +233,8 @@ export default function BrowsePage() {
                     <span className="text-xs text-zinc-600">{listing.seller?.display_name}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-2 text-xs text-zinc-600">
-                    <span>{listing.delivery_options?.includes('ship') && 'Shipping'}</span>
-                    <span>{listing.delivery_options?.includes('pickup') && 'Pickup'}</span>
+                    <span>{listing.delivery_options?.includes('ship') && t('marketplace:listing.shipping')}</span>
+                    <span>{listing.delivery_options?.includes('pickup') && t('marketplace:listing.pickup')}</span>
                     <span>{listing.pickup_province}</span>
                   </div>
                 </div>
@@ -243,16 +249,18 @@ export default function BrowsePage() {
               onClick={loadMore}
               className="inline-flex items-center gap-2 bg-zinc-900 border border-white/10 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-zinc-800 transition-colors"
             >
-              Load More
-              <span className="text-zinc-500">({total - visibleItems.length} remaining)</span>
+              {t('common:actions.loadMore')}
+              <span className="text-zinc-500">
+                ({t('marketplace:browse.remaining', { count: total - visibleItems.length })})
+              </span>
             </button>
           </div>
         )}
 
         {!isLoading && listings.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-zinc-500 text-lg mb-2">No listings found</p>
-            <p className="text-zinc-600 text-sm">Try adjusting your filters</p>
+            <p className="text-zinc-500 text-lg mb-2">{t('marketplace:browse.noListings')}</p>
+            <p className="text-zinc-600 text-sm">{t('marketplace:browse.adjustFilters')}</p>
           </div>
         )}
       </div>

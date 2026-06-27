@@ -1,23 +1,25 @@
 import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, Upload, Camera, Loader2, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { createDispute, uploadDisputeEvidence } from '@/lib/api';
 import { toast } from 'sonner';
 
 const REASONS = [
-  { value: 'DOA', label: 'Dead on Arrival' },
-  { value: 'mismatch', label: 'Does not match listing' },
-  { value: 'wrong_species', label: 'Wrong species' },
-  { value: 'pests', label: 'Pests or disease' },
-  { value: 'root_rot', label: 'Root rot' },
-  { value: 'transit_damage', label: 'Transit damage' },
-  { value: 'other', label: 'Other' },
+  { value: 'DOA' },
+  { value: 'mismatch' },
+  { value: 'wrong_species' },
+  { value: 'pests' },
+  { value: 'root_rot' },
+  { value: 'transit_damage' },
+  { value: 'other' },
 ];
 
 export default function DisputePage() {
   const { transactionId } = useParams<{ transactionId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation(['checkout', 'common']);
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
@@ -26,20 +28,25 @@ export default function DisputePage() {
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const reasonOptions = REASONS.map(r => ({
+    value: r.value,
+    label: t(`checkout:dispute.reasons.${r.value}` as const),
+  }));
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (evidenceUrls.length >= 5) {
-      toast.error('Maximum 5 evidence photos allowed.');
+      toast.error(t('checkout:dispute.maxEvidence'));
       return;
     }
     setUploading(true);
     try {
       const url = await uploadDisputeEvidence(file, 'buyer');
       setEvidenceUrls(prev => [...prev, url]);
-      toast.success('Evidence uploaded.');
+      toast.success(t('checkout:dispute.evidenceUploaded'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed.');
+      toast.error(err instanceof Error ? err.message : t('checkout:dispute.uploadFailed'));
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -53,7 +60,7 @@ export default function DisputePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason || !description) {
-      toast.error('Please fill in all required fields.');
+      toast.error(t('common:errors.required'));
       return;
     }
     setSubmitting(true);
@@ -68,7 +75,7 @@ export default function DisputePage() {
       setSubmitted(true);
       setTimeout(() => navigate(`/order/${transactionId}`), 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to submit dispute.');
+      toast.error(err instanceof Error ? err.message : t('checkout:dispute.submitFailed'));
       setSubmitting(false);
     }
   };
@@ -78,9 +85,9 @@ export default function DisputePage() {
       <div className="pt-24 pb-16 px-4 text-center">
         <div className="max-w-md mx-auto">
           <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-light mb-2">Dispute Submitted</h1>
-          <p className="text-zinc-500 mb-6">Our team will review your case within 24 hours. Both parties will be notified.</p>
-          <Link to={`/order/${transactionId}`} className="text-emerald-400 hover:underline text-sm">Back to Order</Link>
+          <h1 className="text-2xl font-light mb-2">{t('checkout:dispute.submittedTitle')}</h1>
+          <p className="text-zinc-500 mb-6">{t('checkout:dispute.submittedDescription')}</p>
+          <Link to={`/order/${transactionId}`} className="text-emerald-400 hover:underline text-sm">{t('checkout:dispute.backToOrder')}</Link>
         </div>
       </div>
     );
@@ -90,41 +97,40 @@ export default function DisputePage() {
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-lg mx-auto">
         <Link to={`/order/${transactionId}`} className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Order
+          <ArrowLeft className="w-4 h-4" /> {t('checkout:backToOrder')}
         </Link>
 
         <div className="flex items-center gap-3 mb-6">
           <AlertTriangle className="w-6 h-6 text-red-400" />
-          <h1 className="text-2xl font-light tracking-tight">Open Dispute</h1>
+          <h1 className="text-2xl font-light tracking-tight">{t('checkout:order.openDispute')}</h1>
         </div>
 
         <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 mb-6">
           <p className="text-sm text-red-400">
-            Escrow funds are currently frozen. Opening a dispute will pause the auto-release
-            until our team makes a ruling. Please provide clear evidence.
+            {t('checkout:dispute.warning')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Reason</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('checkout:dispute.reasonLabel')}</label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50"
               required
             >
-              <option value="">Select a reason</option>
-              {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              <option value="">{t('checkout:dispute.selectReason')}</option>
+              {reasonOptions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Description</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('checkout:dispute.descriptionLabel')}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the issue in detail..."
+              placeholder={t('checkout:dispute.descriptionPlaceholder')}
               rows={5}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none"
               required
@@ -132,7 +138,7 @@ export default function DisputePage() {
           </div>
 
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">Evidence</label>
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('checkout:dispute.evidenceLabel')}</label>
             <input
               ref={fileInputRef}
               type="file"
@@ -149,7 +155,7 @@ export default function DisputePage() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors text-sm disabled:opacity-50"
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                Take Photo
+                {t('checkout:dispute.takePhoto')}
               </button>
               <button
                 type="button"
@@ -158,7 +164,7 @@ export default function DisputePage() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors text-sm disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
-                Upload
+                {t('checkout:dispute.upload')}
               </button>
             </div>
 
@@ -167,11 +173,12 @@ export default function DisputePage() {
               <div className="flex gap-2 flex-wrap">
                 {evidenceUrls.map((url, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-zinc-800">
-                    <img src={url} alt="Dispute evidence" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <img src={url} alt={t('checkout:dispute.evidenceAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeEvidence(i)}
                       className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white hover:bg-red-500"
+                      aria-label={t('common:actions.remove')}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -183,7 +190,7 @@ export default function DisputePage() {
 
           <Button type="submit" disabled={submitting} className="w-full bg-red-500 hover:bg-red-600 text-white font-medium h-11 rounded-lg">
             {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Submit Dispute
+            {t('checkout:dispute.submit')}
           </Button>
         </form>
       </div>

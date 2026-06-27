@@ -51,6 +51,7 @@ export default function DashboardPage() {
       setLocalWatchlist(WATCHLIST.filter(w => w.user_id === user.id));
       setPriceAlerts(getUserPriceAlerts(user.id));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, offersRefreshKey]);
 
   // Re-fetch offers when the Purchases tab opens
@@ -59,6 +60,7 @@ export default function DashboardPage() {
     let cancelled = false;
     hydrateUserOffers().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, user?.id]);
 
   // Re-fetch disputes when the Disputes tab opens
@@ -67,6 +69,7 @@ export default function DashboardPage() {
     let cancelled = false;
     hydrateUserDisputes().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, user?.id]);
 
   // Re-fetch messages when the Messages tab opens
@@ -75,6 +78,7 @@ export default function DashboardPage() {
     let cancelled = false;
     hydrateUserMessages(user.id).then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, user?.id]);
 
   const transactions = getTransactionsWithDetails().filter(t => t.buyer_id === user?.id);

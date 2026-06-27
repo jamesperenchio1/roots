@@ -1,8 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { HashRouter } from 'react-router'
+import { HashRouter } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import './index.css'
+import './i18n/config'
 import App from './App.tsx'
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;

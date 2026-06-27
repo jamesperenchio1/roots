@@ -5,6 +5,7 @@ function seededRandom(seed: string, index: number): number {
   for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   return Math.abs(Math.sin(hash + index) * 10000 % 1);
 }
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Leaf, Bell, X, Trash2 } from 'lucide-react';
 import { getSpeciesById, getActiveListings, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
 import { PriceChart } from '@/components/PriceChart';
@@ -17,7 +18,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { createPriceAlert, getUserPriceAlerts, deletePriceAlert } from '@/lib/api';
 import { toast } from 'sonner';
 
+const SIZE_OPTIONS: Array<{ value: SizeCategory | undefined; labelKey: string }> = [
+  { value: undefined, labelKey: 'marketplace:species.sizeAll' },
+  { value: 'S', labelKey: 'marketplace:species.sizeSmall' },
+  { value: 'M', labelKey: 'marketplace:species.sizeMedium' },
+  { value: 'L', labelKey: 'marketplace:species.sizeLarge' },
+  { value: 'XL', labelKey: 'marketplace:species.sizeExtraLarge' },
+];
+
 export default function SpeciesPage() {
+  const { t } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const species = getSpeciesById(id || '');
   const { user } = useAuth();
@@ -36,8 +46,8 @@ export default function SpeciesPage() {
   if (!species) {
     return (
       <div className="pt-24 pb-16 px-4 text-center">
-        <h1 className="text-2xl mb-4">Species not found</h1>
-        <Link to="/browse" className="text-emerald-400 hover:underline">Back to browse</Link>
+        <h1 className="text-2xl mb-4">{t('marketplace:species.notFound')}</h1>
+        <Link to="/browse" className="text-emerald-400 hover:underline">{t('marketplace:species.backToBrowse')}</Link>
       </div>
     );
   }
@@ -54,7 +64,7 @@ export default function SpeciesPage() {
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
         <Link to="/browse" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Browse
+          <ArrowLeft className="w-4 h-4" /> {t('common:actions.back')}
         </Link>
 
         <div className="grid lg:grid-cols-3 gap-8 mb-10">
@@ -66,15 +76,15 @@ export default function SpeciesPage() {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-2">
               <Leaf className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-zinc-500 capitalize">{species.category}</span>
+              <span className="text-sm text-zinc-500 capitalize">{t(`marketplace:categories.${species.category}` as const)}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{species.scientific_name}</h1>
             <p className="text-lg text-zinc-400 mb-1">{species.common_name_en}</p>
             <p className="text-sm text-zinc-500 mb-4">{species.common_name_th}</p>
             <p className="text-zinc-400 leading-relaxed mb-4">{species.description}</p>
             <div className="flex flex-wrap gap-2 mb-6">
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">Care: {species.care_level}</span>
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">Light: {species.light_requirement}</span>
+              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:species.careLevel', { level: species.care_level })}</span>
+              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:species.lightRequirement', { light: species.light_requirement })}</span>
               {species.synonyms?.map(s => (
                 <span key={s} className="bg-zinc-800/30 px-3 py-1 rounded-full text-xs text-zinc-500">{s}</span>
               ))}
@@ -86,8 +96,8 @@ export default function SpeciesPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-10">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
             <div>
-              <h2 className="text-lg font-medium">Price History</h2>
-              <p className="text-sm text-zinc-500">All sales data for this species</p>
+              <h2 className="text-lg font-medium">{t('marketplace:listing.priceHistory')}</h2>
+              <p className="text-sm text-zinc-500">{t('marketplace:species.priceHistorySubtitle')}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {user && (
@@ -95,17 +105,17 @@ export default function SpeciesPage() {
                   onClick={() => setAlertModalOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                 >
-                  <Bell className="w-3 h-3" /> Set Price Alert
+                  <Bell className="w-3 h-3" /> {t('marketplace:species.setPriceAlert')}
                 </button>
               )}
               <div className="flex gap-1">
-                {([undefined, 'S', 'M', 'L', 'XL'] as const).map(s => (
+                {SIZE_OPTIONS.map(s => (
                   <button
-                    key={s || 'all'}
-                    onClick={() => setSizeFilter(s)}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors ${sizeFilter === s ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    key={s.value || 'all'}
+                    onClick={() => setSizeFilter(s.value)}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${sizeFilter === s.value ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
-                    {s || 'All'}
+                    {t(s.labelKey)}
                   </button>
                 ))}
               </div>
@@ -117,16 +127,16 @@ export default function SpeciesPage() {
                 <div key={a.id} className="flex items-center justify-between bg-zinc-800/30 border border-white/5 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-zinc-400">
                     <Bell className="w-3 h-3 text-emerald-400" />
-                    Alert when price goes {a.direction} {a.threshold_thb.toLocaleString()} THB
+                    {t('marketplace:species.alertDescription', { direction: t(`marketplace:species.alert${a.direction === 'above' ? 'Above' : 'Below'}`), threshold: a.threshold_thb.toLocaleString(), currency: t('common:currency') })}
                   </div>
                   <button
                     onClick={async () => {
                       try {
                         await deletePriceAlert(a.id);
                         setUserAlerts(prev => prev.filter(x => x.id !== a.id));
-                        toast.success('Alert removed');
+                        toast.success(t('marketplace:species.alertRemoved'));
                       } catch (err) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to remove');
+                        toast.error(err instanceof Error ? err.message : t('marketplace:species.alertRemoveFailed'));
                       }
                     }}
                     className="text-zinc-500 hover:text-red-400"
@@ -146,7 +156,7 @@ export default function SpeciesPage() {
             </>
           ) : (
             <div className="py-12 text-center">
-              <p className="text-zinc-500">Insufficient sales data — be the first to set the market!</p>
+              <p className="text-zinc-500">{t('marketplace:species.insufficientData')}</p>
             </div>
           )}
         </div>
@@ -163,7 +173,7 @@ export default function SpeciesPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium flex items-center gap-2">
                   <Bell className="w-5 h-5 text-emerald-400" />
-                  Set Price Alert
+                  {t('marketplace:species.setPriceAlert')}
                 </h3>
                 <button onClick={() => setAlertModalOpen(false)} className="text-zinc-500 hover:text-white">
                   <X className="w-5 h-5" />
@@ -171,29 +181,29 @@ export default function SpeciesPage() {
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-zinc-400 mb-1.5 block">Notify me when price goes</label>
+                  <label className="text-sm text-zinc-400 mb-1.5 block">{t('marketplace:species.alertNotifyWhen')}</label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setAlertDirection('below')}
                       className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${alertDirection === 'below' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'border-white/10 hover:bg-white/5'}`}
                     >
-                      Below
+                      {t('marketplace:species.alertBelow')}
                     </button>
                     <button
                       onClick={() => setAlertDirection('above')}
                       className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${alertDirection === 'above' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'border-white/10 hover:bg-white/5'}`}
                     >
-                      Above
+                      {t('marketplace:species.alertAbove')}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm text-zinc-400 mb-1.5 block">Threshold (THB)</label>
+                  <label className="text-sm text-zinc-400 mb-1.5 block">{t('marketplace:species.alertThreshold')}</label>
                   <input
                     type="number"
                     value={alertThreshold}
                     onChange={(e) => setAlertThreshold(e.target.value)}
-                    placeholder="e.g. 5000"
+                    placeholder={t('marketplace:species.alertThresholdPlaceholder')}
                     className="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                   />
                 </div>
@@ -203,13 +213,13 @@ export default function SpeciesPage() {
                   onClick={() => setAlertModalOpen(false)}
                   className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5 transition-colors"
                 >
-                  Cancel
+                  {t('common:actions.cancel')}
                 </button>
                 <button
                   onClick={async () => {
                     const threshold = parseInt(alertThreshold, 10);
-                    if (!user) { toast.info('Log in to set price alerts'); return; }
-                    if (isNaN(threshold) || threshold < 1) { toast.error('Enter a valid threshold'); return; }
+                    if (!user) { toast.info(t('marketplace:species.alertLoginRequired')); return; }
+                    if (isNaN(threshold) || threshold < 1) { toast.error(t('marketplace:species.alertInvalidThreshold')); return; }
                     try {
                       await createPriceAlert({
                         user_id: user.id,
@@ -218,17 +228,17 @@ export default function SpeciesPage() {
                         threshold_thb: threshold,
                         direction: alertDirection,
                       });
-                      toast.success('Price alert set!');
+                      toast.success(t('marketplace:species.alertSet'));
                       setAlertModalOpen(false);
                       setAlertThreshold('');
                       setUserAlerts(getUserPriceAlerts(user.id).filter(a => a.species_id === id));
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : 'Failed to set alert');
+                      toast.error(err instanceof Error ? err.message : t('marketplace:species.alertSetFailed'));
                     }
                   }}
                   className="flex-1 py-2.5 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors"
                 >
-                  Save Alert
+                  {t('marketplace:species.saveAlert')}
                 </button>
               </div>
             </div>
@@ -237,13 +247,13 @@ export default function SpeciesPage() {
 
         {/* Active Listings */}
         <div>
-          <h2 className="text-lg font-medium mb-4">Active Listings ({listings.length})</h2>
+          <h2 className="text-lg font-medium mb-4">{t('marketplace:species.activeListingsCount', { count: listings.length })}</h2>
           {listings.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map(l => (
                 <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all group">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} THB</span>
+                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
                     <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{l.size_category}</span>
                   </div>
                   <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{l.description}</p>
@@ -256,7 +266,7 @@ export default function SpeciesPage() {
               ))}
             </div>
           ) : (
-            <p className="text-zinc-500">No active listings for this species.</p>
+            <p className="text-zinc-500">{t('marketplace:species.noActiveListings')}</p>
           )}
         </div>
       </div>

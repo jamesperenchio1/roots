@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2, MapPin } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation(['checkout', 'common', 'marketplace']);
   const [tx, setTx] = useState<Transaction | undefined>(getTransactionById(transactionId || ''));
   const [confirming, setConfirming] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -65,7 +67,7 @@ export default function OrderPage() {
             const prevStatus = prev?.status;
             const nextStatus = updatedTx.status;
             if (prevStatus && nextStatus && prevStatus !== nextStatus) {
-              toast.info(`Order status updated: ${(nextStatus as string).replace(/_/g, ' ')}`);
+              toast.info(t('checkout:order.statusUpdated', { status: t(`common:status.${nextStatus as string}`) }));
             }
             return updatedTx;
           });
@@ -80,13 +82,13 @@ export default function OrderPage() {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [transactionId, refreshTx]);
+  }, [transactionId, refreshTx, t, i18n]);
 
   if (!tx) {
     return (
       <div className="pt-24 pb-16 px-4 text-center">
-        <h1 className="text-2xl mb-4">Order not found</h1>
-        <Link to="/dashboard" className="text-emerald-400 hover:underline">Back to Dashboard</Link>
+        <h1 className="text-2xl mb-4">{t('checkout:order.notFound')}</h1>
+        <Link to="/dashboard" className="text-emerald-400 hover:underline">{t('checkout:backToDashboard')}</Link>
       </div>
     );
   }
@@ -94,10 +96,10 @@ export default function OrderPage() {
   const status = tx.status;
 
   const statusSteps = [
-    { key: 'paid_in_escrow', label: 'Paid', icon: CheckCircle },
-    { key: 'shipped', label: 'Shipped', icon: Truck },
-    { key: 'delivered', label: 'Delivered', icon: Package },
-    { key: 'completed', label: 'Completed', icon: CheckCircle },
+    { key: 'paid_in_escrow', label: t('checkout:order.timeline.paid'), icon: CheckCircle },
+    { key: 'shipped', label: t('checkout:order.timeline.shipped'), icon: Truck },
+    { key: 'delivered', label: t('checkout:order.timeline.delivered'), icon: Package },
+    { key: 'completed', label: t('checkout:order.timeline.completed'), icon: CheckCircle },
   ];
 
   const currentStep = statusSteps.findIndex(s => s.key === status);
@@ -112,10 +114,10 @@ export default function OrderPage() {
         completed_at: new Date().toISOString(),
       });
       await refreshTx();
-      toast.success(method === 'qr' ? 'QR verified — escrow released to seller.' : 'Receipt confirmed — escrow released to seller.');
+      toast.success(method === 'qr' ? t('checkout:order.qrVerified') : t('checkout:order.photoVerified'));
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to confirm receipt. Please try again.');
+      toast.error(err instanceof Error ? err.message : t('checkout:order.confirmError'));
     } finally {
       setConfirming(false);
     }
@@ -128,20 +130,22 @@ export default function OrderPage() {
     e.target.value = '';
   };
 
+  const dateLocale = i18n.language === 'th' ? 'th-TH' : 'en-GB';
+
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Dashboard
+          <ArrowLeft className="w-4 h-4" /> {t('common:nav.dashboard')}
         </Link>
 
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-light tracking-tight">Order #{tx.id.slice(-6)}</h1>
+          <h1 className="text-2xl font-light tracking-tight">{t('checkout:order.idLabel', { id: tx.id.slice(-6) })}</h1>
           <span className={`text-xs px-3 py-1 rounded-full ${
             status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
             status === 'disputed' ? 'bg-red-500/10 text-red-400' :
             'bg-amber-500/10 text-amber-400'
-          }`}>{status.replace(/_/g, ' ')}</span>
+          }`}>{t(`common:status.${status}`)}</span>
         </div>
 
         {/* Progress */}
@@ -162,16 +166,16 @@ export default function OrderPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} srcSet={getSrcSet(tx.listing?.photos?.[0]?.storage_path, { widths: [64, 128, 256], resize: 'cover' })} sizes="64px" alt={tx.listing?.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} srcSet={getSrcSet(tx.listing?.photos?.[0]?.storage_path, { widths: [64, 128, 256], resize: 'cover' })} sizes="64px" alt={tx.listing?.species?.scientific_name || t('common:unknown')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div>
-              <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || 'Your plant'}</p>
+              <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || t('checkout:order.yourPlant')}</p>
               <p className="text-xs text-zinc-500">
-                Plant: {((tx.sale_price_thb || 0) - (tx.shipping_cost_thb || 0)).toLocaleString()} THB
-                {tx.shipping_cost_thb ? ` · Shipping: ${tx.shipping_cost_thb.toLocaleString()} THB` : ' · Free shipping'}
+                {t('checkout:order.plantPrice')}: {((tx.sale_price_thb || 0) - (tx.shipping_cost_thb || 0)).toLocaleString()} {t('common:currency')}
+                {tx.shipping_cost_thb ? ` · ${t('checkout:checkout.shipping')}: ${tx.shipping_cost_thb.toLocaleString()} ${t('common:currency')}` : ` · ${t('checkout:order.freeShipping')}`}
               </p>
-              <p className="text-xs text-zinc-500 font-medium">Total: {tx.sale_price_thb.toLocaleString()} THB</p>
-              <p className="text-xs text-zinc-500">Seller: {tx.seller?.display_name}</p>
+              <p className="text-xs text-zinc-500 font-medium">{t('checkout:checkout.total')}: {tx.sale_price_thb.toLocaleString()} {t('common:currency')}</p>
+              <p className="text-xs text-zinc-500">{t('checkout:order.seller')}: {tx.seller?.display_name}</p>
             </div>
           </div>
 
@@ -180,12 +184,12 @@ export default function OrderPage() {
               {tx.payment_confirmed ? (
                 <div className="flex items-center gap-2 text-sm text-emerald-400">
                   <CheckCircle className="w-4 h-4" />
-                  <span>Payment verified by the seller{tx.payment_confirmed_at ? ` on ${new Date(tx.payment_confirmed_at).toLocaleDateString()}` : ''}</span>
+                  <span>{tx.payment_confirmed_at ? t('checkout:order.paymentVerifiedDate', { date: new Date(tx.payment_confirmed_at).toLocaleDateString(dateLocale) }) : t('checkout:order.paymentVerified')}</span>
                 </div>
               ) : (
                 <div className="flex items-start gap-2 text-sm text-amber-400">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>Payment slip submitted — waiting for the seller to verify it against their bank before they ship.</span>
+                  <span>{t('checkout:order.paymentPending')}</span>
                 </div>
               )}
             </div>
@@ -197,16 +201,16 @@ export default function OrderPage() {
                 <Truck className="w-4 h-4 text-zinc-500" />
                 <span>{tx.courier}</span>
               </div>
-              <p className="text-sm text-zinc-400">Tracking: {tx.tracking_number}</p>
+              <p className="text-sm text-zinc-400">{t('checkout:order.trackingLabel', { number: tx.tracking_number })}</p>
               {tx.shipment_photo_url && (
                 <div className="mt-3">
-                  <p className="text-xs text-zinc-500 mb-1.5">Photo at shipment</p>
+                  <p className="text-xs text-zinc-500 mb-1.5">{t('checkout:order.shipmentPhoto')}</p>
                   <a href={tx.shipment_photo_url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={tx.shipment_photo_url}
                       srcSet={getSrcSet(tx.shipment_photo_url, { widths: [320, 640], resize: 'cover' })}
                       sizes="320px"
-                      alt="Packed shipment"
+                      alt={t('checkout:packedShipmentAlt')}
                       className="w-full max-w-xs h-40 object-cover rounded-lg border border-white/10"
                     />
                   </a>
@@ -219,7 +223,7 @@ export default function OrderPage() {
             <div className="border-t border-white/5 pt-4">
               <div className="flex items-center gap-2 text-sm mb-1">
                 <MapPin className="w-4 h-4 text-zinc-500" />
-                <span>Pickup location</span>
+                <span>{t('checkout:order.pickupLocation')}</span>
               </div>
               {tx.listing.pickup_location && <p className="text-sm text-zinc-400 mb-1">{tx.listing.pickup_location}</p>}
               <a
@@ -228,7 +232,7 @@ export default function OrderPage() {
                 rel="noopener noreferrer"
                 className="text-sm text-emerald-400 hover:underline"
               >
-                Open exact pin in Maps →
+                {t('checkout:order.openPin')}
               </a>
             </div>
           )}
@@ -239,10 +243,10 @@ export default function OrderPage() {
               <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-zinc-400">
-                  Payment verified via PromptPay. Funds are held in escrow until you confirm delivery.
+                  {t('checkout:order.escrowInfo')}
                 </p>
                 <p className="mt-1">
-                  If the plant does not match the listing, you can open a dispute within 48 hours of delivery.
+                  {t('checkout:order.disputeInfo')}
                 </p>
               </div>
             </div>
@@ -254,11 +258,10 @@ export default function OrderPage() {
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <QrCode className="w-4 h-4 text-emerald-400" />
-              Confirm Receipt
+              {t('checkout:order.confirmReceipt')}
             </h3>
             <p className="text-sm text-zinc-500 mb-4">
-              Scan the QR code on the plant's tag to verify authenticity and confirm receipt.
-              This will release funds to the seller.
+              {t('checkout:order.confirmReceiptDescription')}
             </p>
             <div className="flex gap-3">
               <label className="flex-1 cursor-pointer">
@@ -273,7 +276,7 @@ export default function OrderPage() {
                 <Button asChild className="w-full bg-emerald-500 hover:bg-emerald-600 text-black" disabled={confirming}>
                   <span className="flex items-center justify-center gap-2">
                     {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                    Scan QR Code
+                    {t('checkout:order.scanQr')}
                   </span>
                 </Button>
               </label>
@@ -288,7 +291,7 @@ export default function OrderPage() {
                 <Button asChild variant="outline" className="border-white/10 hover:bg-white/5" disabled={confirming}>
                   <span className="flex items-center justify-center gap-2">
                     <Upload className="w-4 h-4" />
-                    Upload Photo
+                    {t('checkout:order.uploadPhoto')}
                   </span>
                 </Button>
               </label>
@@ -298,13 +301,13 @@ export default function OrderPage() {
 
         {status === 'shipped' && (
           <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 mb-6">
-            <p className="text-sm text-blue-400">Your plant is on the way! You will be able to confirm receipt once it arrives.</p>
+            <p className="text-sm text-blue-400">{t('checkout:order.statusMessages.shipped')}</p>
           </div>
         )}
 
         {status === 'paid_in_escrow' && (
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 mb-6">
-            <p className="text-sm text-amber-400">Waiting for seller to ship. You will receive tracking info once shipped.</p>
+            <p className="text-sm text-amber-400">{t('checkout:order.statusMessages.paid')}</p>
           </div>
         )}
 
@@ -312,7 +315,7 @@ export default function OrderPage() {
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
             <p className="text-sm text-emerald-400 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              Order completed — escrow released to seller. Enjoy your plant!
+              {t('checkout:order.statusMessages.completed')}
             </p>
           </div>
         )}
@@ -332,7 +335,7 @@ export default function OrderPage() {
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
             <p className="text-sm text-emerald-400 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              Thanks for your review!
+              {t('checkout:order.thanksReview')}
             </p>
           </div>
         )}
@@ -342,14 +345,14 @@ export default function OrderPage() {
           <Link to={`/order/${tx.id}/dispute`}>
             <Button variant="outline" className="w-full border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300">
               <AlertTriangle className="w-4 h-4 mr-2" />
-              Report a Problem
+              {t('checkout:order.reportProblem')}
             </Button>
           </Link>
         )}
 
         <div className="mt-4 text-center">
           <Link to="/dashboard/messages" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white transition-colors">
-            <MessageSquare className="w-4 h-4" /> Message Seller
+            <MessageSquare className="w-4 h-4" /> {t('marketplace:listing.messageSeller')}
           </Link>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Check, X, RotateCcw, ArrowLeft, Tag, Clock, MessageSquare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Offer } from '@/types';
 import { PLANT_IMAGES } from '@/data/mockData';
 
@@ -19,6 +20,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferCardProps) {
+  const { t } = useTranslation(['marketplace', 'common']);
   const [counterMode, setCounterMode] = useState(false);
   const [counterPrice, setCounterPrice] = useState('');
 
@@ -28,7 +30,7 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
 
   const plantName = offer.listing?.species?.common_name_en
     || offer.listing?.species?.scientific_name
-    || 'Unknown Plant';
+    || t('common:unknown');
 
   const handleCounterSubmit = () => {
     const num = parseInt(counterPrice, 10);
@@ -49,22 +51,22 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
           <div className="flex items-center gap-2 mb-0.5">
             <p className="font-medium truncate">{plantName}</p>
             <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${STATUS_STYLES[offer.status] || 'bg-zinc-500/10 text-zinc-400'}`}>
-              {offer.status}
+              {t(`marketplace:offer.status.${offer.status}`)}
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-500 mb-1">
-            <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {offer.offer_price_thb.toLocaleString()} THB</span>
+            <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {offer.offer_price_thb.toLocaleString()} {t('common:currency')}</span>
             {offer.counter_price_thb !== undefined && (
-              <span className="text-blue-400">Counter: {offer.counter_price_thb.toLocaleString()} THB</span>
+              <span className="text-blue-400">{t('marketplace:offer.counterLabel', { amount: offer.counter_price_thb.toLocaleString(), currency: t('common:currency') })}</span>
             )}
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-600">
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(offer.created_at).toLocaleDateString()}</span>
             {mode === 'seller' && offer.buyer?.display_name && (
-              <span>from {offer.buyer.display_name}</span>
+              <span>{t('marketplace:offer.from', { name: offer.buyer.display_name })}</span>
             )}
             {mode === 'buyer' && offer.seller?.display_name && (
-              <span>to {offer.seller.display_name}</span>
+              <span>{t('marketplace:offer.to', { name: offer.seller.display_name })}</span>
             )}
           </div>
           {offer.message && (
@@ -85,19 +87,19 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
                 onClick={() => onRespond?.('accepted')}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
               >
-                <Check className="w-3 h-3" /> Accept
+                <Check className="w-3 h-3" /> {t('common:actions.accept')}
               </button>
               <button
                 onClick={() => onRespond?.('rejected')}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
               >
-                <X className="w-3 h-3" /> Reject
+                <X className="w-3 h-3" /> {t('common:actions.reject')}
               </button>
               <button
                 onClick={() => setCounterMode(true)}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
               >
-                <RotateCcw className="w-3 h-3" /> Counter
+                <RotateCcw className="w-3 h-3" /> {t('common:actions.counter')}
               </button>
             </div>
           ) : (
@@ -106,14 +108,14 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
                 type="number"
                 value={counterPrice}
                 onChange={(e) => setCounterPrice(e.target.value)}
-                placeholder="Counter price"
+                placeholder={t('marketplace:offer.counterPlaceholder')}
                 className="w-32 bg-black border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
               <button
                 onClick={handleCounterSubmit}
                 className="px-3 py-1.5 rounded-lg text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
               >
-                Confirm
+                {t('common:actions.confirm')}
               </button>
               <button
                 onClick={() => { setCounterMode(false); setCounterPrice(''); }}
@@ -132,7 +134,7 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
             onClick={onWithdraw}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-zinc-500/10 text-zinc-400 hover:bg-zinc-500/20 transition-colors"
           >
-            <X className="w-3 h-3" /> Withdraw Offer
+            <X className="w-3 h-3" /> {t('marketplace:offer.withdrawOffer')}
           </button>
         </div>
       )}

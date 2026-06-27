@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar
 } from 'recharts';
@@ -19,13 +20,14 @@ interface PriceChartProps {
 }
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey?: string }>; label?: string }) {
+  const { t } = useTranslation(['marketplace', 'common']);
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 shadow-xl">
       <p className="text-xs text-zinc-500 mb-1">{label}</p>
       {payload.map((p, i) => (
         <p key={i} className={`text-sm font-medium ${p.dataKey === 'volume' ? 'text-zinc-400' : 'text-emerald-400'}`}>
-          {p.dataKey === 'volume' ? `Vol: ${p.value}` : `${Math.round(p.value).toLocaleString()} THB`}
+          {p.dataKey === 'volume' ? t('marketplace:chart.volume', { value: p.value }) : t('marketplace:chart.price', { value: Math.round(p.value).toLocaleString(), currency: t('common:currency') })}
         </p>
       ))}
     </div>
@@ -33,6 +35,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 }
 
 export function PriceChart({ data, height = 300, showArea = true, showVolume = false, color = '#4ade80' }: PriceChartProps) {
+  const { t } = useTranslation('marketplace');
   const [range, setRange] = useState<'30d' | '90d' | '6m' | '1y' | 'all'>('90d');
 
   const filteredData = (() => {
@@ -48,6 +51,14 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
     return data.filter(d => new Date(d.date) >= cutoff);
   })();
 
+  const rangeLabels: Record<typeof range, string> = {
+    '30d': '30d',
+    '90d': '90d',
+    '6m': '6m',
+    '1y': '1y',
+    'all': t('marketplace:chart.all'),
+  };
+
   return (
     <div>
       <div className="flex items-center gap-1 mb-4">
@@ -57,7 +68,7 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
             onClick={() => setRange(r)}
             className={`px-3 py-1 text-xs rounded-md transition-colors ${range === r ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
-            {r === 'all' ? 'All' : r}
+            {rangeLabels[r]}
           </button>
         ))}
       </div>
@@ -127,6 +138,7 @@ export function Sparkline({ data, width = 80, height = 24, color = '#4ade80' }: 
 }
 
 export function StatsPanel({ speciesId }: { speciesId: string }) {
+  const { t } = useTranslation(['marketplace', 'common']);
   const stats30 = getSpeciesPriceStats(speciesId, 30);
   const stats90 = getSpeciesPriceStats(speciesId, 90);
   const trendPct = stats30 && stats90
@@ -138,15 +150,17 @@ export function StatsPanel({ speciesId }: { speciesId: string }) {
   const highest = allPrices.length > 0 ? Math.max(...allPrices) : 0;
   const totalSales = allTimeData.reduce((s, d) => s + d.sale_count, 0);
 
+  const fmtPrice = (n: number) => `${n.toLocaleString()} ${t('common:currency')}`;
+
   const stats = [
-    { label: '30d Median', value: stats30 ? `${stats30.median.toLocaleString()} THB` : 'N/A' },
-    { label: '90d Mean', value: stats90 ? `${stats90.mean.toLocaleString()} THB` : 'N/A' },
-    { label: 'Lowest', value: `${lowest.toLocaleString()} THB` },
-    { label: 'Highest', value: `${highest.toLocaleString()} THB` },
-    { label: 'Total Sales', value: `${totalSales}` },
-    { label: 'Trend', value: `${trendPct >= 0 ? '+' : ''}${trendPct.toFixed(1)}%`, positive: trendPct >= 0 },
-    { label: 'Days Tracked', value: `${allTimeData.length}` },
-    { label: 'Volatility', value: allTimeData.length > 1 ? `${(Math.sqrt(allPrices.reduce((s, p) => s + Math.pow(p - (stats30?.mean || 0), 2), 0) / allPrices.length) / (stats30?.mean || 1) * 100).toFixed(0)}%` : 'N/A' },
+    { label: t('marketplace:stats.median30d'), value: stats30 ? fmtPrice(stats30.median) : t('marketplace:stats.na') },
+    { label: t('marketplace:stats.mean90d'), value: stats90 ? fmtPrice(stats90.mean) : t('marketplace:stats.na') },
+    { label: t('marketplace:stats.lowest'), value: fmtPrice(lowest) },
+    { label: t('marketplace:stats.highest'), value: fmtPrice(highest) },
+    { label: t('marketplace:stats.totalSales'), value: `${totalSales}` },
+    { label: t('marketplace:stats.trend'), value: `${trendPct >= 0 ? '+' : ''}${trendPct.toFixed(1)}%`, positive: trendPct >= 0 },
+    { label: t('marketplace:stats.daysTracked'), value: `${allTimeData.length}` },
+    { label: t('marketplace:stats.volatility'), value: allTimeData.length > 1 ? `${(Math.sqrt(allPrices.reduce((s, p) => s + Math.pow(p - (stats30?.mean || 0), 2), 0) / allPrices.length) / (stats30?.mean || 1) * 100).toFixed(0)}%` : t('marketplace:stats.na') },
   ];
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Printer, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { generateQR } from '@/lib/promptpay';
 import type { Listing, Species } from '@/types';
 
@@ -10,6 +11,7 @@ interface PrintTagProps {
 }
 
 export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
+  const { t } = useTranslation(['common']);
   const [qrUrl, setQrUrl] = useState('');
   const pageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/#/p/${listing.id}`;
 
@@ -25,7 +27,7 @@ export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
       <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">Print Plant Tag</h3>
+          <h3 className="text-lg font-medium">{t('common:printTag.title')}</h3>
           {onClose && (
             <button onClick={onClose} className="text-zinc-500 hover:text-white">
               <X className="w-5 h-5" />
@@ -38,21 +40,21 @@ export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
           <div className="flex items-center gap-3">
             <div className="w-20 h-20 shrink-0">
               {qrUrl ? (
-                <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
+                <img src={qrUrl} alt={t('common:printTag.alt.qr')} className="w-full h-full object-contain" />
               ) : (
-                <div className="w-full h-full bg-zinc-200 rounded flex items-center justify-center text-xs text-zinc-400">QR</div>
+                <div className="w-full h-full bg-zinc-200 rounded flex items-center justify-center text-xs text-zinc-400">{t('common:printTag.alt.qr')}</div>
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{species?.common_name_en || 'Plant'}</p>
+              <p className="text-sm font-semibold truncate">{species?.common_name_en || t('common:printTag.plant')}</p>
               <p className="text-[10px] text-zinc-600 italic truncate">{species?.scientific_name || ''}</p>
-              <p className="text-[9px] text-zinc-400 mt-1 truncate">Scan for provenance · root.market</p>
+              <p className="text-[9px] text-zinc-400 mt-1 truncate">{t('common:printTag.scanHint')}</p>
             </div>
           </div>
         </div>
 
         <p className="text-xs text-zinc-500 mb-4">
-          Print this on sticker paper or card stock. Cut along the edge and attach to the plant pot.
+          {t('common:printTag.instructions')}
         </p>
 
         <button
@@ -60,7 +62,7 @@ export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-2.5 rounded-lg text-sm flex items-center justify-center gap-2"
         >
           <Printer className="w-4 h-4" />
-          Print Tag
+          {t('common:printTag.print')}
         </button>
       </div>
 

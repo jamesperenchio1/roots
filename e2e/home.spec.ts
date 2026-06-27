@@ -11,9 +11,9 @@ test.describe('Homepage', () => {
   test('loads and shows hero text', async ({ page }) => {
     await page.goto('/');
     await waitForAppReady(page);
-    await expect(page.getByText('Buy plants.')).toBeVisible();
-    await expect(page.getByText('Sell plants.')).toBeVisible();
-    await expect(page.getByText('Simple.')).toBeVisible();
+    await expect(page.getByText(/Thailand's plant marketplace/i)).toBeVisible();
+    await expect(page.getByText(/Browse Plants/i).first()).toBeVisible();
+    await expect(page.getByText(/Start Selling/i).first()).toBeVisible();
   });
 
   test('navigation to /browse works', async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Homepage', () => {
   test('navigation to /market works', async ({ page }) => {
     await page.goto('/');
     await waitForAppReady(page);
-    await page.getByRole('link', { name: /market prices/i }).first().click();
+    await page.getByRole('link', { name: /market data/i }).first().click();
     await expect(page).toHaveURL(/.*#\/market/);
     await expect(page.getByRole('heading', { name: /market overview/i })).toBeVisible();
   });

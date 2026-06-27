@@ -1,0 +1,39 @@
+{
+  "hero": {
+    "headline1": "Buy plants.",
+    "headline2": "Sell plants.",
+    "headline3": "Simple.",
+    "subheadline": "Thailand's plant marketplace — from a 20-baht basil cutting to a 20,000-baht variegated monstera. Whatever you're growing, someone here wants it.",
+    "valueProp": "See price history before you buy. Sell with a permanent QR tag that tracks your plant's story. PromptPay checkout. 8% seller fee.",
+    "ctaBrowse": "Browse Plants",
+    "ctaMarket": "Market Prices"
+  },
+  "newHero": {
+    "headline": "Thailand's plant marketplace, from garden basics to rare collector cuts.",
+    "subheadline": "Buy with confidence using real price history. Sell with a permanent QR tag that proves your plant's story. PromptPay checkout, nationwide shipping.",
+    "ctaBrowse": "Browse Plants",
+    "ctaSell": "Start Selling"
+  },
+  "sections": {
+    "recentlyViewed": "Recently Viewed",
+    "recentlyViewedSubtitle": "Pick up where you left off",
+    "freshListings": "Fresh Listings",
+    "freshListingsSubtitle": "New plants listed this week",
+    "marketPulse": "Market Pulse",
+    "marketPulseSubtitle": "What's moving right now",
+    "howItWorks": "How it works",
+    "sellerCta": "Got a plant to sell?",
+    "sellerCtaSubtitle": "List in minutes, reach collectors nationwide"
+  },
+  "howItWorks": {
+    "step1": "Find your plant",
+    "step1Desc": "Browse verified listings with price history and seller reviews.",
+    "step2": "Pay with PromptPay",
+    "step2Desc": "Scan the QR code with any Thai banking app. No card needed.",
+    "step3": "Scan the QR tag",
+    "step3Desc": "Track provenance and care history for life."
+  },
+  "priceHistory": "Price History",
+  "liveData": "Live data",
+  "noPriceHistory": "No price history yet."
+}

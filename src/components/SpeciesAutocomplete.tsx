@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Search, Check, Leaf } from 'lucide-react';
 import { searchSpecies, normalizeSpeciesName, type SpeciesEntry } from '@/data/speciesDatabase';
@@ -10,7 +11,8 @@ interface SpeciesAutocompleteProps {
   label?: string;
 }
 
-export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Search plants...', label }: SpeciesAutocompleteProps) {
+export default function SpeciesAutocomplete({ value, onChange, placeholder, label }: SpeciesAutocompleteProps) {
+  const { t } = useTranslation(['marketplace', 'common']);
   const [query, setQuery] = useState(value);
   const debouncedQuery = useDebounce(query, 150);
   const [results, setResults] = useState<SpeciesEntry[]>([]);
@@ -127,7 +129,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Se
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={placeholder || t('common:nav.search')}
           className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
         />
         {query && (
@@ -187,8 +189,8 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Se
                 <Check className="w-4 h-4 text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-emerald-400">Use "{query}" as custom species</p>
-                <p className="text-xs text-zinc-500">This species will be added to our database</p>
+                <p className="text-sm font-medium text-emerald-400">{t('speciesAutocomplete.useCustom', { query })}</p>
+                <p className="text-xs text-zinc-500">{t('speciesAutocomplete.customHint')}</p>
               </div>
             </button>
           )}
@@ -197,7 +199,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder = 'Se
 
       {isOpen && query.length >= 2 && results.length === 0 && !isNewSpecies && (
         <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl p-4 text-center">
-          <p className="text-sm text-zinc-500">No matches found. Keep typing to add as custom.</p>
+          <p className="text-sm text-zinc-500">{t('speciesAutocomplete.noMatches')}</p>
         </div>
       )}
     </div>

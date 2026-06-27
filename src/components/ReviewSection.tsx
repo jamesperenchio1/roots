@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Star } from 'lucide-react';
 import { getReviewsBySeller, getReviewStats } from '@/lib/api';
 import type { Review } from '@/types';
@@ -40,6 +41,7 @@ function formatDate(dateStr: string): string {
 }
 
 function ReviewCard({ review }: { review: Review }) {
+  const { t } = useTranslation('marketplace');
   return (
     <div className="border-b border-white/5 py-4 last:border-0">
       <div className="flex items-start gap-3">
@@ -59,7 +61,7 @@ function ReviewCard({ review }: { review: Review }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium text-white truncate">
-              {review.reviewer?.display_name || 'Anonymous'}
+              {review.reviewer?.display_name || t('reviews.anonymous')}
             </span>
             <StarRating rating={review.rating} size={12} />
           </div>
@@ -84,6 +86,7 @@ function ReviewCard({ review }: { review: Review }) {
 }
 
 export default function ReviewSection({ sellerId, compact }: ReviewSectionProps) {
+  const { t } = useTranslation('marketplace');
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const stats = useMemo(() => getReviewStats(sellerId), [sellerId]);
@@ -111,8 +114,8 @@ export default function ReviewSection({ sellerId, compact }: ReviewSectionProps)
   if (stats.count === 0) {
     return (
       <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6">
-        <h2 className="text-lg font-medium mb-2">Reviews</h2>
-        <p className="text-sm text-zinc-500">No reviews yet.</p>
+        <h2 className="text-lg font-medium mb-2">{t('marketplace:seller.reviews')}</h2>
+        <p className="text-sm text-zinc-500">{t('reviews.noneYet')}</p>
       </div>
     );
   }
@@ -122,10 +125,10 @@ export default function ReviewSection({ sellerId, compact }: ReviewSectionProps)
       <div className="flex items-start justify-between mb-6">
         <div>
           <h2 className="text-lg font-medium mb-1">
-            {compact ? 'Seller Reviews' : 'Reviews'}
+            {compact ? t('reviews.sellerReviews') : t('marketplace:seller.reviews')}
           </h2>
           <p className="text-sm text-zinc-500">
-            {stats.count} review{stats.count !== 1 ? 's' : ''}
+            {t('reviews.count', { count: stats.count })}
           </p>
         </div>
         <div className="text-right">
@@ -168,7 +171,7 @@ export default function ReviewSection({ sellerId, compact }: ReviewSectionProps)
                 : 'bg-zinc-800 border-white/5 text-zinc-400 hover:text-white'
             }`}
           >
-            All
+            {t('reviews.all')}
           </button>
           {ALL_TAGS.filter((t) => tagCounts[t]).map((tag) => (
             <button
@@ -199,13 +202,13 @@ export default function ReviewSection({ sellerId, compact }: ReviewSectionProps)
             to={`/seller/${sellerId}`}
             className="text-sm text-emerald-400 hover:underline"
           >
-            View all {reviews.length} reviews
+            {t('reviews.viewAll', { count: reviews.length })}
           </Link>
         </div>
       )}
 
       {!compact && reviews.length === 0 && activeTag && (
-        <p className="text-sm text-zinc-500 py-4">No reviews match this tag.</p>
+        <p className="text-sm text-zinc-500 py-4">{t('reviews.noTagMatch')}</p>
       )}
     </div>
   );

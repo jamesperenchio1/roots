@@ -1,26 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageSquare, Send, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { getUserThreads, getThreadMessages, sendMessage, markThreadRead, hydrateUserMessages } from '@/lib/api';
 import { getListingById, getUserById } from '@/data/mockData';
 import type { Message } from '@/types';
 import { toast } from 'sonner';
-
-function formatMessageTime(dateStr: string) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString();
-}
 
 function getOtherUserIdFromThreadId(threadId: string, currentUserId: string): string | undefined {
   const parts = threadId.split('_');
@@ -45,6 +32,7 @@ export default function MessagesPage() {
   const { user } = useAuth();
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation(['messages', 'common']);
   const [threads, setThreads] = useState(getUserThreads(user?.id || ''));
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -52,6 +40,22 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const dateLocale = i18n.language === 'th' ? 'th-TH' : 'en-GB';
+
+  const formatMessageTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return t('messages:relative.justNow');
+    if (diffMins < 60) return t('messages:relative.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('messages:relative.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('messages:relative.daysAgo', { count: diffDays });
+    return d.toLocaleDateString(dateLocale);
+  };
 
   // Hydrate messages when the user is known, then keep threads in sync.
   useEffect(() => {
@@ -67,6 +71,7 @@ export default function MessagesPage() {
       setLoading(false);
     });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, threadId]);
 
   // Load messages for active thread and mark as read
@@ -80,6 +85,7 @@ export default function MessagesPage() {
     } else {
       setMessages([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, user?.id]);
 
   // Auto-scroll to bottom on new messages
@@ -122,6 +128,7 @@ export default function MessagesPage() {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, user?.id]);
 
   const activeThread = threads.find((t) => t.threadId === threadId);
@@ -143,7 +150,7 @@ export default function MessagesPage() {
         recipientId = getOtherUserIdFromThreadId(threadId, user.id);
       }
       if (!recipientId) {
-        toast.error('Could not determine message recipient');
+        toast.error(t('messages:errors.recipient'));
         setSending(false);
         return;
       }
@@ -163,7 +170,7 @@ export default function MessagesPage() {
       }
       setThreads(getUserThreads(user.id));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send message');
+      toast.error(err instanceof Error ? err.message : t('messages:errors.sendFailed'));
     } finally {
       setSending(false);
     }
@@ -189,43 +196,43 @@ export default function MessagesPage() {
         className={`${threadId ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/10 bg-zinc-900/20 flex-col md:min-h-[70vh]`}
       >
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-lg font-medium">Messages</h2>
+          <h2 className="text-lg font-medium">{t('messages:title')}</h2>
           <Link
             to="/dashboard"
             className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
           >
             <ArrowLeft className="w-3 h-3" />
-            Dashboard
+            {t('common:nav.dashboard')}
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {loading && threads.length === 0 && (
             <div className="text-center py-12 px-4">
               <MessageSquare className="w-8 h-8 text-zinc-600 mx-auto mb-3 animate-pulse" />
-              <p className="text-zinc-500 text-sm">Loading conversations…</p>
+              <p className="text-zinc-500 text-sm">{t('messages:loading')}</p>
             </div>
           )}
           {!loading && threads.length === 0 ? (
             <div className="text-center py-12 px-4">
               <MessageSquare className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-              <p className="text-zinc-500 text-sm mb-2">No conversations yet</p>
+              <p className="text-zinc-500 text-sm mb-2">{t('messages:noThreads')}</p>
               <Link to="/browse" className="text-emerald-400 text-sm hover:underline">
-                Browse plants
+                {t('common:empty.cta')}
               </Link>
             </div>
           ) : (
-            threads.map((t) => (
+            threads.map((thread) => (
               <Link
-                to={`/messages/${t.threadId}`}
-                key={t.threadId}
+                to={`/messages/${thread.threadId}`}
+                key={thread.threadId}
                 className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                  threadId === t.threadId ? 'bg-white/10' : 'hover:bg-white/5'
+                  threadId === thread.threadId ? 'bg-white/10' : 'hover:bg-white/5'
                 }`}
               >
                 <div className="w-12 h-12 rounded-lg bg-zinc-800 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                  {t.listing?.photos?.[0] ? (
+                  {thread.listing?.photos?.[0] ? (
                     <img
-                      src={t.listing.photos[0].storage_path}
+                      src={thread.listing.photos[0].storage_path}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -236,17 +243,17 @@ export default function MessagesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium truncate">
-                      {t.otherUser?.display_name || 'Unknown'}
+                      {thread.otherUser?.display_name || t('common:unknown')}
                     </p>
                     <span className="text-xs text-zinc-500 flex-shrink-0">
-                      {formatMessageTime(t.lastMessage.created_at)}
+                      {formatMessageTime(thread.lastMessage.created_at)}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-500 truncate">{t.lastMessage.content}</p>
+                  <p className="text-xs text-zinc-500 truncate">{thread.lastMessage.content}</p>
                 </div>
-                {t.unreadCount > 0 && (
+                {thread.unreadCount > 0 && (
                   <span className="bg-emerald-500 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
-                    {t.unreadCount}
+                    {thread.unreadCount}
                   </span>
                 )}
               </Link>
@@ -262,9 +269,9 @@ export default function MessagesPage() {
         {!threadId ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
             <MessageSquare className="w-12 h-12 text-zinc-700 mb-4" />
-            <p className="text-zinc-500 mb-2">Select a conversation</p>
+            <p className="text-zinc-500 mb-2">{t('messages:emptyState.title')}</p>
             <p className="text-zinc-600 text-sm">
-              Choose a thread from the sidebar to start messaging
+              {t('messages:emptyState.description')}
             </p>
           </div>
         ) : (
@@ -274,19 +281,20 @@ export default function MessagesPage() {
               <button
                 onClick={() => navigate('/messages')}
                 className="md:hidden text-zinc-400 hover:text-white transition-colors"
+                aria-label={t('common:actions.back')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">
-                  {otherUser?.display_name || 'Unknown'}
+                  {otherUser?.display_name || t('common:unknown')}
                 </p>
                 {activeThread?.listing && (
                   <Link
                     to={`/listing/${activeThread.listing.id}`}
                     className="text-xs text-emerald-400 hover:underline truncate block"
                   >
-                    Re: {activeThread.listing.species?.common_name_en || 'Listing'}
+                    {t('messages:reLabel', { name: activeThread.listing.species?.common_name_en || t('common:unknown') })}
                   </Link>
                 )}
                 {!activeThread?.listing && getListingIdFromThreadId(threadId) && (
@@ -294,7 +302,7 @@ export default function MessagesPage() {
                     to={`/listing/${getListingIdFromThreadId(threadId)}`}
                     className="text-xs text-emerald-400 hover:underline truncate block"
                   >
-                    Re: {getListingById(getListingIdFromThreadId(threadId)!)?.species?.common_name_en || 'Listing'}
+                    {t('messages:reLabel', { name: getListingById(getListingIdFromThreadId(threadId)!)?.species?.common_name_en || t('common:unknown') })}
                   </Link>
                 )}
               </div>
@@ -306,14 +314,13 @@ export default function MessagesPage() {
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2 text-amber-400 text-xs">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <span>
-                    This conversation contains contact information. For your safety, please keep
-                    transactions on the platform.
+                    {t('messages:contactFlag')}
                   </span>
                 </div>
               )}
               {messages.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-zinc-600 text-sm">No messages yet. Send the first message!</p>
+                  <p className="text-zinc-600 text-sm">{t('messages:noMessages')}</p>
                 </div>
               ) : (
                 messages.map((msg) => {
@@ -349,7 +356,7 @@ export default function MessagesPage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onInput={handleInput}
-                placeholder="Type a message..."
+                placeholder={t('messages:typeMessage')}
                 rows={1}
                 className="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none min-h-[42px]"
               />
@@ -357,6 +364,7 @@ export default function MessagesPage() {
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
                 className="bg-emerald-500 hover:bg-emerald-600 disabled:hover:bg-emerald-500 text-black rounded-xl px-4 py-2.5 transition-colors disabled:opacity-50 flex-shrink-0"
+                aria-label={t('messages:sendAria')}
               >
                 <Send className="w-4 h-4" />
               </button>

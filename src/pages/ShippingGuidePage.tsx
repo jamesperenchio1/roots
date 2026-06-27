@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronDown, Package, Leaf, Printer, RotateCcw, Truck, ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'shipping-guide-progress';
@@ -7,187 +8,186 @@ const STORAGE_KEY = 'shipping-guide-progress';
 interface Step {
   id: number;
   icon: React.ReactNode;
-  title: string;
-  description: string;
-  details: string[];
-  tips: string[];
+  titleKey: string;
+  descriptionKey: string;
+  detailsKeys: string[];
+  tipsKeys: string[];
 }
 
 const STEPS: Step[] = [
   {
     id: 1,
     icon: <Package className="w-5 h-5" />,
-    title: 'Gather Materials',
-    description: 'Before you touch the plant, make sure you have everything ready. Thai heat means speed matters — you do not want the plant sitting half-packed while you hunt for tape.',
-    details: [
-      'Sphagnum moss (damp, not soaking) — the gold standard for root hydration during transit',
-      'Plastic wrap or zip-lock bags — seal moisture in, keep roots happy',
-      'Rubber bands or twine — secure wraps without crushing stems',
-      'Sturdy cardboard box — plant should not touch any wall; 5cm cushion minimum on all sides',
-      'Packing peanuts, crumpled newspaper, or bubble wrap — fill every gap so nothing shifts',
-      'Strong packing tape — the H-pattern taping method prevents box failure',
-      '"FRAGILE — LIVE PLANTS" labels — make it obvious to handlers',
-      'Bamboo skewers or plant stakes — prevent stem breakage in transit',
+    titleKey: 'common:shippingGuide.steps.gatherMaterials.title',
+    descriptionKey: 'common:shippingGuide.steps.gatherMaterials.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.gatherMaterials.details.0',
+      'common:shippingGuide.steps.gatherMaterials.details.1',
+      'common:shippingGuide.steps.gatherMaterials.details.2',
+      'common:shippingGuide.steps.gatherMaterials.details.3',
+      'common:shippingGuide.steps.gatherMaterials.details.4',
+      'common:shippingGuide.steps.gatherMaterials.details.5',
+      'common:shippingGuide.steps.gatherMaterials.details.6',
+      'common:shippingGuide.steps.gatherMaterials.details.7',
     ],
-    tips: [
-      'Buy moss in advance from Shopee/Lazada garden shops — it is cheaper than nurseries',
-      'Save boxes from your own plant deliveries — they are already sized right',
-      'If shipping aroid cuttings, pre-cut moss squares (10x10cm) to speed up packing',
+    tipsKeys: [
+      'common:shippingGuide.steps.gatherMaterials.tips.0',
+      'common:shippingGuide.steps.gatherMaterials.tips.1',
+      'common:shippingGuide.steps.gatherMaterials.tips.2',
     ],
   },
   {
     id: 2,
     icon: <Leaf className="w-5 h-5" />,
-    title: 'Prepare the Plant',
-    description: 'A well-prepped plant survives 3-day shipping across Thailand. A rushed plant dies in Bangkok traffic. Take your time here.',
-    details: [
-      'Water the plant 2 days before shipping — not the day of. Wet soil + sealed box = root rot.',
-      'Remove dead, yellowing, or damaged leaves — reduces stress and weight',
-      'For bare-root shipping (recommended for aroids, hoyas, orchids):',
-      '  – Gently remove the plant from its pot',
-      '  – Shake off loose soil, rinse roots gently with room-temperature water',
-      '  – Trim any mushy or dead roots with clean scissors',
-      'For potted shipping (cacti, succulents, established plants):',
-      '  – Secure soil surface with plastic wrap around the pot',
-      '  – Tape the wrap to prevent spillage — Thai couriers are not gentle',
+    titleKey: 'common:shippingGuide.steps.preparePlant.title',
+    descriptionKey: 'common:shippingGuide.steps.preparePlant.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.preparePlant.details.0',
+      'common:shippingGuide.steps.preparePlant.details.1',
+      'common:shippingGuide.steps.preparePlant.details.2',
+      'common:shippingGuide.steps.preparePlant.details.3',
+      'common:shippingGuide.steps.preparePlant.details.4',
+      'common:shippingGuide.steps.preparePlant.details.5',
+      'common:shippingGuide.steps.preparePlant.details.6',
     ],
-    tips: [
-      'Take a clear photo of the plant before packing — insurance for disputes',
-      'For variegated plants, mark which side faced the light so buyer knows',
-      'If roots are long, coil them loosely — do not fold or crimp',
+    tipsKeys: [
+      'common:shippingGuide.steps.preparePlant.tips.0',
+      'common:shippingGuide.steps.preparePlant.tips.1',
+      'common:shippingGuide.steps.preparePlant.tips.2',
     ],
   },
   {
     id: 3,
     icon: <ShieldCheck className="w-5 h-5" />,
-    title: 'Protect the Roots',
-    description: 'Roots are the plant lifeline during shipping. In Thailand\'s heat, dry roots die in hours. Keep them hydrated but not waterlogged.',
-    details: [
-      'Take a generous handful of damp sphagnum moss — squeeze until a few drops come out',
-      'Wrap the moss completely around the root ball or bare roots',
-      'Seal the moss wrap inside a plastic bag or cling film',
-      'Secure with a rubber band — tight enough to hold, loose enough to not damage',
-      'For potted plants: wrap the entire pot in plastic, tape the top soil layer',
-      'Double-bag if shipping during Songkran or rainy season — humidity is your enemy',
+    titleKey: 'common:shippingGuide.steps.protectRoots.title',
+    descriptionKey: 'common:shippingGuide.steps.protectRoots.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.protectRoots.details.0',
+      'common:shippingGuide.steps.protectRoots.details.1',
+      'common:shippingGuide.steps.protectRoots.details.2',
+      'common:shippingGuide.steps.protectRoots.details.3',
+      'common:shippingGuide.steps.protectRoots.details.4',
+      'common:shippingGuide.steps.protectRoots.details.5',
     ],
-    tips: [
-      'Add a drop of hydrogen peroxide to the moss water — prevents mold in sealed bags',
-      'For long transits (south to north Thailand), use slightly more moss',
-      'Label the bag "ROOTS — KEEP MOIST" so buyer knows not to discard it',
+    tipsKeys: [
+      'common:shippingGuide.steps.protectRoots.tips.0',
+      'common:shippingGuide.steps.protectRoots.tips.1',
+      'common:shippingGuide.steps.protectRoots.tips.2',
     ],
   },
   {
     id: 4,
     icon: <Truck className="w-5 h-5" />,
-    title: 'Secure the Plant',
-    description: 'Stems break. Leaves tear. Thai courier vans bounce. Your job is to make the plant immobile inside the box.',
-    details: [
-      'Insert bamboo skewers or stakes into the soil alongside the stem',
-      'Gently tie the stem to the stake with soft plant tie or twine — not wire',
-      'Wrap delicate leaves in soft tissue paper — prevents bruising and drying',
-      'For trailing plants (pothos, hoyas): coil vines loosely and secure with paper loops',
-      'For tall plants: add a second stake crossing the first — creates a cage',
-      'Cover the entire plant with a loose plastic bag (with small air holes) — humidity tent',
+    titleKey: 'common:shippingGuide.steps.securePlant.title',
+    descriptionKey: 'common:shippingGuide.steps.securePlant.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.securePlant.details.0',
+      'common:shippingGuide.steps.securePlant.details.1',
+      'common:shippingGuide.steps.securePlant.details.2',
+      'common:shippingGuide.steps.securePlant.details.3',
+      'common:shippingGuide.steps.securePlant.details.4',
+      'common:shippingGuide.steps.securePlant.details.5',
     ],
-    tips: [
-      'Use biodegradable plant ties — buyers appreciate eco-conscious sellers',
-      'For velvet-leaf plants (gloriosum, melanochrysum), add extra tissue between leaves',
-      'If the plant has a new unfurling leaf, support it with a cotton ball wrap',
+    tipsKeys: [
+      'common:shippingGuide.steps.securePlant.tips.0',
+      'common:shippingGuide.steps.securePlant.tips.1',
+      'common:shippingGuide.steps.securePlant.tips.2',
     ],
   },
   {
     id: 5,
     icon: <Package className="w-5 h-5" />,
-    title: 'Box It Up',
-    description: 'The box is your plant\'s home for 1–3 days. Make it a fortress. Shake test is mandatory — if you hear movement, add more padding.',
-    details: [
-      'Choose a box where the plant does not touch any wall — 5cm minimum clearance',
-      'Line the bottom with 5cm of cushioning — packing peanuts or crumpled paper',
-      'Place the wrapped plant in the center — upright, stable, no tilt',
-      'Fill all gaps with packing material — every empty space is a damage risk',
-      'Add a layer of cushioning on top before sealing',
-      'Close the box and do the shake test — no movement sound = perfect',
-      'Seal with H-tape method: tape across the center seam, then tape perpendicular at both ends',
+    titleKey: 'common:shippingGuide.steps.boxItUp.title',
+    descriptionKey: 'common:shippingGuide.steps.boxItUp.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.boxItUp.details.0',
+      'common:shippingGuide.steps.boxItUp.details.1',
+      'common:shippingGuide.steps.boxItUp.details.2',
+      'common:shippingGuide.steps.boxItUp.details.3',
+      'common:shippingGuide.steps.boxItUp.details.4',
+      'common:shippingGuide.steps.boxItUp.details.5',
+      'common:shippingGuide.steps.boxItUp.details.6',
     ],
-    tips: [
-      'For expensive plants (5,000+ THB), double-box — inner box with plant, outer box with 3cm gap filled',
-      'Write "OPEN THIS SIDE" on the correct flap so buyer does not slice the plant',
-      'Include a silica gel packet if shipping in rainy season — but keep it away from roots',
+    tipsKeys: [
+      'common:shippingGuide.steps.boxItUp.tips.0',
+      'common:shippingGuide.steps.boxItUp.tips.1',
+      'common:shippingGuide.steps.boxItUp.tips.2',
     ],
   },
   {
     id: 6,
     icon: <ShieldCheck className="w-5 h-5" />,
-    title: 'Label & Seal',
-    description: 'Your package will pass through 3–6 handlers who do not care about plants. Labels are the only thing protecting your shipment.',
-    details: [
-      'Write "FRAGILE — LIVE PLANTS" in large letters on all 6 sides of the box',
-      'Add "THIS SIDE UP" arrows — prevents upside-down handling',
-      'Include sender address (your address) and buyer address clearly on top',
-      'Tape over the addresses with clear tape — prevents smudging in rain',
-      'Add a "DO NOT CRUSH" label if the box is lightweight',
-      'Include a small note inside with: your contact, care instructions, and a thank you',
+    titleKey: 'common:shippingGuide.steps.labelSeal.title',
+    descriptionKey: 'common:shippingGuide.steps.labelSeal.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.labelSeal.details.0',
+      'common:shippingGuide.steps.labelSeal.details.1',
+      'common:shippingGuide.steps.labelSeal.details.2',
+      'common:shippingGuide.steps.labelSeal.details.3',
+      'common:shippingGuide.steps.labelSeal.details.4',
+      'common:shippingGuide.steps.labelSeal.details.5',
     ],
-    tips: [
-      'Use a permanent marker — ballpoint ink smears in Thai humidity',
-      'Print labels on A4 paper and tape them on — looks more professional than handwriting',
-      'Add a "Handle with Care" sticker if you have one — visual reinforcement works',
+    tipsKeys: [
+      'common:shippingGuide.steps.labelSeal.tips.0',
+      'common:shippingGuide.steps.labelSeal.tips.1',
+      'common:shippingGuide.steps.labelSeal.tips.2',
     ],
   },
   {
     id: 7,
     icon: <Truck className="w-5 h-5" />,
-    title: 'Choose Courier & Ship',
-    description: 'Thailand has excellent courier options for plants. Pick based on your buyer\'s location and your budget. Same-day or next-day is always best for live plants.',
-    details: [
-      'Kerry Express — Fast, reliable, handles fragile well. Best for Bangkok metro and major cities.',
-      'Flash Express — Cheapest option, decent for non-fragile plants. Longer transit times.',
-      'J&T Express — Good tracking, wide coverage. Solid middle-ground choice.',
-      'Thailand Post EMS — Best for rural addresses (isan, deep south). Slower but reaches everywhere.',
-      'Grab Express — Same-day for Bangkok/major cities. Expensive but plants arrive fresh.',
-      'Always ship Monday–Thursday — avoids weekend warehouse sitting',
-      'Drop off before 2 PM for same-day pickup by most couriers',
-      'Take a photo of the sealed box with tracking label before handing over',
+    titleKey: 'common:shippingGuide.steps.chooseCourier.title',
+    descriptionKey: 'common:shippingGuide.steps.chooseCourier.description',
+    detailsKeys: [
+      'common:shippingGuide.steps.chooseCourier.details.0',
+      'common:shippingGuide.steps.chooseCourier.details.1',
+      'common:shippingGuide.steps.chooseCourier.details.2',
+      'common:shippingGuide.steps.chooseCourier.details.3',
+      'common:shippingGuide.steps.chooseCourier.details.4',
+      'common:shippingGuide.steps.chooseCourier.details.5',
+      'common:shippingGuide.steps.chooseCourier.details.6',
+      'common:shippingGuide.steps.chooseCourier.details.7',
     ],
-    tips: [
-      'Kerry Express has a "Kerry Express Care" option — worth the extra 20 THB for plants',
-      'Flash Express pickup is free from your home — schedule via their app',
-      'Always message the buyer the tracking number within 1 hour of drop-off',
+    tipsKeys: [
+      'common:shippingGuide.steps.chooseCourier.tips.0',
+      'common:shippingGuide.steps.chooseCourier.tips.1',
+      'common:shippingGuide.steps.chooseCourier.tips.2',
     ],
   },
 ];
 
-const CHECKLIST = [
-  'Damp sphagnum moss ready',
-  'Plastic wrap / zip bags',
-  'Rubber bands or twine',
-  'Sturdy cardboard box',
-  'Packing peanuts or paper',
-  'Strong packing tape',
-  'FRAGILE labels',
-  'Bamboo stakes for support',
-  'Plant watered 2 days ago',
-  'Dead leaves removed',
-  'Roots rinsed (if bare-root)',
-  'Soil secured (if potted)',
-  'Roots wrapped in moss',
-  'Moss sealed in plastic bag',
-  'Stem tied to stake',
-  'Delicate leaves wrapped',
-  'Vines coiled and secured',
-  '5cm bottom cushion in box',
-  'Plant centered upright',
-  'All gaps filled',
-  'Shake test passed',
-  'Box sealed H-tape method',
-  'FRAGILE on all 6 sides',
-  'THIS SIDE UP arrows',
-  'Sender + receiver addresses',
-  'Tracking photo taken',
-  'Buyer messaged tracking #',
+const CHECKLIST_KEYS = [
+  'common:shippingGuide.checklist.items.0',
+  'common:shippingGuide.checklist.items.1',
+  'common:shippingGuide.checklist.items.2',
+  'common:shippingGuide.checklist.items.3',
+  'common:shippingGuide.checklist.items.4',
+  'common:shippingGuide.checklist.items.5',
+  'common:shippingGuide.checklist.items.6',
+  'common:shippingGuide.checklist.items.7',
+  'common:shippingGuide.checklist.items.8',
+  'common:shippingGuide.checklist.items.9',
+  'common:shippingGuide.checklist.items.10',
+  'common:shippingGuide.checklist.items.11',
+  'common:shippingGuide.checklist.items.12',
+  'common:shippingGuide.checklist.items.13',
+  'common:shippingGuide.checklist.items.14',
+  'common:shippingGuide.checklist.items.15',
+  'common:shippingGuide.checklist.items.16',
+  'common:shippingGuide.checklist.items.17',
+  'common:shippingGuide.checklist.items.18',
+  'common:shippingGuide.checklist.items.19',
+  'common:shippingGuide.checklist.items.20',
+  'common:shippingGuide.checklist.items.21',
+  'common:shippingGuide.checklist.items.22',
+  'common:shippingGuide.checklist.items.23',
+  'common:shippingGuide.checklist.items.24',
+  'common:shippingGuide.checklist.items.25',
+  'common:shippingGuide.checklist.items.26',
 ];
 
 export default function ShippingGuidePage() {
+  const { t } = useTranslation(['common']);
   const [expanded, setExpanded] = useState<number | null>(1);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [showReset, setShowReset] = useState(false);
@@ -230,16 +230,16 @@ export default function ShippingGuidePage() {
       <div className="max-w-3xl mx-auto">
         {/* Hero */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-3">How to Ship Plants Safely</h1>
+          <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-3">{t('common:shippingGuide.title')}</h1>
           <p className="text-zinc-500 max-w-lg mx-auto">
-            A step-by-step guide for Thai plant sellers. Follow these 7 steps and your plants will arrive alive, healthy, and happy — every time.
+            {t('common:shippingGuide.subtitle')}
           </p>
         </div>
 
         {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-500">Your progress</span>
+            <span className="text-sm text-zinc-500">{t('common:shippingGuide.progress.label')}</span>
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-emerald-400">{progress}%</span>
               {completed.size > 0 && (
@@ -247,7 +247,7 @@ export default function ShippingGuidePage() {
                   onClick={() => setShowReset(true)}
                   className="text-xs text-zinc-600 hover:text-white flex items-center gap-1 transition-colors"
                 >
-                  <RotateCcw className="w-3 h-3" /> Reset
+                  <RotateCcw className="w-3 h-3" /> {t('common:shippingGuide.progress.reset')}
                 </button>
               )}
             </div>
@@ -264,11 +264,11 @@ export default function ShippingGuidePage() {
         {showReset && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
             <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-sm p-6">
-              <h3 className="text-lg font-medium mb-2">Reset Progress?</h3>
-              <p className="text-sm text-zinc-400 mb-6">This will clear all checked steps. You cannot undo this.</p>
+              <h3 className="text-lg font-medium mb-2">{t('common:shippingGuide.reset.title')}</h3>
+              <p className="text-sm text-zinc-400 mb-6">{t('common:shippingGuide.reset.description')}</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowReset(false)} className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5">Cancel</button>
-                <button onClick={reset} className="flex-1 py-2.5 rounded-lg text-sm bg-red-500 text-white font-medium hover:bg-red-600">Reset</button>
+                <button onClick={() => setShowReset(false)} className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5">{t('common:shippingGuide.reset.cancel')}</button>
+                <button onClick={reset} className="flex-1 py-2.5 rounded-lg text-sm bg-red-500 text-white font-medium hover:bg-red-600">{t('common:shippingGuide.reset.confirm')}</button>
               </div>
             </div>
           </div>
@@ -298,8 +298,8 @@ export default function ShippingGuidePage() {
                     {isDone ? <Check className="w-4 h-4" /> : step.id}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('font-medium', isDone && 'text-emerald-400')}>{step.title}</p>
-                    <p className="text-xs text-zinc-500 truncate">{step.description.slice(0, 60)}…</p>
+                    <p className={cn('font-medium', isDone && 'text-emerald-400')}>{t(step.titleKey)}</p>
+                    <p className="text-xs text-zinc-500 truncate">{t(step.descriptionKey).slice(0, 60)}…</p>
                   </div>
                   <ChevronDown className={cn('w-5 h-5 text-zinc-600 transition-transform', isOpen && 'rotate-180')} />
                 </button>
@@ -310,19 +310,19 @@ export default function ShippingGuidePage() {
                 )}>
                   <div className="overflow-hidden">
                     <div className="px-4 pb-4 pt-1 space-y-4">
-                      <p className="text-sm text-zinc-400 leading-relaxed">{step.description}</p>
+                      <p className="text-sm text-zinc-400 leading-relaxed">{t(step.descriptionKey)}</p>
 
                       <div className="space-y-1.5">
-                        {step.details.map((d, i) => (
-                          <p key={i} className="text-sm text-zinc-300 pl-3 border-l-2 border-zinc-700">{d}</p>
+                        {step.detailsKeys.map((d, i) => (
+                          <p key={i} className="text-sm text-zinc-300 pl-3 border-l-2 border-zinc-700">{t(d)}</p>
                         ))}
                       </div>
 
                       <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-                        <p className="text-xs font-medium text-emerald-400 mb-1">Pro Tips</p>
+                        <p className="text-xs font-medium text-emerald-400 mb-1">{t('common:shippingGuide.proTips')}</p>
                         <ul className="list-disc list-inside space-y-0.5">
-                          {step.tips.map((t, i) => (
-                            <li key={i} className="text-xs text-zinc-400">{t}</li>
+                          {step.tipsKeys.map((tip, i) => (
+                            <li key={i} className="text-xs text-zinc-400">{t(tip)}</li>
                           ))}
                         </ul>
                       </div>
@@ -340,7 +340,7 @@ export default function ShippingGuidePage() {
                           checked={isDone}
                           onChange={() => toggleComplete(step.id)}
                         />
-                        <span className="text-sm text-zinc-400">I have completed this step</span>
+                        <span className="text-sm text-zinc-400">{t('common:shippingGuide.stepCompleted')}</span>
                       </label>
                     </div>
                   </div>
@@ -355,24 +355,24 @@ export default function ShippingGuidePage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Printer className="w-5 h-5" />
-              Packing Checklist
+              {t('common:shippingGuide.checklist.title')}
             </h2>
             <button
               onClick={() => window.print()}
               className="text-sm bg-black text-white px-4 py-2 rounded-lg hover:bg-zinc-800 transition-colors print:hidden"
             >
-              Print
+              {t('common:shippingGuide.checklist.print')}
             </button>
           </div>
           <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2">
-            {CHECKLIST.map((item, i) => (
+            {CHECKLIST_KEYS.map((item, i) => (
               <label key={i} className="flex items-center gap-2 text-sm cursor-pointer">
                 <div className="w-4 h-4 border border-zinc-400 rounded shrink-0" />
-                <span>{item}</span>
+                <span>{t(item)}</span>
               </label>
             ))}
           </div>
-          <p className="text-xs text-zinc-500 mt-6 print:hidden">Tip: Print this page and keep it by your packing station.</p>
+          <p className="text-xs text-zinc-500 mt-6 print:hidden">{t('common:shippingGuide.checklist.tip')}</p>
         </div>
       </div>
     </div>

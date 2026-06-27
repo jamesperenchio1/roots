@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, CheckCircle, Tag, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
@@ -27,12 +28,6 @@ interface NewPhoto {
 type PhotoItem = ExistingPhoto | NewPhoto;
 
 const SIZES = ['S', 'M', 'L', 'XL'] as const;
-const SIZE_LABELS: Record<string, string> = {
-  S: 'Small (under 15cm)',
-  M: 'Medium (15-40cm)',
-  L: 'Large (40-80cm)',
-  XL: 'Extra Large (80cm+)',
-};
 
 function findSpeciesEntry(listing: Listing): SpeciesEntry | null {
   if (!listing.species) return null;
@@ -49,6 +44,7 @@ function findSpeciesEntry(listing: Listing): SpeciesEntry | null {
 }
 
 export default function EditListingPage() {
+  const { t } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -164,13 +160,13 @@ export default function EditListingPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!speciesQuery) e.species = 'Select or enter a species';
-    if (!price || !isValidPrice(parseInt(price))) e.price = 'Minimum price is 10 THB, maximum 10M THB';
-    if (!size) e.size = 'Select a size';
-    if (!description || description.length < 20) e.description = 'Minimum 20 characters';
-    if (delivery.length === 0) e.delivery = 'Select at least one delivery method';
-    if (delivery.includes('pickup') && !province) e.province = 'Required for pickup';
-    if (photos.length < 1) e.photos = 'At least 1 photo required';
+    if (!speciesQuery) e.species = t('marketplace:create.errors.species');
+    if (!price || !isValidPrice(parseInt(price))) e.price = t('marketplace:create.errors.price');
+    if (!size) e.size = t('marketplace:create.errors.size');
+    if (!description || description.length < 20) e.description = t('marketplace:create.errors.description');
+    if (delivery.length === 0) e.delivery = t('marketplace:create.errors.delivery');
+    if (delivery.includes('pickup') && !province) e.province = t('marketplace:create.errors.province');
+    if (photos.length < 1) e.photos = t('marketplace:create.errors.photos');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -208,11 +204,11 @@ export default function EditListingPage() {
         tags: tags.length > 0 ? tags : undefined,
       });
 
-      toast.success('Changes saved');
+      toast.success(t('marketplace:edit.changesSaved'));
       setIsDirty(false);
       navigate('/seller-dashboard');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save changes');
+      toast.error(err instanceof Error ? err.message : t('marketplace:edit.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -223,11 +219,12 @@ export default function EditListingPage() {
     marketStats && price ? ((parseInt(price) - marketStats.median) / marketStats.median) * 100 : 0;
 
   const photoCount = photos.length;
+  const currency = t('common:currency');
 
   if (pageLoading) {
     return (
       <div className="pt-24 pb-16 px-4 sm:px-6 flex justify-center">
-        <div className="animate-pulse text-zinc-500 text-sm">Loading listing...</div>
+        <div className="animate-pulse text-zinc-500 text-sm">{t('common:actions.loading')}</div>
       </div>
     );
   }
@@ -236,15 +233,15 @@ export default function EditListingPage() {
     return (
       <div className="pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-2xl font-light tracking-tight mb-2">Listing not found</h1>
+          <h1 className="text-2xl font-light tracking-tight mb-2">{t('marketplace:create.notFoundTitle')}</h1>
           <p className="text-sm text-zinc-500 mb-6">
-            This listing doesn't exist or you don't have permission to edit it.
+            {t('marketplace:create.notFoundDescription')}
           </p>
           <Link
             to="/seller-dashboard"
             className="inline-flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to Seller Dashboard
+            <ArrowLeft className="w-4 h-4" /> {t('common:nav.sellerDashboard')}
           </Link>
         </div>
       </div>
@@ -258,13 +255,13 @@ export default function EditListingPage() {
           to="/seller-dashboard"
           className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Seller Dashboard
+          <ArrowLeft className="w-4 h-4" /> {t('common:nav.sellerDashboard')}
         </Link>
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-light tracking-tight">Edit Listing</h1>
-            <p className="text-sm text-zinc-500">Update your plant listing details</p>
+            <h1 className="text-2xl font-light tracking-tight">{t('marketplace:create.editTitle')}</h1>
+            <p className="text-sm text-zinc-500">{t('marketplace:create.editSubtitle')}</p>
           </div>
         </div>
 
@@ -272,7 +269,7 @@ export default function EditListingPage() {
           {/* Photos */}
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Photos <span className="text-zinc-500 font-normal">(1-10)</span>
+              {t('marketplace:create.photosLabel')}
             </label>
             <input
               ref={fileInputRef}
@@ -293,7 +290,7 @@ export default function EditListingPage() {
                 >
                   <img
                     src={p.type === 'existing' ? p.url : p.preview}
-                    alt={`Photo ${i + 1}`}
+                    alt={t('marketplace:create.photoAlt', { index: i + 1 })}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover"
@@ -302,13 +299,13 @@ export default function EditListingPage() {
                     type="button"
                     onClick={() => removePhoto(i)}
                     className="absolute top-1 right-1 bg-black/70 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Remove photo"
+                    aria-label={t('common:actions.remove')}
                   >
                     <X className="w-3 h-3 text-white" />
                   </button>
                   {i === 0 && (
                     <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-emerald-400 py-0.5">
-                      Main
+                      {t('marketplace:create.mainPhoto')}
                     </span>
                   )}
                 </div>
@@ -320,13 +317,13 @@ export default function EditListingPage() {
                   className="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-white/20 flex flex-col items-center justify-center gap-1 transition-colors"
                 >
                   <Camera className="w-5 h-5 text-zinc-600" />
-                  <span className="text-[10px] text-zinc-600">Add</span>
+                  <span className="text-[10px] text-zinc-600">{t('marketplace:create.addPhoto')}</span>
                 </button>
               )}
             </div>
             {photoCount > 0 && (
               <p className="text-xs text-emerald-400/80 mt-1 inline-flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> {photoCount} photo{photoCount > 1 ? 's' : ''} ready
+                <CheckCircle className="w-3 h-3" /> {t('marketplace:create.photosReady', { count: photoCount })}
               </p>
             )}
             {errors.photos && <p className="text-xs text-red-400 mt-1">{errors.photos}</p>}
@@ -337,8 +334,8 @@ export default function EditListingPage() {
             <SpeciesAutocomplete
               value={speciesQuery}
               onChange={handleSpeciesChange}
-              label="Plant Species *"
-              placeholder="Type 'basil', 'monstera', 'pothos'..."
+              label={t('marketplace:create.speciesLabel')}
+              placeholder={t('marketplace:create.speciesPlaceholder')}
             />
             {species && (
               <div className="mt-2 flex items-center gap-2 text-xs">
@@ -346,7 +343,7 @@ export default function EditListingPage() {
                   {species.category}
                 </span>
                 <span className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
-                  Care: {species.care_level}
+                  {t('marketplace:create.careLabel')}: {species.care_level}
                 </span>
                 <span className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
                   {species.common_name_th}
@@ -359,28 +356,28 @@ export default function EditListingPage() {
           {/* Price with Market Context */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Price (THB) *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.priceLabel')}</label>
               <input
                 type="number"
                 value={price}
                 onChange={updateField(setPrice)}
-                placeholder="e.g. 500"
+                placeholder={t('marketplace:create.pricePlaceholder')}
                 min="10"
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               />
               {errors.price && <p className="text-xs text-red-400 mt-1">{errors.price}</p>}
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Size *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.sizeLabel')}</label>
               <select
                 value={size}
                 onChange={updateField(setSize)}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="">Select size</option>
+                <option value="">{t('marketplace:create.selectSize')}</option>
                 {SIZES.map((s) => (
                   <option key={s} value={s}>
-                    {SIZE_LABELS[s]}
+                    {t(`marketplace:create.sizeLabels.${s}`)}
                   </option>
                 ))}
               </select>
@@ -402,16 +399,16 @@ export default function EditListingPage() {
               <div className="flex items-center gap-2">
                 <Info className="w-4 h-4" />
                 <span>
-                  Your price is{' '}
-                  <strong>
-                    {Math.abs(pricePosition).toFixed(0)}% {pricePosition > 0 ? 'above' : 'below'}
-                  </strong>{' '}
-                  the 30-day market median ({marketStats.median.toLocaleString()} THB)
+                  {Math.abs(pricePosition) < 20
+                    ? t('marketplace:create.pricePosition.similar', { percent: Math.abs(pricePosition).toFixed(0), median: marketStats.median.toLocaleString(), currency })
+                    : pricePosition > 50
+                      ? t('marketplace:create.pricePosition.above', { percent: Math.abs(pricePosition).toFixed(0), median: marketStats.median.toLocaleString(), currency })
+                      : t('marketplace:create.pricePosition.below', { percent: Math.abs(pricePosition).toFixed(0), median: marketStats.median.toLocaleString(), currency })}
                 </span>
               </div>
               {Math.abs(pricePosition) > 50 && (
                 <p className="text-xs mt-1 text-amber-400">
-                  Consider adjusting — extreme pricing may affect visibility
+                  {t('marketplace:create.pricePosition.warning')}
                 </p>
               )}
             </div>
@@ -419,23 +416,23 @@ export default function EditListingPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Pot Size (cm, optional)</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.potSizeLabel')}</label>
               <input
                 type="number"
                 value={potSize}
                 onChange={updateField(setPotSize)}
-                placeholder="e.g. 15"
+                placeholder={t('marketplace:create.potSizePlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Pickup Province</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.provinceLabel')}</label>
               <select
                 value={province}
                 onChange={updateField(setProvince)}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="">Select province</option>
+                <option value="">{t('marketplace:create.selectProvince')}</option>
                 {[
                   'Bangkok',
                   'Chiang Mai',
@@ -459,7 +456,7 @@ export default function EditListingPage() {
 
           {/* Delivery Options */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Delivery Options *</label>
+            <label className="text-sm font-medium mb-2 block">{t('marketplace:create.deliveryLabel')}</label>
             <div className="flex gap-3">
               {['ship', 'pickup'].map((opt) => (
                 <button
@@ -472,7 +469,7 @@ export default function EditListingPage() {
                       : 'border-white/10 hover:border-white/20'
                   }`}
                 >
-                  {opt === 'ship' ? 'Shipping' : 'Local Pickup'}
+                  {opt === 'ship' ? t('marketplace:listing.shipping') : t('marketplace:listing.pickup')}
                 </button>
               ))}
             </div>
@@ -482,29 +479,29 @@ export default function EditListingPage() {
           {/* Shipping Cost */}
           {delivery.includes('ship') && (
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Shipping Cost (THB)</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.shippingCostLabel')}</label>
               <input
                 type="number"
                 min="0"
                 max="5000"
                 value={shippingCost}
                 onChange={updateField(setShippingCost)}
-                placeholder="e.g. 50"
+                placeholder={t('marketplace:create.shippingCostPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
-              <p className="text-xs text-zinc-500 mt-1">Set to 0 for free shipping</p>
+              <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.freeShippingNote')}</p>
             </div>
           )}
 
           {/* Description */}
           <div>
             <label className="text-sm font-medium mb-1.5 block">
-              Description * <span className="text-zinc-500 font-normal">(min 20 chars)</span>
+              {t('marketplace:create.descriptionLabel')}
             </label>
             <textarea
               value={description}
               onChange={updateField(setDescription)}
-              placeholder="Describe your plant: condition, care history, variegation %, parent plant info, reason for selling..."
+              placeholder={t('marketplace:create.descriptionPlaceholder')}
               rows={5}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none"
             />
@@ -515,23 +512,23 @@ export default function EditListingPage() {
                   description.length < 20 ? 'text-zinc-600' : 'text-emerald-400'
                 }`}
               >
-                {description.length} chars
+                {t('marketplace:create.chars', { count: description.length })}
               </p>
             </div>
           </div>
 
           {/* Tags */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Tags</label>
+            <label className="text-sm font-medium mb-2 block">{t('marketplace:create.tagsLabel')}</label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {['variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly'].map(t => (
+              {['variegated', 'rare', 'mature', 'seedling', 'cutting', 'rooted', 'flowering', 'fragrant', 'pet-friendly', 'beginner-friendly'].map(tTag => (
                 <button
-                  key={t}
+                  key={tTag}
                   type="button"
-                  onClick={() => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(t) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
+                  onClick={() => setTags(prev => prev.includes(tTag) ? prev.filter(x => x !== tTag) : [...prev, tTag])}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(tTag) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
                 >
-                  {t}
+                  {tTag}
                 </button>
               ))}
             </div>
@@ -547,16 +544,16 @@ export default function EditListingPage() {
                     if (v && !tags.includes(v) && tags.length < 10) { setTags([...tags, v]); setTagInput(''); }
                   }
                 }}
-                placeholder="Add custom tag + Enter"
+                placeholder={t('marketplace:create.customTagPlaceholder')}
                 className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.map(t => (
-                  <span key={t} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
-                    {t}
-                    <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== t))} className="text-zinc-500 hover:text-white">×</button>
+                {tags.map(tTag => (
+                  <span key={tTag} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
+                    {tTag}
+                    <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== tTag))} className="text-zinc-500 hover:text-white">×</button>
                   </span>
                 ))}
               </div>
@@ -569,14 +566,14 @@ export default function EditListingPage() {
               <Tag className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-zinc-400">
-                  When this sells, you will receive{' '}
-                  <strong className="text-white">
-                    {price ? (parseInt(price) * 0.92).toFixed(0) : '0'} THB
-                  </strong>{' '}
-                  after the 8% platform fee ({price ? (parseInt(price) * 0.08).toFixed(0) : '0'} THB).
+                  {t('marketplace:edit.feeNotice', {
+                    net: price ? (parseInt(price) * 0.92).toFixed(0) : '0',
+                    currency,
+                    fee: price ? (parseInt(price) * 0.08).toFixed(0) : '0',
+                  })}
                 </p>
                 <p className="text-xs text-zinc-600 mt-1">
-                  No listing fee. No monthly fee. You only pay when you sell.
+                  {t('marketplace:edit.feeNote')}
                 </p>
               </div>
             </div>
@@ -587,7 +584,7 @@ export default function EditListingPage() {
             disabled={submitting}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
           >
-            {submitting ? 'Saving…' : 'Save Changes'}
+            {submitting ? t('common:actions.saving') : t('common:actions.save')}
           </Button>
         </form>
       </div>
