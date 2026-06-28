@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import type { SizeCategory } from '@/types';
 import PlantCareCard from '@/components/PlantCareCard';
 import { useAuth } from '@/hooks/useAuth';
+import { getProvinceLabel } from '@/lib/provinces';
 import { createPriceAlert, getUserPriceAlerts, deletePriceAlert } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -27,7 +28,7 @@ const SIZE_OPTIONS: Array<{ value: SizeCategory | undefined; labelKey: string }>
 ];
 
 export default function SpeciesPage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const species = getSpeciesById(id || '');
   const { user } = useAuth();
@@ -259,7 +260,7 @@ export default function SpeciesPage() {
                   <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{l.description}</p>
                   <div className="flex items-center justify-between text-xs text-zinc-600">
                     <span>{l.seller?.display_name}</span>
-                    <span>{l.pickup_province}</span>
+                    <span>{getProvinceLabel(l.pickup_province, i18n.language)}</span>
                   </div>
                   <Sparkline data={Array.from({ length: 20 }, (_, i) => seededRandom(l.id, i) * 50 + l.price_thb * 0.8)} width={200} height={30} />
                 </Link>

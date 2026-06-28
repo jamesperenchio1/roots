@@ -5,6 +5,7 @@ import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag,
 import PlantCareCard from '@/components/PlantCareCard';
 import WeatherWidget from '@/components/WeatherWidget';
 import { PROVINCE_CITIES } from '@/lib/weather';
+import { getProvinceLabel } from '@/lib/provinces';
 import { toast } from 'sonner';
 import { getListingById, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
 import { PriceChart } from '@/components/PriceChart';
@@ -21,14 +22,14 @@ import ProvenanceInfo from '@/components/ProvenanceInfo';
 import { getSrcSet, RESPONSIVE_WIDTHS, HERO_SIZES } from '@/lib/images';
 
 export default function ListingPage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const listing = getListingById(id || '');
   const { user } = useAuth();
   const navigate = useNavigate();
   const [watched, setWatched] = useState(false);
   const [qrUrl, setQrUrl] = useState('');
-  const [activeImage, setActiveImage] = useState(1); // default to plant photo (index 1) if available
+  const [activeImage, setActiveImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const { recordView } = useRecentlyViewed();
@@ -76,7 +77,7 @@ export default function ListingPage() {
   const plantPhotos = listing.photos && listing.photos.length
     ? [...new Set(listing.photos.map(p => p.storage_path))]
     : [PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'];
-  const gallery = qrUrl ? [qrUrl, ...plantPhotos] : plantPhotos;
+  const gallery = plantPhotos;
   const mainImage = gallery[activeImage] || gallery[0] || '';
   const showNav = gallery.length > 1;
   const goTo = (i: number) => setActiveImage((i + gallery.length) % gallery.length);
@@ -140,11 +141,7 @@ export default function ListingPage() {
                   </div>
                 </>
               )}
-              {activeImage === 0 && qrUrl && (
-                <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-center pointer-events-none">
-                  <p className="text-xs text-purple-300 font-medium">{t('marketplace:listing.verifiedProvenance')}</p>
-                </div>
-              )}
+
             </div>
             <div className="grid grid-cols-4 gap-2">
               {gallery.map((src, i) => (
@@ -154,9 +151,6 @@ export default function ListingPage() {
                   className={`relative aspect-square rounded-lg overflow-hidden bg-zinc-800 transition-all ${activeImage === i ? 'ring-2 ring-emerald-500 opacity-100' : 'opacity-70 hover:opacity-100'}`}
                 >
                   <img src={src} srcSet={getSrcSet(src, { widths: [96, 192, 384], resize: 'cover' })} sizes="96px" alt={t('marketplace:listing.galleryImage', { number: i + 1 })} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                  {i === 0 && qrUrl && (
-                    <span className="absolute bottom-1 left-1 bg-purple-500/80 text-[9px] text-white px-1 rounded">QR</span>
-                  )}
                 </button>
               ))}
             </div>
@@ -243,7 +237,7 @@ export default function ListingPage() {
                 <div className="flex items-center gap-3 text-sm text-zinc-400">
                   <MapPin className="w-4 h-4 shrink-0" />
                   <span>
-                    {t('marketplace:listing.pickupLabel', { province: listing.pickup_province })}
+                    {t('marketplace:listing.pickupLabel', { province: getProvinceLabel(listing.pickup_province, i18n.language) })}
                     {listing.pickup_location && <span className="text-zinc-500"> · {listing.pickup_location}</span>}
                   </span>
                 </div>
@@ -258,6 +252,27 @@ export default function ListingPage() {
                 <ProvenanceInfo />
               </div>
             </div>
+
+            {qrUrl && (
+              <Link
+                to={`/p/${listing.plant_id || listing.id}`}
+                className="flex items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-xl p-3 hover:border-white/15 transition-colors"
+              >
+                <div className="w-16 h-16 bg-white rounded-lg p-1.5 shrink-0">
+                  <img
+                    src={qrUrl}
+                    alt={t('marketplace:listing.verifiedProvenance')}
+                    className="w-full h-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">{t('marketplace:listing.verifiedProvenance')}</p>
+                  <p className="text-xs text-zinc-500">{t('marketplace:listing.scanQrCta')}</p>
+                </div>
+              </Link>
+            )}
 
             <div className="flex gap-3 pt-4">
               <Link to={`/checkout/${listing.id}`} className="flex-1">

@@ -60,7 +60,7 @@ export default function HomePage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full py-20">
           <div className="max-w-2xl">
             <div className={`transition-all duration-1000 delay-300 ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tight mb-6 leading-[1.1]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight mb-6 leading-snug break-words">
                 {t('home:newHero.headline')}
               </h1>
             </div>

@@ -81,7 +81,7 @@ export default function ShareButtons({ title, url, description }: ShareButtonsPr
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-xs p-6 text-center">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium">{t('share.qrTitle')}</h3>
+              <h3 className="text-sm font-medium">{t('share.showQR')}</h3>
               <button onClick={() => setShowQR(false)} className="text-zinc-500 hover:text-white">
                 <X className="w-4 h-4" />
               </button>

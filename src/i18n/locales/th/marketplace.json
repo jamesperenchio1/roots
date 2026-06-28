@@ -85,6 +85,7 @@
     "pickupLabel": "รับเองที่: {{province}}",
     "escrowProtected": "ป้องกันด้วยเอสโครว — เงินจะถูกปล่อยหลังจากยืนยันการได้รับสินค้า",
     "qrTag": "มาพร้อมแท็ก QR ตรวจสอบที่มา",
+    "scanQrCta": "สแกนเพื่อตรวจสอบที่มา",
     "priceHistoryDescription": "ข้อมูลการขายย้อนหลังของ {{species}} — ขนาด {{size}}"
   },
   "seller": {

@@ -23,6 +23,7 @@ import OfferCard from '@/components/OfferCard';
 import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
+import { generateQR } from '@/lib/promptpay';
 import type { Listing, Transaction } from '@/types';
 
 interface TransactionPayoutItem {
@@ -688,6 +689,22 @@ function InventoryTab({ listings, t }: { listings: Listing[]; t: TFunction }) {
 }
 
 function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction }) {
+  const handleDownload = async (l: Listing) => {
+    try {
+      const plantId = l.plant_id || l.id;
+      const qrUrl = await generateQR(`${window.location.origin}/#/p/${plantId}`, 512);
+      const link = document.createElement('a');
+      link.href = qrUrl;
+      link.download = `root-qr-${plantId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(t('dashboard:seller.qrDownloaded'));
+    } catch {
+      toast.error(t('common:errors.generic'));
+    }
+  };
+
   return (
     <div>
       <h2 className="text-lg font-medium mb-4">{t('dashboard:seller.qrManagement')}</h2>
@@ -697,13 +714,13 @@ function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction })
             <div className="flex items-center gap-3 mb-3">
               <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt="" className="w-12 h-12 rounded-lg object-cover" />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{l.species?.common_name_en || 'Unknown'}</p>
+                <p className="text-sm font-medium truncate">{l.species?.common_name_en || l.species?.common_name_th || l.species?.scientific_name || 'Unknown'}</p>
                 <p className="text-xs text-zinc-500 truncate">{l.plant_id}</p>
               </div>
             </div>
             <div className="flex gap-2">
               <Link to={`/p/${l.plant_id || l.id}`} className="flex-1 text-center px-3 py-2 rounded-lg border border-white/10 text-xs hover:bg-white/5">{t('common:actions.view')}</Link>
-              <button onClick={() => toast.success(t('dashboard:seller.qrDownloaded'))} className="flex-1 text-center px-3 py-2 rounded-lg bg-emerald-500 text-black text-xs font-medium hover:bg-emerald-600">{t('common:actions.download')}</button>
+              <button onClick={() => handleDownload(l)} className="flex-1 text-center px-3 py-2 rounded-lg bg-emerald-500 text-black text-xs font-medium hover:bg-emerald-600">{t('common:actions.download')}</button>
             </div>
           </div>
         ))}

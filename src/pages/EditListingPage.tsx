@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, CheckCircle, Tag, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { getListingById, getSpeciesPriceStats } from '@/data/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { updateListing, uploadListingPhoto } from '@/lib/api';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
+import { getProvinceOptions } from '@/lib/provinces';
 import type { Listing, Category } from '@/types';
 
 interface ExistingPhoto {
@@ -44,7 +45,8 @@ function findSpeciesEntry(listing: Listing): SpeciesEntry | null {
 }
 
 export default function EditListingPage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
+  const provinceOptions = useMemo(() => getProvinceOptions(i18n.language), [i18n.language]);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -433,20 +435,9 @@ export default function EditListingPage() {
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
                 <option value="">{t('marketplace:create.selectProvince')}</option>
-                {[
-                  'Bangkok',
-                  'Chiang Mai',
-                  'Chiang Rai',
-                  'Phuket',
-                  'Pattaya',
-                  'Nonthaburi',
-                  'Khon Kaen',
-                  'Udon Thani',
-                  'Nakhon Ratchasima',
-                  'Rayong',
-                ].map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                {provinceOptions.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
                   </option>
                 ))}
               </select>

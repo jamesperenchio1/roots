@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import { isValidEmail } from '@/lib/validation';
+import { getProvinceOptions } from '@/lib/provinces';
+import { useMemo } from 'react';
 
 export default function SignupPage() {
-  const { t } = useTranslation(['auth', 'common']);
+  const { t, i18n } = useTranslation(['auth', 'common']);
+  const provinceOptions = useMemo(() => getProvinceOptions(i18n.language), [i18n.language]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,8 +46,12 @@ export default function SignupPage() {
     }
     const res = await signup({ email, password, displayName, promptpayId, location });
     if (res.ok) {
-      toast.success(t('auth:signup.success'));
-      navigate(redirect);
+      if (res.message) {
+        toast.success(res.message, { duration: 6000 });
+      } else {
+        toast.success(t('auth:signup.success'));
+        navigate(redirect);
+      }
     } else {
       setError(res.error || t('common:errors.generic'));
     }
@@ -111,8 +118,8 @@ export default function SignupPage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <div className="flex flex-col">
               <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.promptpayId')}</label>
               <input
                 type="text"
@@ -122,12 +129,13 @@ export default function SignupPage() {
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
-            <div>
+            <div className="flex flex-col">
               <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.location')}</label>
               <ProvinceCombobox
                 value={location}
                 onChange={setLocation}
                 placeholder={t('auth:signup.location')}
+                options={provinceOptions}
               />
             </div>
           </div>

@@ -31,7 +31,8 @@ export default function PlantQRPage() {
   const [showPrintTag, setShowPrintTag] = useState(false);
 
   const speciesId = plantId?.replace('p-', 'sp-') || '';
-  const species = getSpeciesById(speciesId);
+  const dbSpecies = getSpeciesById(speciesId);
+  const species = dbSpecies || listing?.species || null;
 
   useEffect(() => {
     if (!plantId) return;
@@ -147,8 +148,12 @@ export default function PlantQRPage() {
                 <QrCode className="w-4 h-4 text-purple-400" />
                 <span className="text-xs text-purple-400 font-medium">{t('common:plantQr.verified')}</span>
               </div>
-              <h1 className="text-2xl font-light tracking-tight mb-1">{species?.scientific_name || t('common:plantQr.unknownPlant')}</h1>
-              <p className="text-zinc-400 mb-3">{species?.common_name_en || listing?.species?.common_name_en || ''}</p>
+              <h1 className="text-2xl font-light tracking-tight mb-1">
+                {species?.scientific_name || listing?.species?.scientific_name || t('common:plantQr.unknownPlant')}
+              </h1>
+              <p className="text-zinc-400 mb-3">
+                {species?.common_name_en || species?.common_name_th || listing?.species?.common_name_en || listing?.species?.common_name_th || ''}
+              </p>
               <div className="flex flex-wrap gap-3 text-sm">
                 <span className="flex items-center gap-1 text-zinc-500"><Calendar className="w-3.5 h-3.5" /> {t('common:plantQr.since', { date: originDate })}</span>
                 <span className="flex items-center gap-1 text-zinc-500"><User className="w-3.5 h-3.5" /> {t('common:plantQr.owners', { count: totalOwners })}</span>

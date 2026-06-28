@@ -35,12 +35,17 @@ export default function ContactPage() {
       return;
     }
     setSubmitting(true);
-    // Simulate network delay for realism
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 400));
     setSubmitting(false);
     setSubmitted(true);
     toast.success(t('common:contact.form.successToast'));
-    // In production, integrate with Supabase Edge Function or email service
+
+    const subject = encodeURIComponent(`ROOTS contact: ${form.topic}`);
+    const body = encodeURIComponent(
+      `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nTopic: ${form.topic}\n\n${form.message.trim()}`
+    );
+    window.open(`mailto:rootsthailand1@gmail.com?subject=${subject}&body=${body}`, '_blank');
+
     logger.info('Contact form submitted', {
       name: sanitizeText(form.name, 100),
       email: sanitizeText(form.email, 100),
@@ -57,12 +62,15 @@ export default function ContactPage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center">
+          <a
+            href="mailto:rootsthailand1@gmail.com"
+            className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center block hover:border-white/15 transition-colors"
+          >
             <Mail className="w-6 h-6 text-emerald-400 mx-auto mb-3" />
             <p className="font-medium mb-1">{t('common:contact.channels.email')}</p>
-            <p className="text-sm text-zinc-500">support@root.market</p>
+            <p className="text-sm text-zinc-500">rootsthailand1@gmail.com</p>
             <p className="text-xs text-zinc-600 mt-1">{t('common:contact.channels.responseTime')}</p>
-          </div>
+          </a>
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center">
             <MapPin className="w-6 h-6 text-emerald-400 mx-auto mb-3" />
             <p className="font-medium mb-1">{t('common:contact.channels.office')}</p>

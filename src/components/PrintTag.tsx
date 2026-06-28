@@ -13,7 +13,9 @@ interface PrintTagProps {
 export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
   const { t } = useTranslation(['common']);
   const [qrUrl, setQrUrl] = useState('');
-  const pageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/#/p/${listing.id}`;
+  const plantId = listing.plant_id || listing.id;
+  const pageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/#/p/${plantId}`;
+  const displaySpecies = listing.species || species || null;
 
   useEffect(() => {
     generateQR(pageUrl, 120).then(setQrUrl).catch(() => setQrUrl(''));
@@ -46,9 +48,12 @@ export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{species?.common_name_en || t('common:printTag.plant')}</p>
-              <p className="text-[10px] text-zinc-600 italic truncate">{species?.scientific_name || ''}</p>
-              <p className="text-[9px] text-zinc-400 mt-1 truncate">{t('common:printTag.scanHint')}</p>
+              <p className="text-sm font-semibold truncate">
+                {displaySpecies?.common_name_en || displaySpecies?.common_name_th || t('common:printTag.plant')}
+              </p>
+              <p className="text-[10px] text-zinc-600 italic truncate">{displaySpecies?.scientific_name || ''}</p>
+              <p className="text-[9px] text-zinc-400 mt-1 truncate">ID: {plantId}</p>
+              <p className="text-[9px] text-zinc-400 truncate">{t('common:printTag.scanHint')}</p>
             </div>
           </div>
         </div>

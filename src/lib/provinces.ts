@@ -81,8 +81,110 @@ export const THAI_PROVINCES = [
 
 export type ThaiProvince = (typeof THAI_PROVINCES)[number];
 
-export function filterProvinces(query: string): ThaiProvince[] {
+export const THAI_PROVINCE_LABELS: Record<ThaiProvince, string> = {
+  'Amnat Charoen': 'อำนาจเจริญ',
+  'Ang Thong': 'อ่างทอง',
+  'Bangkok': 'กรุงเทพมหานคร',
+  'Bueng Kan': 'บึงกาฬ',
+  'Buri Ram': 'บุรีรัมย์',
+  'Chachoengsao': 'ฉะเชิงเทรา',
+  'Chai Nat': 'ชัยนาท',
+  'Chaiyaphum': 'ชัยภูมิ',
+  'Chanthaburi': 'จันทบุรี',
+  'Chiang Mai': 'เชียงใหม่',
+  'Chiang Rai': 'เชียงราย',
+  'Chon Buri': 'ชลบุรี',
+  'Chumphon': 'ชุมพร',
+  'Kalasin': 'กาฬสินธุ์',
+  'Kamphaeng Phet': 'กำแพงเพชร',
+  'Kanchanaburi': 'กาญจนบุรี',
+  'Khon Kaen': 'ขอนแก่น',
+  'Krabi': 'กระบี่',
+  'Lampang': 'ลำปาง',
+  'Lamphun': 'ลำพูน',
+  'Loei': 'เลย',
+  'Lopburi': 'ลพบุรี',
+  'Mae Hong Son': 'แม่ฮ่องสอน',
+  'Maha Sarakham': 'มหาสารคาม',
+  'Mukdahan': 'มุกดาหาร',
+  'Nakhon Nayok': 'นครนายก',
+  'Nakhon Pathom': 'นครปฐม',
+  'Nakhon Phanom': 'นครพนม',
+  'Nakhon Ratchasima': 'นครราชสีมา',
+  'Nakhon Sawan': 'นครสวรรค์',
+  'Nakhon Si Thammarat': 'นครศรีธรรมราช',
+  'Nan': 'น่าน',
+  'Narathiwat': 'นราธิวาส',
+  'Nong Bua Lamphu': 'หนองบัวลำภู',
+  'Nong Khai': 'หนองคาย',
+  'Nonthaburi': 'นนทบุรี',
+  'Pathum Thani': 'ปทุมธานี',
+  'Pattani': 'ปัตตานี',
+  'Pattaya': 'พัทยา',
+  'Phang Nga': 'พังงา',
+  'Phatthalung': 'พัทลุง',
+  'Phayao': 'พะเยา',
+  'Phetchabun': 'เพชรบูรณ์',
+  'Phetchaburi': 'เพชรบุรี',
+  'Phichit': 'พิจิตร',
+  'Phitsanulok': 'พิษณุโลก',
+  'Phra Nakhon Si Ayutthaya': 'พระนครศรีอยุธยา',
+  'Phrae': 'แพร่',
+  'Phuket': 'ภูเก็ต',
+  'Prachinburi': 'ปราจีนบุรี',
+  'Prachuap Khiri Khan': 'ประจวบคีรีขันธ์',
+  'Ranong': 'ระนอง',
+  'Ratchaburi': 'ราชบุรี',
+  'Rayong': 'ระยอง',
+  'Roi Et': 'ร้อยเอ็ด',
+  'Sa Kaeo': 'สระแก้ว',
+  'Sakon Nakhon': 'สกลนคร',
+  'Samut Prakan': 'สมุทรปราการ',
+  'Samut Sakhon': 'สมุทรสาคร',
+  'Samut Songkhram': 'สมุทรสงคราม',
+  'Saraburi': 'สระบุรี',
+  'Satun': 'สตูล',
+  'Sing Buri': 'สิงห์บุรี',
+  'Sisaket': 'ศรีสะเกษ',
+  'Songkhla': 'สงขลา',
+  'Sukhothai': 'สุโขทัย',
+  'Suphanburi': 'สุพรรณบุรี',
+  'Surat Thani': 'สุราษฎร์ธานี',
+  'Surin': 'สุรินทร์',
+  'Tak': 'ตาก',
+  'Trang': 'ตรัง',
+  'Trat': 'ตราด',
+  'Ubon Ratchathani': 'อุบลราชธานี',
+  'Udon Thani': 'อุดรธานี',
+  'Uthai Thani': 'อุทัยธานี',
+  'Uttaradit': 'อุตรดิตถ์',
+  'Yala': 'ยะลา',
+  'Yasothon': 'ยโสธร',
+};
+
+export type ProvinceOption = { value: ThaiProvince; label: string };
+
+export function getProvinceOptions(language: string): ProvinceOption[] {
+  const isThai = language.startsWith('th');
+  return THAI_PROVINCES.map((province) => ({
+    value: province,
+    label: isThai ? THAI_PROVINCE_LABELS[province] : province,
+  }));
+}
+
+export function getProvinceLabel(province: string | undefined, language: string): string {
+  if (!province) return '';
+  if (!language.startsWith('th')) return province;
+  return THAI_PROVINCE_LABELS[province as ThaiProvince] ?? province;
+}
+
+export function filterProvinces(query: string, language = 'en'): ProvinceOption[] {
   const normalized = query.trim().toLowerCase();
-  if (!normalized) return THAI_PROVINCES.slice();
-  return THAI_PROVINCES.filter((p) => p.toLowerCase().includes(normalized));
+  const options = getProvinceOptions(language);
+  if (!normalized) return options.slice();
+  return options.filter(
+    (o) =>
+      o.label.toLowerCase().includes(normalized) ||
+      o.value.toLowerCase().includes(normalized)
+  );
 }

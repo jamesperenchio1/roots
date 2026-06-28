@@ -29,7 +29,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isLocalAdmin: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (input: SignupInput) => Promise<{ ok: boolean; error?: string }>;
+  signup: (input: SignupInput) => Promise<{ ok: boolean; error?: string; message?: string }>;
   loginAsLocalAdmin: () => void;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -44,7 +44,7 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isLocalAdmin: false,
   login: async () => false,
-  signup: async () => ({ ok: false }),
+  signup: async () => ({ ok: false, error: 'Signup not available' }),
   loginAsLocalAdmin: () => {},
   logout: () => {},
   refreshProfile: async () => {},
@@ -149,9 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !!p;
   }, [startSubscriptions]);
 
-  const signup = useCallback(async (input: SignupInput): Promise<{ ok: boolean; error?: string }> => {
+  const signup = useCallback(async (input: SignupInput): Promise<{ ok: boolean; error?: string; message?: string }> => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
       options: {
@@ -165,6 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       setIsLoading(false);
       return { ok: false, error: error.message };
+    }
+    // If Supabase requires email confirmation, no session is returned yet.
+    if (!data.session) {
+      setIsLoading(false);
+      return { ok: true, message: 'Account created. Please check your email to confirm, then log in.' };
     }
     // Auto-confirm trigger lets us sign in right away.
     const ok = await login(input.email, input.password);

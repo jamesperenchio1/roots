@@ -2,10 +2,11 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Star, Store, MapPin, Calendar } from 'lucide-react';
 import { getUserById, getActiveListings, PLANT_IMAGES } from '@/data/mockData';
+import { getProvinceLabel } from '@/lib/provinces';
 import ReviewSection from '@/components/ReviewSection';
 
 export default function SellerPage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const seller = getUserById(id || '');
   const listings = getActiveListings().filter(l => l.seller_id === id);
@@ -39,7 +40,7 @@ export default function SellerPage() {
             <div>
               <h1 className="text-2xl font-light tracking-tight mb-1">{seller.display_name}</h1>
               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 mb-3">
-                {seller.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {seller.location}</span>}
+                {seller.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {getProvinceLabel(seller.location, i18n.language)}</span>}
                 {seller.rating && <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400" /> {seller.rating}</span>}
                 <span className="flex items-center gap-1"><Store className="w-3.5 h-3.5" /> {t('marketplace:seller.salesCount', { count: seller.sales_count })}</span>
                 <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('marketplace:seller.memberSince', { year: new Date(seller.created_at).getFullYear() })}</span>

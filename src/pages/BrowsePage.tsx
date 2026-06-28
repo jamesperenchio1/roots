@@ -14,6 +14,7 @@ import { Sparkline } from '@/components/PriceChart';
 import { usePagination } from '@/hooks/usePagination';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import { LazyImage } from '@/components/LazyImage';
+import { getProvinceLabel } from '@/lib/provinces';
 import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
 import type { Category, SizeCategory } from '@/types';
 
@@ -41,7 +42,7 @@ const PROVINCES = ['', 'Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya
 const PAGE_SIZE = 12;
 
 export default function BrowsePage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [category, setCategory] = useState<Category | ''>('');
   const [size, setSize] = useState<SizeCategory | ''>('');
@@ -235,7 +236,7 @@ export default function BrowsePage() {
                   <div className="flex items-center gap-2 mt-2 text-xs text-zinc-600">
                     <span>{listing.delivery_options?.includes('ship') && t('marketplace:listing.shipping')}</span>
                     <span>{listing.delivery_options?.includes('pickup') && t('marketplace:listing.pickup')}</span>
-                    <span>{listing.pickup_province}</span>
+                    <span>{getProvinceLabel(listing.pickup_province, i18n.language)}</span>
                   </div>
                 </div>
               </Link>

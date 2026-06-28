@@ -85,6 +85,7 @@
     "pickupLabel": "Pickup: {{province}}",
     "escrowProtected": "Escrow protected — funds released after delivery confirmation",
     "qrTag": "Comes with QR provenance tag",
+    "scanQrCta": "Scan to verify provenance",
     "priceHistoryDescription": "Historical sales data for {{species}} — {{size}} size"
   },
   "seller": {

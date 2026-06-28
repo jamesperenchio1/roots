@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, QrCode, CheckCircle, Info, X, Shield } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { createListing, uploadListingPhoto } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
+import { getProvinceOptions } from '@/lib/provinces';
 import type { Listing, Category } from '@/types';
 
 interface PhotoItem { file: File; preview: string; }
@@ -30,7 +31,8 @@ const TAG_VOCAB = [
 ];
 
 export default function CreateListingPage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
+  const provinceOptions = useMemo(() => getProvinceOptions(i18n.language), [i18n.language]);
   const [step, setStep] = useState<'form' | 'qr'>('form');
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
   const [speciesQuery, setSpeciesQuery] = useState('');
@@ -399,8 +401,8 @@ export default function CreateListingPage() {
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
                 <option value="">{t('marketplace:create.selectProvince')}</option>
-                {['Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya', 'Nonthaburi', 'Khon Kaen', 'Udon Thani', 'Nakhon Ratchasima', 'Rayong'].map(p => (
-                  <option key={p} value={p}>{p}</option>
+                {provinceOptions.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
               {errors.province && <p className="text-xs text-red-400 mt-1">{errors.province}</p>}
