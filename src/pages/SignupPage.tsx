@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import { isValidEmail } from '@/lib/validation';
 
@@ -123,12 +124,10 @@ export default function SignupPage() {
             </div>
             <div>
               <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.location')}</label>
-              <input
-                type="text"
+              <ProvinceCombobox
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={setLocation}
                 placeholder={t('auth:signup.location')}
-                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
           </div>

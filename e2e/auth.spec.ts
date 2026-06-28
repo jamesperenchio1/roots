@@ -32,13 +32,15 @@ test.describe('Auth pages', () => {
     await page.getByPlaceholder(/you@example.com/i).fill('test@example.com');
     await page.getByPlaceholder(/min 6 characters/i).fill('password123');
     await page.getByPlaceholder(/08xxxxxxxx/i).fill('0812345678');
+    await page.getByTestId('province-combobox').click();
     await page.getByPlaceholder(/province/i).fill('Bangkok');
+    await page.locator('[cmdk-item]', { hasText: 'Bangkok' }).click();
 
     // Verify values are entered correctly without submitting
     await expect(page.getByPlaceholder(/display name/i)).toHaveValue('Test User');
     await expect(page.getByPlaceholder(/you@example.com/i)).toHaveValue('test@example.com');
     await expect(page.getByPlaceholder(/min 6 characters/i)).toHaveValue('password123');
     await expect(page.getByPlaceholder(/08xxxxxxxx/i)).toHaveValue('0812345678');
-    await expect(page.getByPlaceholder(/province/i)).toHaveValue('Bangkok');
+    await expect(page.getByTestId('province-combobox')).toHaveText('Bangkok');
   });
 });

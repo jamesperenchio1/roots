@@ -3,10 +3,10 @@ import { Shield, TrendingUp, Truck, QrCode, Zap, Heart } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const STATS = [
-  { value: '47K+', labelKey: 'plantsListed' },
-  { value: '12K+', labelKey: 'happyBuyers' },
-  { value: '8,400+', labelKey: 'sellersActive' },
-  { value: '฿24M', labelKey: 'gmvToDate' },
+  { value: '2,100+', labelKey: 'plantsListed' },
+  { value: '640+', labelKey: 'happyBuyers' },
+  { value: '220+', labelKey: 'sellersActive' },
+  { value: '฿1.2M', labelKey: 'gmvToDate' },
 ];
 
 const VALUES = [
@@ -20,7 +20,7 @@ const VALUES = [
 
 const TEAM = [
   { name: 'Thawanrat S.', roleKey: 'thawanrat.role', bioKey: 'thawanrat.bio' },
-  { name: 'Pongsiri K.', roleKey: 'pongsiri.role', bioKey: 'pongsiri.bio' },
+  { name: 'James Perenchio', roleKey: 'james.role', bioKey: 'james.bio' },
   { name: 'Malai T.', roleKey: 'malai.role', bioKey: 'malai.bio' },
   { name: 'Chanida P.', roleKey: 'chanida.role', bioKey: 'chanida.bio' },
 ];

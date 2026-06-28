@@ -15,7 +15,6 @@ export default function QRScannerPage() {
   const { t } = useTranslation(['common']);
   const navigate = useNavigate();
   const [mode, setMode] = useState<'camera' | 'upload' | 'manual'>('camera');
-  const [scanning, setScanning] = useState(false);
   const [manualId, setManualId] = useState('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,30 +32,42 @@ export default function QRScannerPage() {
   }, [navigate, t]);
 
   useEffect(() => {
-    if (mode === 'camera' && !scanning) {
-      setScanning(true);
-      const scanner = new Html5Qrcode('qr-reader');
-      scannerRef.current = scanner;
-      scanner
-        .start(
+    if (mode !== 'camera') return;
+
+    let active = true;
+    let scanner: Html5Qrcode | null = null;
+
+    const init = async () => {
+      try {
+        scanner = new Html5Qrcode('qr-reader');
+        scannerRef.current = scanner;
+        await scanner.start(
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           (decodedText) => {
-            handleDecoded(decodedText);
+            if (active) handleDecoded(decodedText);
           },
           () => {}
-        )
-        .catch(() => {
+        );
+        if (!active) {
+          scanner.stop().catch(() => {});
+        }
+      } catch {
+        if (active) {
           toast.error(t('common:qrScanner.errors.camera'));
           setMode('upload');
-          setScanning(false);
-        });
-      return () => {
-        scanner.stop().catch(() => {});
-        setScanning(false);
-      };
-    }
-  }, [mode, scanning, handleDecoded, t]);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      active = false;
+      scannerRef.current = null;
+      scanner?.stop().catch(() => {});
+    };
+  }, [mode, handleDecoded, t]);
 
   const handleFile = async (file: File) => {
     try {
@@ -90,7 +101,7 @@ export default function QRScannerPage() {
           {MODES.map((m) => (
             <button
               key={m.id}
-              onClick={() => { setMode(m.id as typeof mode); scannerRef.current?.stop().catch(() => {}); setScanning(false); }}
+              onClick={() => { setMode(m.id as typeof mode); scannerRef.current?.stop().catch(() => {}); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm transition-colors ${
                 mode === m.id
                   ? 'border-emerald-500 bg-emerald-500/5 text-emerald-400'
