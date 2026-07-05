@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Tag,
   Star,
+  TrendingDown,
   Info,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +32,7 @@ const ICON_MAP: Record<NotificationType, React.ElementType> = {
   message: MessageSquare,
   offer: Tag,
   review: Star,
+  price_alert: TrendingDown,
   system: Info,
 };
 

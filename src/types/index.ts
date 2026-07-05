@@ -9,7 +9,7 @@ export type DeliveryOption = 'ship' | 'pickup';
 export type WatchType = 'species' | 'listing';
 export type AlertDirection = 'above' | 'below';
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'withdrawn';
-export type NotificationType = 'order' | 'shipment' | 'dispute' | 'message' | 'offer' | 'review' | 'system';
+export type NotificationType = 'order' | 'shipment' | 'dispute' | 'message' | 'offer' | 'review' | 'price_alert' | 'system';
 export type FlagType = 'wash_trade' | 'joke_price' | 'outlier' | 'other';
 
 export interface Profile {
