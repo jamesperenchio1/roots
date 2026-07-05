@@ -1,4 +1,10 @@
 {
+  "build": {
+    "env": {
+      "VITE_SUPABASE_URL": "https://daacilgagkphafpjdcte.supabase.co",
+      "VITE_SUPABASE_ANON_KEY": "sb_publishable_pfQ_kyf47PV-p_E2fDG3wQ__5MaWnsZ"
+    }
+  },
   "headers": [
     {
       "source": "/index.html",

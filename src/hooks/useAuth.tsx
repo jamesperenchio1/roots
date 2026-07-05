@@ -57,8 +57,16 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 function isNetworkError(err: Error): boolean {
-  const msg = err.message.toLowerCase();
-  return msg.includes('load failed') || msg.includes('failed to fetch') || msg.includes('network');
+  return isNetworkErrorMessage(err.message);
+}
+
+function isNetworkErrorMessage(message: string): boolean {
+  const msg = message.toLowerCase();
+  return msg.includes('load failed') || msg.includes('failed to fetch') || msg.includes('network') || msg.includes('abort');
+}
+
+function networkErrorMessage(): string {
+  return i18n.t('common:errors.network', { defaultValue: 'Network error. Please check your connection.' });
 }
 
 async function fetchProfile(id: string): Promise<Profile | null> {
@@ -167,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        return { ok: false, error: error.message };
+        return { ok: false, error: isNetworkErrorMessage(error.message) ? networkErrorMessage() : error.message };
       }
       if (!data.user) {
         return { ok: false, error: i18n.t('auth:login.error', { defaultValue: 'Invalid email or password' }) };
@@ -195,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {
         ok: false,
         error: err instanceof Error && isNetworkError(err)
-          ? i18n.t('common:errors.network', { defaultValue: 'Network error. Please check your connection.' })
+          ? networkErrorMessage()
           : i18n.t('common:errors.generic', { defaultValue: 'Something went wrong. Please try again.' }),
       };
     } finally {
@@ -218,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
       if (error) {
-        return { ok: false, error: error.message };
+        return { ok: false, error: isNetworkErrorMessage(error.message) ? networkErrorMessage() : error.message };
       }
       // If Supabase requires email confirmation, no session is returned yet.
       if (!data.session || !data.user) {
@@ -237,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       logger.warn('signup failed', { error: err instanceof Error ? err.message : String(err) });
       const message = err instanceof Error && isNetworkError(err)
-        ? i18n.t('common:errors.network', { defaultValue: 'Network error. Please check your connection.' })
+        ? networkErrorMessage()
         : i18n.t('common:errors.generic', { defaultValue: 'Something went wrong. Please try again.' });
       return { ok: false, error: message };
     } finally {
@@ -254,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     } catch (err) {
       logger.warn('resetPassword failed', { error: err instanceof Error ? err.message : String(err) });
-      return { ok: false, error: i18n.t('common:errors.network', { defaultValue: 'Network error. Please check your connection.' }) };
+      return { ok: false, error: networkErrorMessage() };
     }
   }, []);
 
