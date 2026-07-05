@@ -1,11 +1,8 @@
-/** Sanitize user input to prevent XSS and injection */
+/** Sanitize user input: trim, limit length and strip dangerous protocols.
+ *  React escapes text automatically, so we do NOT HTML-encode here. Storing
+ *  `&amp;` style entities in the database corrupts display names and listings. */
 export function sanitizeText(input: string, maxLength = 5000): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
+  return String(input ?? '')
     .replace(/javascript:/gi, '')
     .replace(/on\w+=/gi, '')
     .trim()

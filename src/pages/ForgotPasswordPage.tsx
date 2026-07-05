@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
             <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
             <h2 className="text-lg font-medium mb-1">{t('auth:forgotPassword.success')}</h2>
             <p className="text-sm text-zinc-500 mb-4">
-              {t('auth:forgotPassword.success')}
+              {t('auth:forgotPassword.successMessage', { defaultValue: 'If this email is registered, you will receive a reset link.' })}
             </p>
             <Link to="/login" className="text-emerald-400 hover:underline text-sm">
               {t('auth:forgotPassword.backToLogin')}

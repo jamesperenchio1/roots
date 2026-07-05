@@ -28,11 +28,13 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email || !password || !displayName) {
+    const trimmedName = displayName.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password || !trimmedName) {
       setError(t('common:errors.required'));
       return;
     }
-    if (!isValidEmail(email)) {
+    if (!isValidEmail(trimmedEmail)) {
       setError(t('common:errors.invalidEmail'));
       return;
     }
@@ -40,11 +42,15 @@ export default function SignupPage() {
       setError(t('common:errors.minLength', { count: 6 }));
       return;
     }
-    if (displayName.length < 2 || displayName.length > 50) {
+    if (trimmedName.length < 2) {
+      setError(t('common:errors.minLength', { count: 2 }));
+      return;
+    }
+    if (trimmedName.length > 50) {
       setError(t('common:errors.maxLength', { count: 50 }));
       return;
     }
-    const res = await signup({ email, password, displayName, promptpayId, location });
+    const res = await signup({ email: trimmedEmail, password, displayName: trimmedName, promptpayId, location });
     if (res.ok) {
       if (res.message) {
         toast.success(res.message, { duration: 6000 });

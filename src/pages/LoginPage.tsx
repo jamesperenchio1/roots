@@ -19,11 +19,11 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const success = await login(email, password);
-    if (success) {
+    const { ok, error: loginError } = await login(email, password);
+    if (ok) {
       navigate(redirect);
     } else {
-      setError(t('auth:login.error'));
+      setError(loginError || t('auth:login.error'));
     }
   };
 
@@ -85,7 +85,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer">
               <input type="checkbox" className="rounded bg-zinc-900 border-white/10" />
-              {t('common:actions.rememberMe', 'Remember me')}
+              {t('common:actions.rememberMe', { defaultValue: 'Remember me' })}
             </label>
             <Link to="/forgot-password" className="text-xs text-emerald-400 hover:underline">
               {t('auth:login.forgotPassword')}

@@ -9,9 +9,10 @@ import {
 } from './validation';
 
 describe('sanitizeText', () => {
-  it('escapes HTML entities to prevent XSS', () => {
-    expect(sanitizeText('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
-    expect(sanitizeText('"onclick="evil()"')).toBe('&quot;&quot;evil()&quot;');
+  it('strips dangerous protocols and event handlers without corrupting text', () => {
+    // React escapes HTML automatically, so we keep the text as-is.
+    expect(sanitizeText('<script>alert(1)</script>')).toBe('<script>alert(1)</script>');
+    expect(sanitizeText('"onclick="evil()"')).toBe('""evil()"');
     expect(sanitizeText("javascript:alert(1)")).toBe('alert(1)');
   });
 

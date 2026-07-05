@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setError(t('common:errors.passwordMismatch', 'Passwords do not match'));
+      setError(t('common:errors.passwordMismatch', { defaultValue: 'Passwords do not match' }));
       return;
     }
     const res = await updatePassword(password);
@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
             <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
             <h2 className="text-lg font-medium mb-1">{t('auth:resetPassword.success')}</h2>
             <p className="text-sm text-zinc-500">
-              {t('common:errors.redirecting', 'Redirecting…')}
+              {t('common:errors.redirecting', { defaultValue: 'Redirecting…' })}
             </p>
           </div>
         ) : (

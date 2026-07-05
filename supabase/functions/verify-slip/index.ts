@@ -1,6 +1,6 @@
-// Verifies a buyer's payment slip against EasySlip, then auto-confirms the
-// transaction when the amount matches and the slip is not a duplicate.
-// Falls back to manual seller confirmation if EasySlip is not configured or fails.
+// Verifies a buyer's payment slip against SlipOK, then auto-confirms the
+// transaction when the amount matches and the slip has not been used before.
+// Falls back to manual seller confirmation if SlipOK is not configured or fails.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 const CORS_HEADERS = {
@@ -32,6 +32,13 @@ Deno.serve(async (req) => {
       throw new Error('Supabase environment variables are not configured');
     }
 
+    const apiKey = Deno.env.get('SLIPOK_API_KEY');
+    const branchId = Deno.env.get('SLIPOK_BRANCH_ID');
+    if (!apiKey || !branchId) {
+      console.warn('SLIPOK_API_KEY or SLIPOK_BRANCH_ID not set; falling back to manual verification');
+      return json({ status: 'manual' });
+    }
+
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: tx, error: txError } = await admin
@@ -57,64 +64,113 @@ Deno.serve(async (req) => {
       throw new Error('Invalid transaction amount');
     }
 
-    const { data: signed, error: signedError } = await admin
+    const { data: blob, error: dlError } = await admin
       .storage
       .from('payment-slips')
-      .createSignedUrl(tx.payment_slip_path, 120);
+      .download(tx.payment_slip_path);
 
-    if (signedError || !signed?.signedUrl) {
-      throw new Error('Could not create signed URL for the payment slip');
+    if (dlError || !blob) {
+      throw new Error('Could not download the payment slip');
     }
 
-    const apiKey = Deno.env.get('EASYSLIP_API_KEY');
-    if (!apiKey) {
-      console.warn('EASYSLIP_API_KEY not set; falling back to manual verification');
-      return json({ status: 'manual' });
-    }
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = arrayBufferToBase64(arrayBuffer);
 
-    const easySlipRes = await fetch('https://api.easyslip.com/v2/verify/bank', {
+    const slipOkRes = await fetch(`https://api.slipok.com/api/line/apikey/${branchId}`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'x-authorization': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        url: signed.signedUrl,
-        matchAmount: expectedAmount,
-        checkDuplicate: true,
+        files: base64,
+        amount: expectedAmount,
+        log: false,
       }),
     });
 
-    const easySlipJson = await easySlipRes.json().catch(() => null);
+    const slipOkJson = await slipOkRes.json().catch(() => null);
 
-    if (!easySlipRes.ok || !easySlipJson?.success) {
-      const msg = easySlipJson?.error?.message || easySlipRes.statusText || 'EasySlip error';
-      console.warn('EasySlip verify failed; falling back to manual', msg);
-      return json({ status: 'manual', message: msg });
+    if (!slipOkRes.ok || !slipOkJson?.success) {
+      const code = slipOkJson?.code;
+      const message = slipOkJson?.message || slipOkRes.statusText || 'SlipOK error';
+
+      if (code === 1013) {
+        return json({ status: 'failed', message: 'Slip amount does not match order total' });
+      }
+
+      if (code === 1011) {
+        return json({ status: 'failed', message: 'QR code expired or transaction not found' });
+      }
+
+      if (code === 1009 || code === 1010) {
+        console.warn('SlipOK temporary/delay error; falling back to manual', message);
+        return json({ status: 'manual', message });
+      }
+
+      console.warn('SlipOK verify failed; falling back to manual', message);
+      return json({ status: 'manual', message });
     }
 
-    const amountMatched = easySlipJson.data?.isAmountMatched ?? true;
-    const isDuplicate = easySlipJson.data?.isDuplicate ?? false;
+    const slipData = slipOkJson.data;
+    const slipAmount = Number(slipData?.amount);
+    const transRef = String(slipData?.transRef || '');
 
-    if (isDuplicate) {
-      return json({ status: 'failed', message: 'This slip has already been used' });
-    }
-
-    if (!amountMatched) {
+    if (Number.isNaN(slipAmount) || Math.abs(slipAmount - expectedAmount) > 0.01) {
       return json({ status: 'failed', message: 'Slip amount does not match order total' });
     }
 
-    const { error: updateError } = await admin
-      .from('transactions')
-      .update({
-        payment_confirmed: true,
-        status: 'paid_in_escrow',
-        payment_confirmed_at: new Date().toISOString(),
-      })
-      .eq('id', transactionId);
+    if (!transRef) {
+      return json({ status: 'manual', message: 'Could not read transaction reference from slip' });
+    }
 
-    if (updateError) {
-      throw updateError;
+    // Local duplicate check: another order already used this transRef.
+    try {
+      const { data: existing, error: dupError } = await admin
+        .from('transactions')
+        .select('id')
+        .eq('payment_trans_ref', transRef)
+        .neq('id', transactionId)
+        .maybeSingle();
+
+      if (dupError) {
+        console.warn('Duplicate-check query failed', dupError.message);
+      } else if (existing) {
+        return json({ status: 'failed', message: 'This slip has already been used' });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('Duplicate-check threw; skipping', msg);
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      payment_confirmed: true,
+      status: 'paid_in_escrow',
+      payment_confirmed_at: new Date().toISOString(),
+    };
+
+    try {
+      updatePayload.payment_trans_ref = transRef;
+      const { error: updateError } = await admin
+        .from('transactions')
+        .update(updatePayload)
+        .eq('id', transactionId);
+
+      if (updateError) {
+        // If payment_trans_ref column does not exist yet, retry without it.
+        if (updateError.message?.includes('payment_trans_ref')) {
+          delete updatePayload.payment_trans_ref;
+          const { error: retryError } = await admin
+            .from('transactions')
+            .update(updatePayload)
+            .eq('id', transactionId);
+          if (retryError) throw retryError;
+        } else {
+          throw updateError;
+        }
+      }
+    } catch (e) {
+      throw e;
     }
 
     return json({ status: 'verified' });
@@ -124,6 +180,15 @@ Deno.serve(async (req) => {
     return json({ status: 'manual', message });
   }
 });
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i += 1024) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 1024));
+  }
+  return btoa(binary);
+}
 
 function json(body: VerifyResponse, status = 200) {
   return new Response(JSON.stringify(body), {

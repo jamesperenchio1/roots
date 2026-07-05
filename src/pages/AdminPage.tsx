@@ -3,7 +3,7 @@ import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircl
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, SPECIES } from '@/data/mockData';
-import { updateOrderStatus, hydrateUserDisputes } from '@/lib/api';
+import { updateOrderStatus, hydrateUserDisputes, hydratePublicData, adminUpdateUser } from '@/lib/api';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 
@@ -167,16 +167,42 @@ function Disputes() {
 
 function UsersPage() {
   const { t } = useTranslation(['common']);
+  const { isLocalAdmin } = useAuth();
   const [users, setUsers] = useState(USERS);
 
-  const handleStrike = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, strike_count: u.strike_count + 1 } : u));
-    toast.success(t('common:admin.users.strikeToast'));
+  useEffect(() => {
+    let cancelled = false;
+    hydratePublicData().then(() => {
+      if (!cancelled) setUsers([...USERS]);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleStrike = async (userId: string) => {
+    const target = users.find(u => u.id === userId);
+    if (!target) return;
+    const nextCount = target.strike_count + 1;
+    try {
+      if (!isLocalAdmin) {
+        await adminUpdateUser(userId, { strike_count: nextCount });
+      }
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, strike_count: nextCount } : u));
+      toast.success(t('common:admin.users.strikeToast'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
+    }
   };
 
-  const handleBan = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: true } : u));
-    toast.success(t('common:admin.users.banToast'));
+  const handleBan = async (userId: string) => {
+    try {
+      if (!isLocalAdmin) {
+        await adminUpdateUser(userId, { is_banned: true });
+      }
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: true } : u));
+      toast.success(t('common:admin.users.banToast'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
+    }
   };
 
   return (

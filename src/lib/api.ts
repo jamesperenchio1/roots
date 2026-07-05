@@ -647,11 +647,73 @@ export async function updateProfile(userId: string, patch: Partial<Profile>): Pr
   if (patch.language_preference !== undefined) cleanPatch.language_preference = patch.language_preference;
   if (patch.location !== undefined) cleanPatch.location = patch.location ? sanitizeText(patch.location, 50) : null;
   if (patch.avatar_url !== undefined) cleanPatch.avatar_url = patch.avatar_url;
+  if (patch.updated_at !== undefined) cleanPatch.updated_at = patch.updated_at;
 
   const { error } = await supabase.from('profiles').update(cleanPatch).eq('id', userId);
   if (error) throw error;
   const user = USERS.find(u => u.id === userId);
   if (user) Object.assign(user, cleanPatch);
+}
+
+/** Admin-only profile update. Persists strike/ban/admin flags and normal fields. */
+export async function adminUpdateUser(userId: string, patch: Partial<Profile>): Promise<void> {
+  const cleanPatch: Record<string, unknown> = {};
+  if (patch.display_name !== undefined) cleanPatch.display_name = sanitizeText(patch.display_name, 50);
+  if (patch.promptpay_id !== undefined) cleanPatch.promptpay_id = patch.promptpay_id ? sanitizeText(patch.promptpay_id, 20) : null;
+  if (patch.language_preference !== undefined) cleanPatch.language_preference = patch.language_preference;
+  if (patch.location !== undefined) cleanPatch.location = patch.location ? sanitizeText(patch.location, 50) : null;
+  if (patch.avatar_url !== undefined) cleanPatch.avatar_url = patch.avatar_url;
+  if (patch.is_banned !== undefined) cleanPatch.is_banned = patch.is_banned;
+  if (patch.strike_count !== undefined) cleanPatch.strike_count = patch.strike_count;
+  if (patch.is_admin !== undefined) cleanPatch.is_admin = patch.is_admin;
+  cleanPatch.updated_at = new Date().toISOString();
+
+  const { error } = await supabase.from('profiles').update(cleanPatch).eq('id', userId);
+  if (error) throw error;
+  const user = USERS.find(u => u.id === userId);
+  if (user) Object.assign(user, cleanPatch);
+}
+
+/** Ensure a profiles row exists for a freshly created user. This is a safety net
+ *  when the Supabase `auth.users` -> `profiles` trigger is missing or delayed. */
+export async function ensureProfile(
+  userId: string,
+  metadata: Record<string, unknown> = {}
+): Promise<Profile | null> {
+  try {
+    const { data: existing } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (existing) return mapProfile(existing);
+  } catch {
+    // Table missing or RLS denied — fall through and try an insert.
+  }
+
+  const now = new Date().toISOString();
+  const payload = {
+    id: userId,
+    display_name: String((metadata.display_name as string | undefined) ?? 'Plant Lover').trim() || 'Plant Lover',
+    promptpay_id: (metadata.promptpay_id as string | null | undefined) ?? null,
+    location: (metadata.location as string | null | undefined) ?? null,
+    language_preference: (metadata.language_preference as 'th' | 'en' | undefined) ?? 'en',
+    is_admin: false,
+    strike_count: 0,
+    is_banned: false,
+    created_at: now,
+    updated_at: now,
+  };
+
+  try {
+    const { data, error } = await supabase.from('profiles').insert(payload).select('*').single();
+    if (error) throw error;
+    if (data) {
+      const mapped = mapProfile(data);
+      upsertById(USERS, mapped);
+      profileCache[mapped.id] = mapped;
+      return mapped;
+    }
+  } catch (e) {
+    logger.warn('ensureProfile insert failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+  return null;
 }
 
 export async function toggleWatch(
