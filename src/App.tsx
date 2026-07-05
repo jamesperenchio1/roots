@@ -120,44 +120,27 @@ function AppContent() {
 }
 
 function BootGate({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
   const [bootError, setBootError] = useState(false);
   useEffect(() => {
-    hydratePublicData()
-      .catch(() => setBootError(true))
-      .finally(() => setReady(true));
+    let mounted = true;
+    hydratePublicData().catch(() => {
+      if (mounted) setBootError(true);
+    });
+    return () => { mounted = false; };
   }, []);
 
-  if (!ready) {
-    return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3">
-        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
-        <p className="text-sm text-zinc-500">Loading the market…</p>
-      </div>
-    );
-  }
-
-  if (bootError) {
-    return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3 px-4 text-center">
-        <Leaf className="w-8 h-8 text-amber-400" />
-        <p className="text-sm text-zinc-400">Connection issue detected</p>
-        <p className="text-xs text-zinc-600 max-w-xs">
-          We are having trouble connecting to our servers. Some features may be limited. Try refreshing the page.
-        </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-2 text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
-        >
-          Retry
-        </button>
-        {/* Still render app so offline seed data works */}
-        {children}
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {bootError && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
+          <p className="text-xs text-amber-200">
+            Connection issue detected. Some features may be limited until the server responds.
+          </p>
+        </div>
+      )}
+    </>
+  );
 }
 
 export default function App() {

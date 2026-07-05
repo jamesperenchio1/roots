@@ -148,25 +148,107 @@ function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transactio
 // ---------- boot hydration ----------
 let profileCache: Record<string, Profile> = {};
 
-export async function hydratePublicData(): Promise<void> {
+let publicDataHydrated = false;
+const publicDataListeners = new Set<() => void>();
+function bumpPublicData() {
+  publicDataHydrated = true;
+  publicDataListeners.forEach((cb) => cb());
+}
+export function isPublicDataHydrated(): boolean { return publicDataHydrated; }
+export function subscribePublicDataHydration(cb: () => void): () => void {
+  publicDataListeners.add(cb);
+  return () => { publicDataListeners.delete(cb); };
+}
+
+const PUBLIC_DATA_CACHE_KEY = 'root_public_data_v1';
+const PUBLIC_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type PublicDataCache = {
+  timestamp: number;
+  users: Profile[];
+  listings: Listing[];
+  reviews: Review[];
+};
+
+function loadPublicDataCache(): PublicDataCache | null {
   try {
+    const raw = localStorage.getItem(PUBLIC_DATA_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PublicDataCache;
+    if (Date.now() - parsed.timestamp > PUBLIC_DATA_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePublicDataCache(users: Profile[], listings: Listing[], reviews: Review[]) {
+  try {
+    localStorage.setItem(PUBLIC_DATA_CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      users,
+      listings,
+      reviews,
+    }));
+  } catch {
+    // Private mode / quota exceeded — ignore.
+  }
+}
+
+function applyPublicDataCache(cache: PublicDataCache) {
+  profileCache = {};
+  USERS.length = 0;
+  USERS.push(...cache.users);
+  LISTINGS.length = 0;
+  LISTINGS.push(...cache.listings);
+  REVIEWS.length = 0;
+  REVIEWS.push(...cache.reviews);
+  USERS.forEach((u) => { profileCache[u.id] = u; });
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('timeout')), ms);
+    }),
+  ]);
+}
+
+export async function hydratePublicData(): Promise<void> {
+  // Show cached data instantly on first paint, then revalidate in the background.
+  const cache = loadPublicDataCache();
+  if (cache) {
+    applyPublicDataCache(cache);
+    bumpPublicData();
+    bumpListings();
+  }
+
+  try {
+    const timeoutMs = 8000;
+    const profileReq = supabase.from('profiles').select('*').then((r) => r);
+    const listingsReq = supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }).then((r) => r);
+    const reviewsReq = supabase.from('reviews').select('*').order('created_at', { ascending: false }).then((r) => r);
     const [{ data: profs }, { data: rows }, { data: reviewRows }] = await Promise.all([
-      supabase.from('profiles').select('*'),
-      supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }),
-      supabase.from('reviews').select('*').order('created_at', { ascending: false }),
+      withTimeout(profileReq, timeoutMs),
+      withTimeout(listingsReq, timeoutMs),
+      withTimeout(reviewsReq, timeoutMs),
     ]);
     profileCache = {};
-    (profs || []).forEach((p) => {
+    (profs || []).forEach((p: DbRow) => {
       const mapped = mapProfile(p);
       profileCache[mapped.id] = mapped;
       upsertById(USERS, mapped);
     });
-    (rows || []).forEach((r) => upsertById(LISTINGS, mapListing(r, profileCache)));
-    (reviewRows || []).forEach((r) => upsertById(REVIEWS, mapReview(r)));
+    (rows || []).forEach((r: DbRow) => upsertById(LISTINGS, mapListing(r, profileCache)));
+    (reviewRows || []).forEach((r: DbRow) => upsertById(REVIEWS, mapReview(r)));
+    savePublicDataCache(USERS, LISTINGS, REVIEWS);
+    bumpListings();
   } catch (e) {
-    // Offline / not configured — fall back to seed-only catalog.
+    // Offline / not configured — keep any cached data or fall back to seed-only catalog.
     logger.warn('hydratePublicData failed, using seed data only', { error: e instanceof Error ? e.message : String(e) });
   }
+  bumpPublicData();
 }
 
 export async function hydrateUserTransactions(): Promise<void> {
