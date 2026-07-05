@@ -61,24 +61,21 @@ export default defineConfig(({ mode }) => {
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-recharts': ['recharts'],
-          'vendor-radix': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-select',
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tooltip',
-          ],
+        manualChunks(id) {
+          if (!id || !id.includes('node_modules')) return;
+          // React ecosystem
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom') || id.includes('scheduler') || id.includes('cookie') || id.includes('set-cookie-parser')) {
+            return 'vendor-react';
+          }
+          if (id.includes('i18next') || id.includes('react-i18next')) return 'vendor-i18n';
+          if (id.includes('@radix-ui')) return 'vendor-radix';
+          if (id.includes('@sentry')) return 'vendor-sentry';
+          if (id.includes('recharts')) return 'vendor-recharts';
+          if (id.includes('@supabase')) return 'vendor-supabase';
+          // Shared UI utilities used by many components
+          if (id.includes('tailwind-merge') || id.includes('class-variance-authority') || id.includes('clsx') || id.includes('sonner')) {
+            return 'vendor-ui';
+          }
         },
       },
     },

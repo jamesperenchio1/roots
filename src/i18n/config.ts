@@ -10,14 +10,6 @@ import enDashboard from './locales/en/dashboard.json';
 import enCheckout from './locales/en/checkout.json';
 import enMessages from './locales/en/messages.json';
 
-import thCommon from './locales/th/common.json';
-import thHome from './locales/th/home.json';
-import thAuth from './locales/th/auth.json';
-import thMarketplace from './locales/th/marketplace.json';
-import thDashboard from './locales/th/dashboard.json';
-import thCheckout from './locales/th/checkout.json';
-import thMessages from './locales/th/messages.json';
-
 export const defaultNS = 'common';
 
 export const resources = {
@@ -30,16 +22,34 @@ export const resources = {
     checkout: enCheckout,
     messages: enMessages,
   },
-  th: {
-    common: thCommon,
-    home: thHome,
-    auth: thAuth,
-    marketplace: thMarketplace,
-    dashboard: thDashboard,
-    checkout: thCheckout,
-    messages: thMessages,
-  },
 } as const;
+
+export async function loadThaiResources() {
+  const [
+    { default: common },
+    { default: home },
+    { default: auth },
+    { default: marketplace },
+    { default: dashboard },
+    { default: checkout },
+    { default: messages },
+  ] = await Promise.all([
+    import('./locales/th/common.json'),
+    import('./locales/th/home.json'),
+    import('./locales/th/auth.json'),
+    import('./locales/th/marketplace.json'),
+    import('./locales/th/dashboard.json'),
+    import('./locales/th/checkout.json'),
+    import('./locales/th/messages.json'),
+  ]);
+  i18n.addResourceBundle('th', 'common', common, true, true);
+  i18n.addResourceBundle('th', 'home', home, true, true);
+  i18n.addResourceBundle('th', 'auth', auth, true, true);
+  i18n.addResourceBundle('th', 'marketplace', marketplace, true, true);
+  i18n.addResourceBundle('th', 'dashboard', dashboard, true, true);
+  i18n.addResourceBundle('th', 'checkout', checkout, true, true);
+  i18n.addResourceBundle('th', 'messages', messages, true, true);
+}
 
 export type SupportedLanguage = 'en' | 'th';
 
@@ -59,5 +69,9 @@ i18n
       lookupLocalStorage: 'roots-language',
     },
   });
+
+if (i18n.language?.startsWith('th')) {
+  loadThaiResources().catch(() => {});
+}
 
 export default i18n;
