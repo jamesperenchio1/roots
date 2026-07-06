@@ -2,7 +2,7 @@ import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getTransactionsWithDetails, WATCHLIST, DISPUTES, SPECIES } from '@/data/mockData';
+import { getTransactionsWithDetails, WATCHLIST, DISPUTES, getSpeciesById } from '@/data/mockData';
 import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers, hydrateUserDisputes, hydrateUserMessages, subscribeOffers, getOffersVersion } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
@@ -240,7 +240,7 @@ export default function DashboardPage() {
               <h2 className="text-lg font-medium mb-1">Watchlist ({localWatchlist.length})</h2>
               <div className="space-y-3">
                 {localWatchlist.length > 0 ? localWatchlist.map(w => {
-                  const species = w.watch_type === 'species' ? SPECIES.find(s => s.id === w.target_id) : null;
+                  const species = w.watch_type === 'species' ? getSpeciesById(w.target_id) : null;
                   return (
                     <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
                       <div>

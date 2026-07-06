@@ -1,8 +1,9 @@
 import type {
   Species, Profile, Listing, Transaction, Transfer, PriceSnapshot,
   Message, Dispute, WatchlistItem, PriceAlert, MarketOverview, DashboardStats,
-  ProvenanceChain, Review, Notification, Offer
+  ProvenanceChain, Review, Notification, Offer, TrendingSpecies
 } from '@/types';
+import { ALL_SPECIES } from './speciesDatabase';
 
 export const SPECIES: Species[] = [
   { id: 'sp-1', scientific_name: 'Monstera deliciosa \'Thai Constellation\'', common_name_th: 'มอนสเตอร่าไทยคอนสเตอเลชัน', common_name_en: 'Thai Constellation Monstera', synonyms: ['Monstera Thai Const'], category: 'aroid', created_at: '2023-01-01', description: 'Rare variegated Monstera with creamy white constellation-like patterns', care_level: 'moderate', light_requirement: 'Bright indirect' },
@@ -94,7 +95,17 @@ export function getPriceSnapshotsForSpecies(speciesId: string, sizeCategory?: st
 
 export function getSpeciesPriceStats(speciesId: string, days: number = 30) {
   const data = getPriceSnapshotsForSpecies(speciesId, undefined, days);
-  if (data.length === 0) return null;
+  if (data.length === 0) {
+    // No sales history yet — derive a live market estimate from active listings
+    // so the market page and seller price suggestions are useful immediately.
+    const live = getActiveListings({ speciesId });
+    if (live.length === 0) return null;
+    const prices = live.map(l => l.price_thb).sort((a, b) => a - b);
+    const mid = Math.floor(prices.length / 2);
+    const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
+    const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
+    return { median, mean, min: prices[0], max: prices[prices.length - 1], totalSales: 0 };
+  }
   const prices = data.map(d => d.median_price_thb);
   const sorted = [...prices].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -107,11 +118,14 @@ export function getSpeciesPriceStats(speciesId: string, days: number = 30) {
 }
 
 export function getMarketOverview(): MarketOverview {
-  // Derived entirely from real snapshot + transaction data. Empty until the
-  // marketplace has live trade history.
-  const speciesIds = Array.from(new Set(PRICE_SNAPSHOTS.map(s => s.species_id)));
+  // Derived from real snapshots plus active listings so the market page is
+  // useful even before many sales have completed.
+  const speciesIds: string[] = Array.from(new Set([
+    ...PRICE_SNAPSHOTS.map(s => s.species_id),
+    ...LISTINGS.filter(l => l.status === 'active' && l.species?.id).map(l => l.species!.id),
+  ]));
 
-  const allStats = speciesIds.map(sid => {
+  const allStats: TrendingSpecies[] = speciesIds.map(sid => {
     const last30 = getSpeciesPriceStats(sid, 30);
     const prev60to30 = getPriceSnapshotsForSpecies(sid, undefined, 60).slice(0, 30);
     const prevMedian = prev60to30.length > 0
@@ -119,15 +133,17 @@ export function getMarketOverview(): MarketOverview {
       : (last30?.median || 0);
     const sales30d = last30?.totalSales || 0;
     const sparkline = getPriceSnapshotsForSpecies(sid, undefined, 30).map(d => d.median_price_thb);
+    const species = getSpeciesById(sid);
+    if (!species) return null;
     return {
-      species: SPECIES.find(s => s.id === sid)!,
+      species,
       current_median: last30?.median || 0,
       previous_median: prevMedian,
       percent_change: prevMedian > 0 ? ((last30?.median || 0) - prevMedian) / prevMedian * 100 : 0,
       sales_count: sales30d,
       sparkline_data: sparkline,
     };
-  }).filter(s => s.species);
+  }).filter((s): s is TrendingSpecies => !!s);
 
   const trending_up = allStats
     .filter(s => s.percent_change > 5)
@@ -157,10 +173,23 @@ export function getMarketOverview(): MarketOverview {
     trending_up,
     trending_down,
     most_traded,
-    high_value_sales: TRANSACTIONS.filter(t => t.sale_price_thb >= 5000),
+    high_value_sales: TRANSACTIONS.filter(t => t.status === 'completed' && t.sale_price_thb >= 5000),
     hot_right_now,
     cold,
   };
+}
+
+export function getMarketSpecies(): Species[] {
+  const ids = new Set<string>();
+  ALL_SPECIES.forEach(s => ids.add(s.id));
+  LISTINGS.forEach(l => { if (l.species?.id) ids.add(l.species.id); });
+  TRANSACTIONS.forEach(t => { if (t.listing?.species?.id) ids.add(t.listing.species.id); });
+  return Array.from(ids).map(id => getSpeciesById(id)).filter((s): s is Species => !!s);
+}
+
+export function getSpeciesDisplayName(species?: Species): string {
+  if (!species) return 'Unknown plant';
+  return species.scientific_name || species.common_name_en || species.common_name_th || 'Unknown plant';
 }
 
 export function getDashboardStats(): DashboardStats {
@@ -220,7 +249,19 @@ export function getListingById(id: string): Listing | undefined {
 }
 
 export function getSpeciesById(id: string): Species | undefined {
-  return SPECIES.find(s => s.id === id);
+  const fromCatalog = SPECIES.find(s => s.id === id);
+  if (fromCatalog) return fromCatalog;
+  const fromAll = ALL_SPECIES.find(s => s.id === id);
+  if (!fromAll) return undefined;
+  return {
+    id: fromAll.id,
+    scientific_name: fromAll.scientific_name,
+    common_name_th: fromAll.common_name_th,
+    common_name_en: fromAll.common_name_en,
+    synonyms: fromAll.synonyms,
+    category: fromAll.category as Species['category'],
+    created_at: '2023-01-01',
+  };
 }
 
 export function getUserById(id: string): Profile | undefined {
@@ -237,7 +278,7 @@ export function getListingByPlantId(plantId: string): Listing | undefined {
 
 export function getActiveListings(filters?: { speciesId?: string; category?: string; minPrice?: number; maxPrice?: number; size?: string; province?: string }): Listing[] {
   let listings = getListingsWithDetails().filter(l => l.status === 'active');
-  if (filters?.speciesId) listings = listings.filter(l => l.plant_id?.replace('p-', 'sp-') === filters.speciesId);
+  if (filters?.speciesId) listings = listings.filter(l => (l.species?.id || l.plant_id?.replace('p-', 'sp-')) === filters.speciesId);
   if (filters?.category) listings = listings.filter(l => l.species?.category === filters.category);
   if (filters?.minPrice) listings = listings.filter(l => l.price_thb >= filters.minPrice!);
   if (filters?.maxPrice) listings = listings.filter(l => l.price_thb <= filters.maxPrice!);

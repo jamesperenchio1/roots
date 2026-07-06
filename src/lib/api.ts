@@ -3,8 +3,8 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, MESSAGES, getListingById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, Message } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, MESSAGES, getListingById, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
+import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, Message, PriceSnapshot } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 
@@ -61,7 +61,7 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
   const sellerId = r.seller_id as string;
   return {
     id: r.id as string,
-    plant_id: r.id as string,
+    plant_id: (r.plant_id as string | undefined) || (r.id as string),
     seller_id: sellerId,
     price_thb: r.price_thb as number,
     size_category: (r.size_category as SizeCategory | undefined) || 'M',
@@ -78,6 +78,7 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     created_at: r.created_at as string,
     last_photo_update_at: (r.last_photo_update_at as string | undefined) || (r.created_at as string),
     view_count: (r.view_count as number | undefined) ?? 0,
+    tags: (r.tags as string[] | undefined) || [],
     watch_count: (r.watch_count as number | undefined) ?? 0,
     species: speciesFromRow(r),
     seller: profiles[sellerId],
@@ -243,12 +244,43 @@ export async function hydratePublicData(): Promise<void> {
     (rows || []).forEach((r: DbRow) => upsertById(LISTINGS, mapListing(r, profileCache)));
     (reviewRows || []).forEach((r: DbRow) => upsertById(REVIEWS, mapReview(r)));
     savePublicDataCache(USERS, LISTINGS, REVIEWS);
+    await hydratePriceSnapshots();
     bumpListings();
   } catch (e) {
     // Offline / not configured — keep any cached data or fall back to seed-only catalog.
     logger.warn('hydratePublicData failed, using seed data only', { error: e instanceof Error ? e.message : String(e) });
   }
   bumpPublicData();
+}
+
+export function mapPriceSnapshot(r: DbRow): PriceSnapshot {
+  return {
+    id: r.id as string,
+    species_id: r.species_id as string,
+    size_category: (r.size_category as SizeCategory | undefined) ?? undefined,
+    snapshot_date: r.snapshot_date as string,
+    median_price_thb: (r.median_price_thb as number | undefined) ?? 0,
+    mean_price_thb: (r.mean_price_thb as number | undefined) ?? 0,
+    min_price_thb: (r.min_price_thb as number | undefined) ?? 0,
+    max_price_thb: (r.max_price_thb as number | undefined) ?? 0,
+    sale_count: (r.sale_count as number | undefined) ?? 0,
+    created_at: r.created_at as string,
+  };
+}
+
+export async function hydratePriceSnapshots(): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('price_snapshots')
+      .select('*')
+      .order('snapshot_date', { ascending: false })
+      .limit(2000);
+    if (error) throw error;
+    PRICE_SNAPSHOTS.length = 0;
+    (data || []).forEach((r) => PRICE_SNAPSHOTS.push(mapPriceSnapshot(r)));
+  } catch (e) {
+    logger.warn('hydratePriceSnapshots failed', { error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 export async function hydrateUserTransactions(): Promise<void> {
@@ -1095,6 +1127,34 @@ export function subscribeToListings(): () => void {
   );
 }
 
+// External store for price snapshots so market charts update live.
+let priceSnapshotsVersion = 0;
+const priceSnapshotListeners = new Set<() => void>();
+function bumpPriceSnapshots() {
+  priceSnapshotsVersion++;
+  priceSnapshotListeners.forEach((l) => l());
+}
+export function subscribePriceSnapshots(cb: () => void): () => void {
+  priceSnapshotListeners.add(cb);
+  return () => { priceSnapshotListeners.delete(cb); };
+}
+export function getPriceSnapshotsVersion(): number {
+  return priceSnapshotsVersion;
+}
+
+export function subscribeToPriceSnapshots(): () => void {
+  return ensureRealtimeChannel('price-snapshots-global', () =>
+    supabase
+      .channel('price-snapshots-global')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'price_snapshots' },
+        () => { hydratePriceSnapshots().then(() => bumpPriceSnapshots()); }
+      )
+      .subscribe()
+  );
+}
+
 export function subscribeToTransactions(userId: string): () => void {
   return ensureRealtimeChannel(`transactions-${userId}`, () =>
     supabase
@@ -1270,7 +1330,7 @@ export async function withdrawOffer(offerId: string): Promise<void> {
 export function getUserPriceAlerts(userId: string): PriceAlert[] {
   return PRICE_ALERTS.filter(pa => pa.user_id === userId).map(pa => ({
     ...pa,
-    species: SPECIES.find(s => s.id === pa.species_id),
+    species: getSpeciesById(pa.species_id),
   }));
 }
 

@@ -16,6 +16,7 @@ import {
   subscribeToOffers,
   subscribeToListings,
   subscribeToTransactions,
+  subscribeToPriceSnapshots,
 } from '@/lib/api';
 
 interface SignupInput {
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscribeToOffers(uid),
       subscribeToListings(),
       subscribeToTransactions(uid),
+      subscribeToPriceSnapshots(),
     ];
     unsubscribeRef.current = () => unsubs.forEach((u) => u());
   }, []);

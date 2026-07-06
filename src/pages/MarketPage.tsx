@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
-import { getMarketOverview, getPriceSnapshotsForSpecies, SPECIES } from '@/data/mockData';
+import { getMarketOverview, getPriceSnapshotsForSpecies, getMarketSpecies } from '@/data/mockData';
 import { PriceChart, Sparkline } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import type { LucideIcon } from 'lucide-react';
@@ -42,7 +42,8 @@ function SpeciesCard({ item }: { item: ReturnType<typeof getMarketOverview>['tre
 
 export default function MarketPage() {
   const { t } = useTranslation(['marketplace', 'common']);
-  const [selectedSpecies, setSelectedSpecies] = useState(SPECIES[0]);
+  const marketSpecies = getMarketSpecies();
+  const [selectedSpecies, setSelectedSpecies] = useState(marketSpecies[0]);
   const market = getMarketOverview();
   const priceData = getPriceSnapshotsForSpecies(selectedSpecies.id, undefined, 90).map(ps => ({
     date: ps.snapshot_date,
@@ -67,10 +68,10 @@ export default function MarketPage() {
             </div>
             <select
               value={selectedSpecies.id}
-              onChange={(e) => setSelectedSpecies(SPECIES.find(s => s.id === e.target.value) || SPECIES[0])}
+              onChange={(e) => setSelectedSpecies(marketSpecies.find(s => s.id === e.target.value) || marketSpecies[0])}
               className="bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
             >
-              {SPECIES.slice(0, 12).map(s => (
+              {marketSpecies.map(s => (
                 <option key={s.id} value={s.id}>{s.scientific_name}</option>
               ))}
             </select>

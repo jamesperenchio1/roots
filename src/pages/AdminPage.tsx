@@ -2,7 +2,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircle, XCircle, Ban, Hammer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, SPECIES } from '@/data/mockData';
+import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, getMarketSpecies } from '@/data/mockData';
 import { updateOrderStatus, hydrateUserDisputes, hydratePublicData, adminUpdateUser } from '@/lib/api';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
@@ -268,9 +268,10 @@ function Transactions() {
 
 function SpeciesAdmin() {
   const { t } = useTranslation(['common']);
+  const species = getMarketSpecies();
   return (
     <div className="space-y-2">
-      {SPECIES.slice(0, 10).map(s => (
+      {species.slice(0, 10).map(s => (
         <div key={s.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div>
             <p className="text-sm font-medium">{s.scientific_name}</p>
