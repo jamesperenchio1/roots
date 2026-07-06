@@ -12,7 +12,7 @@ import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { toggleWatch, getOrCreateThreadId } from '@/lib/api';
+import { toggleWatch, getOrCreateThreadId, fetchPlant } from '@/lib/api';
 import ReviewSection from '@/components/ReviewSection';
 import { generateQR } from '@/lib/promptpay';
 import MakeOfferModal from '@/components/MakeOfferModal';
@@ -38,7 +38,13 @@ export default function ListingPage() {
     window.scrollTo(0, 0);
     if (listing) {
       const plantId = listing.plant_id || listing.id;
-      generateQR(`${window.location.origin}/#/p/${plantId}`, 400).then(setQrUrl).catch(() => setQrUrl(''));
+      fetchPlant(plantId).then((plant) => {
+        const signature = plant?.qr_signature || '';
+        const url = `${window.location.origin}/#/p/${plantId}${signature ? `?s=${signature}` : ''}`;
+        generateQR(url, 400).then(setQrUrl).catch(() => setQrUrl(''));
+      }).catch(() => {
+        generateQR(`${window.location.origin}/#/p/${plantId}`, 400).then(setQrUrl).catch(() => setQrUrl(''));
+      });
       recordView(listing.id);
     }
   }, [listing, id, recordView]);

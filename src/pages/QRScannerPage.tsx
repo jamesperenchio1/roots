@@ -20,15 +20,22 @@ export default function QRScannerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDecoded = useCallback((text: string) => {
-    // Extract plant ID from URL like ".../#/p/plant-123" or just "plant-123"
-    const match = text.match(/p-[^/?#]+/);
-    const plantId = match ? match[0] : text.trim();
-    if (plantId.startsWith('p-')) {
+    // Extract plant ID from URLs like ".../#/p/<uuid>?s=<signature>" or raw IDs.
+    const urlMatch = text.match(/\/#\/p\/([^?#\s]+)(?:\?([^#\s]+))?/);
+    if (urlMatch) {
+      const plantId = urlMatch[1];
+      const query = urlMatch[2] ? `?${urlMatch[2]}` : '';
       scannerRef.current?.stop().catch(() => {});
-      navigate(`/p/${plantId}`);
-    } else {
-      toast.error(t('common:qrScanner.errors.invalid'));
+      navigate(`/p/${plantId}${query}`);
+      return;
     }
+    const raw = text.trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+      scannerRef.current?.stop().catch(() => {});
+      navigate(`/p/${raw}`);
+      return;
+    }
+    toast.error(t('common:qrScanner.errors.invalid'));
   }, [navigate, t]);
 
   useEffect(() => {
@@ -154,8 +161,11 @@ export default function QRScannerPage() {
             <button
               onClick={() => {
                 const id = manualId.trim();
-                if (id.startsWith('p-')) navigate(`/p/${id}`);
-                else toast.error(t('common:qrScanner.errors.manual'));
+                if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) || id.startsWith('p-')) {
+                  navigate(`/p/${id}`);
+                } else {
+                  toast.error(t('common:qrScanner.errors.manual'));
+                }
               }}
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium py-2.5 rounded-lg text-sm"
             >

@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, QrCode, Calendar, User, Tag, AlertTriangle, Printer, Download } from 'lucide-react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import {
+  ArrowLeft, QrCode, Calendar, User, Tag, Printer, Download, ShieldAlert,
+  ScanLine, History
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import PrintTag from '@/components/PrintTag';
 import { getSpeciesById, PLANT_IMAGES, USERS } from '@/data/mockData';
-import { fetchProvenance } from '@/lib/api';
+import { fetchProvenance, recordQRScan, verifyQRSignature } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
 import { PriceChart } from '@/components/PriceChart';
 import { getPriceSnapshotsForSpecies } from '@/data/mockData';
-import type { Listing, Transfer } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import type { Listing, Transfer, Plant } from '@/types';
 
 interface ProvenanceEvent {
   date: string;
@@ -20,100 +24,126 @@ interface ProvenanceEvent {
   type: 'origin' | 'sale' | 'current';
 }
 
+function buildEvents(transfers: Transfer[], plant: Plant | null, listing: Listing | null, t: (k: string) => string): ProvenanceEvent[] {
+  const events: ProvenanceEvent[] = [];
+
+  if (transfers.length === 0) {
+    const owner = plant?.current_owner?.display_name || listing?.seller?.display_name || t('common:plantQr.currentOwner');
+    events.push({
+      date: plant?.created_at?.slice(0, 10) || listing?.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+      eventKey: 'common:plantQr.events.registered',
+      from: null,
+      to: owner,
+      price: null,
+      type: 'origin',
+    });
+    events.push({
+      date: new Date().toISOString().slice(0, 10),
+      eventKey: 'common:plantQr.events.currentOwnership',
+      from: null,
+      to: owner,
+      price: null,
+      type: 'current',
+    });
+    return events;
+  }
+
+  transfers.forEach((tr, i) => {
+    const fromUser = tr.from_user_id ? USERS.find(u => u.id === tr.from_user_id) : null;
+    const toUser = tr.to_user_id ? USERS.find(u => u.id === tr.to_user_id) : null;
+
+    if (i === 0 && !tr.from_user_id) {
+      events.push({
+        date: tr.transferred_at.slice(0, 10),
+        eventKey: 'common:plantQr.events.registered',
+        from: null,
+        to: toUser?.display_name || t('common:plantQr.unknown'),
+        price: null,
+        type: 'origin',
+      });
+    } else {
+      events.push({
+        date: tr.transferred_at.slice(0, 10),
+        eventKey: tr.sale_price_thb ? 'common:plantQr.events.sale' : 'common:plantQr.events.transfer',
+        from: fromUser?.display_name || t('common:plantQr.unknown'),
+        to: toUser?.display_name || t('common:plantQr.unknown'),
+        price: tr.sale_price_thb || null,
+        type: 'sale',
+      });
+    }
+  });
+
+  const last = transfers[transfers.length - 1];
+  const lastOwner = last.to_user_id ? USERS.find(u => u.id === last.to_user_id) : null;
+  events.push({
+    date: new Date().toISOString().slice(0, 10),
+    eventKey: 'common:plantQr.events.currentOwnership',
+    from: lastOwner?.display_name || t('common:plantQr.unknown'),
+    to: lastOwner?.display_name || t('common:plantQr.unknown'),
+    price: null,
+    type: 'current',
+  });
+
+  return events;
+}
+
 export default function PlantQRPage() {
   const { t } = useTranslation(['common']);
   const { plantId } = useParams<{ plantId: string }>();
+  const [searchParams] = useSearchParams();
+  const signature = searchParams.get('s') || '';
+  const { user } = useAuth();
+
   const [listing, setListing] = useState<Listing | null>(null);
+  const [plant, setPlant] = useState<Plant | null>(null);
   const [events, setEvents] = useState<ProvenanceEvent[]>([]);
+  const [scans, setScans] = useState<{ date: string; scanner?: string; source: string }[]>([]);
   const [qrUrl, setQrUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [disputes, setDisputes] = useState<{ date: string; typeKey: string; descriptionKey: string }[]>([]);
+  const [signatureValid, setSignatureValid] = useState<boolean | null>(null);
   const [showPrintTag, setShowPrintTag] = useState(false);
 
-  const speciesId = plantId?.replace('p-', 'sp-') || '';
+  const speciesId = plant?.species_id || plantId?.replace('p-', 'sp-') || '';
   const dbSpecies = getSpeciesById(speciesId);
-  const species = dbSpecies || listing?.species || null;
+  const species = dbSpecies || plant?.species || listing?.species || null;
 
   useEffect(() => {
     if (!plantId) return;
 
-    // Generate QR for this page URL
-    const pageUrl = `${window.location.origin}/#/p/${plantId}`;
+    const pageUrl = `${window.location.origin}/#/p/${plantId}${signature ? `?s=${signature}` : ''}`;
     generateQR(pageUrl, 96).then(setQrUrl).catch(() => setQrUrl(''));
 
-    // Fetch provenance
-    fetchProvenance(plantId).then(({ listing: l, transfers }) => {
+    let active = true;
+    const load = async () => {
+      const { listing: l, transfers, plant: p, scans: scanRows } = await fetchProvenance(plantId);
+      if (!active) return;
+
       setListing(l);
+      setPlant(p);
+      setEvents(buildEvents(transfers, p, l, t));
+      setScans(scanRows.map(s => ({
+        date: s.created_at.slice(0, 10),
+        scanner: s.scanner?.display_name,
+        source: s.scan_source,
+      })));
       setLoading(false);
 
-      // Build events from transfers
-      const provenanceEvents: ProvenanceEvent[] = [];
-
-      if (transfers.length === 0) {
-        // No history — show origin with current owner
-        provenanceEvents.push({
-          date: l?.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-          eventKey: 'common:plantQr.events.registered',
-          from: null,
-          to: l?.seller?.display_name || t('common:plantQr.currentOwner'),
-          price: null,
-          type: 'origin',
-        });
-        provenanceEvents.push({
-          date: new Date().toISOString().slice(0, 10),
-          eventKey: 'common:plantQr.events.currentOwnership',
-          from: null,
-          to: l?.seller?.display_name || t('common:plantQr.currentOwner'),
-          price: null,
-          type: 'current',
-        });
+      // Validate signature only when one is present.
+      if (signature && p) {
+        verifyQRSignature(plantId, signature).then(setSignatureValid);
+      } else if (!signature) {
+        setSignatureValid(null);
       } else {
-        transfers.forEach((tr: Transfer, i: number) => {
-          const fromUser = tr.from_user_id ? USERS.find(u => u.id === tr.from_user_id) : null;
-          const toUser = tr.to_user_id ? USERS.find(u => u.id === tr.to_user_id) : null;
-
-          if (i === 0 && !tr.from_user_id) {
-            provenanceEvents.push({
-              date: tr.transferred_at.slice(0, 10),
-              eventKey: 'common:plantQr.events.registered',
-              from: null,
-              to: toUser?.display_name || t('common:plantQr.unknown'),
-              price: null,
-              type: 'origin',
-            });
-          } else {
-            provenanceEvents.push({
-              date: tr.transferred_at.slice(0, 10),
-              eventKey: tr.sale_price_thb ? 'common:plantQr.events.sale' : 'common:plantQr.events.transfer',
-              from: fromUser?.display_name || t('common:plantQr.unknown'),
-              to: toUser?.display_name || t('common:plantQr.unknown'),
-              price: tr.sale_price_thb || null,
-              type: 'sale',
-            });
-          }
-        });
-
-        // Current ownership = last transfer's recipient
-        const last = transfers[transfers.length - 1];
-        const lastOwner = last.to_user_id ? USERS.find(u => u.id === last.to_user_id) : null;
-        provenanceEvents.push({
-          date: new Date().toISOString().slice(0, 10),
-          eventKey: 'common:plantQr.events.currentOwnership',
-          from: lastOwner?.display_name || t('common:plantQr.unknown'),
-          to: lastOwner?.display_name || t('common:plantQr.unknown'),
-          price: null,
-          type: 'current',
-        });
+        setSignatureValid(false);
       }
 
-      setEvents(provenanceEvents);
+      // Record this page view as a scan (best-effort).
+      recordQRScan(plantId, 'url', user?.id);
+    };
 
-      // Mock dispute history only for demo plants that have it
-      if (plantId === 'p-sold-1') {
-        setDisputes([{ date: '2024-04-10', typeKey: 'common:plantQr.disputes.resolved', descriptionKey: 'common:plantQr.disputes.transitDamage' }]);
-      }
-    });
-  }, [plantId, t]);
+    load();
+    return () => { active = false; };
+  }, [plantId, signature, user?.id, t]);
 
   const priceData = getPriceSnapshotsForSpecies(speciesId, undefined, 90);
   const totalSalesValue = events.reduce((sum, e) => sum + (e.price || 0), 0);
@@ -147,6 +177,16 @@ export default function PlantQRPage() {
               <div className="flex items-center gap-2 mb-2">
                 <QrCode className="w-4 h-4 text-purple-400" />
                 <span className="text-xs text-purple-400 font-medium">{t('common:plantQr.verified')}</span>
+                {signatureValid === false && (
+                  <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3" /> {t('common:plantQr.signatureInvalid')}
+                  </span>
+                )}
+                {signatureValid === true && (
+                  <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <ScanLine className="w-3 h-3" /> {t('common:plantQr.signatureValid')}
+                  </span>
+                )}
               </div>
               <h1 className="text-2xl font-light tracking-tight mb-1">
                 {species?.scientific_name || listing?.species?.scientific_name || t('common:plantQr.unknownPlant')}
@@ -200,7 +240,18 @@ export default function PlantQRPage() {
           </div>
         </div>
 
-        {/* What is Provenance? — short blurb; full explanation lives at /provenance */}
+        {/* Signature warning */}
+        {signatureValid === false && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-medium text-red-400">{t('common:plantQr.counterfeitTitle')}</h3>
+              <p className="text-xs text-red-300/80 mt-1">{t('common:plantQr.counterfeitDescription')}</p>
+            </div>
+          </div>
+        )}
+
+        {/* What is Provenance? */}
         <div className="mb-10 bg-zinc-900/20 border border-white/5 rounded-xl p-6">
           <h2 className="text-lg font-medium mb-3">{t('common:plantQr.provenance.title')}</h2>
           <p className="text-sm text-zinc-400 leading-relaxed mb-3">
@@ -242,6 +293,25 @@ export default function PlantQRPage() {
           </div>
         </div>
 
+        {/* Scan History */}
+        {scans.length > 0 && (
+          <div className="mb-10 bg-zinc-900/20 border border-white/5 rounded-xl p-6">
+            <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+              <History className="w-4 h-4 text-zinc-400" />
+              {t('common:plantQr.scans.title')}
+            </h2>
+            <div className="space-y-2">
+              {scans.slice(0, 5).map((s, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-500">{s.date}</span>
+                  <span className="text-zinc-400 capitalize">{s.source}</span>
+                  {s.scanner && <span className="text-zinc-500">{s.scanner}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Individual Price History */}
         {priceData.length > 0 && (
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-8">
@@ -251,22 +321,7 @@ export default function PlantQRPage() {
           </div>
         )}
 
-        {/* Dispute History */}
-        {disputes.length > 0 && (
-          <div className="bg-zinc-900/30 border border-amber-500/10 rounded-xl p-6">
-            <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-              {t('common:plantQr.incidents.title')}
-            </h2>
-            {disputes.map((d, i) => (
-              <div key={i} className="text-sm">
-                <span className="text-zinc-500">{d.date} — </span>
-                <span className="text-amber-400">{t(d.typeKey)}</span>
-                <span className="text-zinc-400"> — {t(d.descriptionKey)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+
       </div>
 
       {showPrintTag && listing && (

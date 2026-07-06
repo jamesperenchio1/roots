@@ -8,7 +8,7 @@ import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { getSpeciesPriceStats } from '@/data/mockData';
 import { useAuth } from '@/hooks/useAuth';
-import { createListing, uploadListingPhoto } from '@/lib/api';
+import { createListing, uploadListingPhoto, fetchPlant } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
 import { getProvinceOptions } from '@/lib/provinces';
@@ -159,7 +159,10 @@ export default function CreateListingPage() {
         photos: urls,
         tags: tags.length > 0 ? tags : undefined,
       }, user);
-      const qr = await generateQR(`${window.location.origin}/#/p/${listing.id}`, 220);
+      const plant = await fetchPlant(listing.plant_id);
+      const signature = plant?.qr_signature || '';
+      const qrUrl = `${window.location.origin}/#/p/${listing.plant_id}${signature ? `?s=${signature}` : ''}`;
+      const qr = await generateQR(qrUrl, 220);
       setCreated(listing);
       setProvenanceQR(qr);
       setStep('qr');

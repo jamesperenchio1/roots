@@ -152,6 +152,17 @@ export interface Transfer {
   to_user?: Profile;
 }
 
+export interface QRScan {
+  id: string;
+  plant_id: string;
+  scanner_user_id?: string;
+  scan_source: 'camera' | 'manual' | 'url';
+  ip_hash?: string;
+  user_agent_hash?: string;
+  created_at: string;
+  scanner?: Profile;
+}
+
 export interface Dispute {
   id: string;
   transaction_id: string;

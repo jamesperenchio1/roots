@@ -3,8 +3,8 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, TRANSFERS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, MESSAGES, getListingById, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, Message, PriceSnapshot } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, MESSAGES, getListingById, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
+import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, Message, PriceSnapshot, Plant, QRScan } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 
@@ -687,12 +687,119 @@ export async function withdrawListing(id: string): Promise<void> {
   if (local) local.status = 'withdrawn';
 }
 
-export async function fetchProvenance(plantId: string): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[] }> {
-  const listing = getListingByPlantId(plantId) || null;
-  const mockTransfers = TRANSFERS.filter(t => t.plant_id === plantId);
-  if (mockTransfers.length > 0) {
-    return { listing, transfers: mockTransfers };
+export async function fetchPlant(plantId: string): Promise<Plant | null> {
+  try {
+    const { data, error } = await supabase.from('plants').select('*').eq('id', plantId).single();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id as string,
+      species_id: data.species_id as string,
+      current_owner_id: data.current_owner_id as string,
+      parent_plant_id: (data.parent_plant_id as string | undefined) || undefined,
+      status: data.status as Plant['status'],
+      qr_signature: data.qr_signature as string,
+      created_at: data.created_at as string,
+      species: getSpeciesById(data.species_id as string),
+      current_owner: profileCache[data.current_owner_id as string] || USERS.find(u => u.id === data.current_owner_id),
+    };
+  } catch (e) {
+    logger.warn('fetchPlant failed', { error: e instanceof Error ? e.message : String(e) });
+    return null;
   }
+}
+
+export async function fetchPlantTransfers(plantId: string): Promise<import('@/types').Transfer[]> {
+  try {
+    const { data, error } = await supabase
+      .from('transfers')
+      .select('*')
+      .eq('plant_id', plantId)
+      .order('transferred_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id as string,
+      plant_id: r.plant_id as string,
+      from_user_id: r.from_user_id as string | undefined | null,
+      to_user_id: r.to_user_id as string,
+      transaction_id: r.transaction_id as string | undefined | null,
+      sale_price_thb: (r.sale_price_thb as number | undefined) ?? undefined,
+      transferred_at: r.transferred_at as string,
+      from_user: profileCache[r.from_user_id as string] || USERS.find(u => u.id === r.from_user_id),
+      to_user: profileCache[r.to_user_id as string] || USERS.find(u => u.id === r.to_user_id),
+    }));
+  } catch (e) {
+    logger.warn('fetchPlantTransfers failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+export async function recordQRScan(plantId: string, source: QRScan['scan_source'], scannerUserId?: string): Promise<void> {
+  try {
+    await supabase.from('qr_scans').insert({
+      plant_id: plantId,
+      scanner_user_id: scannerUserId || null,
+      scan_source: source,
+    });
+  } catch (e) {
+    // Non-critical: don't block the scan experience.
+    logger.warn('recordQRScan failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+export async function fetchQRScans(plantId: string): Promise<QRScan[]> {
+  try {
+    const { data, error } = await supabase
+      .from('qr_scans')
+      .select('*')
+      .eq('plant_id', plantId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id as string,
+      plant_id: r.plant_id as string,
+      scanner_user_id: (r.scanner_user_id as string | undefined) || undefined,
+      scan_source: r.scan_source as QRScan['scan_source'],
+      ip_hash: (r.ip_hash as string | undefined) || undefined,
+      user_agent_hash: (r.user_agent_hash as string | undefined) || undefined,
+      created_at: r.created_at as string,
+      scanner: profileCache[r.scanner_user_id as string] || USERS.find(u => u.id === r.scanner_user_id),
+    }));
+  } catch (e) {
+    logger.warn('fetchQRScans failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+export async function verifyQRSignature(plantId: string, signature: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc('verify_qr_signature', {
+      p_plant_id: plantId,
+      p_signature: signature,
+    });
+    if (error) throw error;
+    return !!data;
+  } catch (e) {
+    logger.warn('verifyQRSignature failed', { error: e instanceof Error ? e.message : String(e) });
+    return false;
+  }
+}
+
+export async function fetchProvenance(plantId: string): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[]; plant: Plant | null; scans: QRScan[]; signatureValid: boolean | null }> {
+  const listing = getListingByPlantId(plantId) || null;
+  const plant = await fetchPlant(plantId);
+
+  if (plant) {
+    const [transfers, scans] = await Promise.all([
+      fetchPlantTransfers(plantId),
+      fetchQRScans(plantId),
+    ]);
+    return { listing, transfers, plant, scans, signatureValid: null };
+  }
+
+  // Legacy fallback: derive provenance from completed transactions when no
+  // dedicated plants row exists (pre-migration listings).
   try {
     const { data } = await supabase
       .from('transactions')
@@ -709,9 +816,9 @@ export async function fetchProvenance(plantId: string): Promise<{ listing: Listi
       sale_price_thb: r.sale_price_thb,
       transferred_at: r.completed_at || r.created_at,
     }));
-    return { listing, transfers };
+    return { listing, transfers, plant: null, scans: [], signatureValid: null };
   } catch {
-    return { listing, transfers: [] };
+    return { listing, transfers: [], plant: null, scans: [], signatureValid: null };
   }
 }
 
