@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, QrCode, CheckCircle, Info, X, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { getSpeciesPriceStats } from '@/data/mockData';
+import { searchSpecies, type SpeciesEntry as SpeciesDbEntry } from '@/data/speciesDatabase';
+import { getLatestResult } from '@/lib/identification/api-identification';
 import { useAuth } from '@/hooks/useAuth';
 import { createListing, uploadListingPhoto, fetchPlant } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
 import { getProvinceOptions } from '@/lib/provinces';
-import type { Listing, Category } from '@/types';
+import type { Listing, Category, IdentificationResult } from '@/types';
 
 interface PhotoItem { file: File; preview: string; }
 
@@ -33,6 +35,11 @@ const TAG_VOCAB = [
 export default function CreateListingPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
   const provinceOptions = useMemo(() => getProvinceOptions(i18n.language), [i18n.language]);
+  const [searchParams] = useSearchParams();
+  const identificationId = searchParams.get('identificationId');
+  const prefillSpeciesId = searchParams.get('speciesId');
+  const [prefillResult, setPrefillResult] = useState<IdentificationResult | null>(null);
+  const [prefillLoading, setPrefillLoading] = useState(false);
   const [step, setStep] = useState<'form' | 'qr'>('form');
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
   const [speciesQuery, setSpeciesQuery] = useState('');
@@ -62,6 +69,49 @@ export default function CreateListingPage() {
   const { user, isLocalAdmin } = useAuth();
   const navigate = useNavigate();
   const photoCount = photos.length;
+
+  useEffect(() => {
+    if (!identificationId) return;
+    let mounted = true;
+    setPrefillLoading(true);
+    getLatestResult(identificationId)
+      .then((result) => {
+        if (!result || !mounted) return;
+        setPrefillResult(result);
+        const query = result.scientific_name;
+        let match: SpeciesDbEntry | undefined;
+        if (prefillSpeciesId) {
+          const candidates = searchSpecies(query, 10);
+          match = candidates.find((s) => s.id === prefillSpeciesId);
+        }
+        if (!match) {
+          const candidates = searchSpecies(query, 5);
+          match = candidates[0];
+        }
+        setSpeciesQuery(match ? `${match.scientific_name} (${match.common_name_en})` : query);
+        if (match) setSpecies(match);
+        const estimate = result.market_estimate;
+        if (estimate?.suggested_range_low) {
+          setPrice(String(estimate.suggested_range_low));
+        }
+        const descParts = [
+          result.common_names.length ? `Common names: ${result.common_names.join(', ')}` : '',
+          result.reasoning,
+          result.care_summary,
+        ].filter(Boolean);
+        if (descParts.length) setDescription(descParts.join('. '));
+        if (result.detected_characteristics.length) {
+          setTags(result.detected_characteristics.slice(0, 5));
+        }
+      })
+      .catch(() => {
+        // Prefill is best-effort; ignore errors so the seller can still fill manually.
+      })
+      .finally(() => {
+        if (mounted) setPrefillLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [identificationId, prefillSpeciesId]);
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -267,6 +317,22 @@ export default function CreateListingPage() {
           </div>
           <span className="text-xs text-zinc-600 bg-zinc-800/50 px-3 py-1 rounded-full">{t('marketplace:create.stepIndicator')}</span>
         </div>
+
+        {prefillLoading && (
+          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 text-sm text-emerald-200">
+            Loading identification result…
+          </div>
+        )}
+
+        {prefillResult && (
+          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
+            <p className="text-sm font-medium text-emerald-300 mb-1">Prefilled from identification</p>
+            <p className="text-sm text-zinc-400">
+              {prefillResult.scientific_name}{prefillResult.common_names.length ? ` · ${prefillResult.common_names.join(', ')}` : ''}
+              {prefillResult.market_estimate?.suggested_range_low ? ` · suggested price ${prefillResult.market_estimate.suggested_range_low.toLocaleString()} THB` : ''}
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Photos */}

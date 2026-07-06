@@ -6,7 +6,7 @@ import {
   Package, DollarSign, TrendingUp, Plus, Eye, Heart,
   BarChart3, Truck, Wallet, ArrowDownLeft, Users, Star,
   Megaphone, Settings, Tag, QrCode, Boxes, Store, MoreHorizontal, MapPin,
-  Copy, Printer, Archive, Rocket
+  Copy, Printer, Archive, Rocket, ScanSearch
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -255,9 +255,14 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
           <h2 className="text-lg font-medium">{t('dashboard:seller.activeListings')} ({listings.length})</h2>
           <p className="text-xs text-zinc-500">{t('dashboard:seller.manageListings')}</p>
         </div>
-        <Link to="/seller-dashboard/listings/new" className="flex items-center gap-1.5 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
-          <Plus className="w-4 h-4" /> {t('dashboard:seller.newListing')}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/identify?returnTo=/seller-dashboard/listings/new" className="flex items-center gap-1.5 border border-white/10 text-zinc-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors">
+            <ScanSearch className="w-4 h-4" /> Identify
+          </Link>
+          <Link to="/seller-dashboard/listings/new" className="flex items-center gap-1.5 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
+            <Plus className="w-4 h-4" /> {t('dashboard:seller.newListing')}
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-3">

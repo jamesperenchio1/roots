@@ -41,6 +41,7 @@ const ShippingGuidePage = lazy(() => import('@/pages/ShippingGuidePage'));
 const EditListingPage = lazy(() => import('@/pages/EditListingPage'));
 const MessagesPage = lazy(() => import('@/pages/MessagesPage'));
 const QRScannerPage = lazy(() => import('@/pages/QRScannerPage'));
+const IdentifyPage = lazy(() => import('@/pages/IdentifyPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 function PageLoader() {
@@ -78,6 +79,7 @@ function AppContent() {
             <Route path="/fees" element={<FeesPage />} />
             <Route path="/shipping-guide" element={<ShippingGuidePage />} />
             <Route path="/scan" element={<QRScannerPage />} />
+            <Route path="/identify" element={<IdentifyPage />} />
 
             {/* Auth Pages */}
             <Route path="/login" element={<LoginPage />} />

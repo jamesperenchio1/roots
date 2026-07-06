@@ -163,6 +163,122 @@ export interface QRScan {
   scanner?: Profile;
 }
 
+export type IdentificationStatus = 'in_progress' | 'needs_evidence' | 'completed' | 'failed';
+export type EvidenceType =
+  | 'overall'
+  | 'alternate_angle'
+  | 'leaf'
+  | 'leaf_underside'
+  | 'stem'
+  | 'node'
+  | 'petiole'
+  | 'roots'
+  | 'flower'
+  | 'fruit'
+  | 'variegation'
+  | 'pot'
+  | 'height'
+  | 'habitat';
+
+export interface IdentificationRequest {
+  id: string;
+  user_id?: string;
+  status: IdentificationStatus;
+  requested_evidence_steps: EvidenceType[];
+  current_step: number;
+  country?: string;
+  growing_conditions?: string;
+  notes?: string;
+  confidence_threshold: number;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export interface UploadedMedia {
+  id: string;
+  request_id: string;
+  file_name: string;
+  storage_bucket: string;
+  storage_path: string;
+  mime_type: string;
+  media_type: 'image' | 'video' | 'document' | 'archive';
+  thumbnail_path?: string;
+  preview_path?: string;
+  evidence_type?: EvidenceType;
+  metadata?: Record<string, unknown>;
+  sort_order: number;
+  created_at: string;
+  url?: string;
+  thumbnail_url?: string;
+}
+
+export interface ProviderResult {
+  provider: string;
+  provider_version?: string;
+  confidence: number;
+  scientific_name: string;
+  common_names: string[];
+  detected_characteristics: string[];
+  reasoning: string;
+  raw_response?: Record<string, unknown>;
+  processing_time_ms?: number;
+}
+
+export interface IdentificationResult {
+  id: string;
+  request_id: string;
+  provider: string;
+  provider_version?: string;
+  detected_species_id?: string;
+  scientific_name: string;
+  common_names: string[];
+  confidence: number;
+  reasoning: string;
+  detected_characteristics: string[];
+  native_region?: string;
+  growth_habit?: string;
+  mature_size?: string;
+  difficulty?: string;
+  care_summary?: string;
+  variegation?: string;
+  known_aliases: string[];
+  potential_rarity?: string;
+  processing_time_ms?: number;
+  created_at: string;
+  provider_results?: ProviderResult[];
+  market_estimate?: MarketEstimate;
+}
+
+export interface MarketEstimate {
+  id: string;
+  result_id: string;
+  species_id?: string;
+  avg_asking_price?: number;
+  median_price?: number;
+  lowest_active?: number;
+  highest_active?: number;
+  recent_sales_count: number;
+  trend_percent?: number;
+  suggested_range_low?: number;
+  suggested_range_high?: number;
+  confidence: string;
+  data_sufficient: boolean;
+  created_at: string;
+}
+
+export interface ProcessingHistoryEntry {
+  id: string;
+  request_id: string;
+  stage: string;
+  provider?: string;
+  input_summary?: string;
+  output_summary?: string;
+  confidence?: number;
+  duration_ms?: number;
+  created_at: string;
+}
+
 export interface Dispute {
   id: string;
   transaction_id: string;
