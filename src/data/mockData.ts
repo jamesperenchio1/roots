@@ -1,7 +1,9 @@
 import type {
   Species, Profile, Listing, Transaction, Transfer, PriceSnapshot,
   Message, Dispute, WatchlistItem, PriceAlert, MarketOverview, DashboardStats,
-  ProvenanceChain, Review, Notification, Offer, TrendingSpecies
+  ProvenanceChain, Review, Notification, Offer, TrendingSpecies,
+  Conversation, ConversationParticipant, MessageAttachment, MessageReaction,
+  MessageRead, MessageReport, UserPresence, EmailQueueItem
 } from '@/types';
 import { ALL_SPECIES } from './speciesDatabase';
 
@@ -68,6 +70,22 @@ export const TRANSFERS: Transfer[] = [];
 export const DISPUTES: Dispute[] = [];
 
 export const MESSAGES: Message[] = [];
+
+export const CONVERSATIONS: Conversation[] = [];
+
+export const CONVERSATION_PARTICIPANTS: ConversationParticipant[] = [];
+
+export const MESSAGE_ATTACHMENTS: MessageAttachment[] = [];
+
+export const MESSAGE_REACTIONS: MessageReaction[] = [];
+
+export const MESSAGE_READS: MessageRead[] = [];
+
+export const MESSAGE_REPORTS: MessageReport[] = [];
+
+export const USER_PRESENCE: UserPresence[] = [];
+
+export const EMAIL_QUEUE: EmailQueueItem[] = [];
 
 export const WATCHLIST: WatchlistItem[] = [];
 

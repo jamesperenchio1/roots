@@ -257,7 +257,8 @@
       "disputes": "ข้อพิพาท",
       "users": "ผู้ใช้",
       "transactions": "ธุรกรรม",
-      "species": "สปีชีส์"
+      "species": "สปีชีส์",
+      "messages": "ข้อความ"
     },
     "stats": {
       "gmvToday": "ยอดขายวันนี้",
@@ -299,6 +300,18 @@
       "banned": "ถูกระงับ",
       "strike": "สตราย",
       "ban": "ระงับ"
+    },
+    "messages": {
+      "title": "ข้อความที่ถูกรายงาน",
+      "empty": "ไม่มีข้อความที่ถูกรายงาน",
+      "reportedBy": "รายงานโดย {{reporter}}",
+      "reason": "เหตุผล: {{reason}}",
+      "actions": {
+        "dismiss": "ปิดคดี",
+        "delete": "ลบข้อความ"
+      },
+      "dismissed": "ปิดคดีรายงานแล้ว",
+      "deleted": "ลบข้อความแล้ว"
     }
   },
   "contact": {

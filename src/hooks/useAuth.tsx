@@ -18,6 +18,7 @@ import {
   subscribeToTransactions,
   subscribeToPriceSnapshots,
 } from '@/lib/api';
+import { subscribeToConversations } from '@/lib/messaging';
 
 interface SignupInput {
   email: string;
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscribeToListings(),
       subscribeToTransactions(uid),
       subscribeToPriceSnapshots(),
+      subscribeToConversations(uid),
     ];
     unsubscribeRef.current = () => unsubs.forEach((u) => u());
   }, []);

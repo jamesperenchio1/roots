@@ -11,6 +11,11 @@ export type AlertDirection = 'above' | 'below';
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'withdrawn';
 export type NotificationType = 'order' | 'shipment' | 'dispute' | 'message' | 'offer' | 'review' | 'price_alert' | 'system';
 export type FlagType = 'wash_trade' | 'joke_price' | 'outlier' | 'other';
+export type ConversationType = 'direct' | 'group';
+export type ParticipantRole = 'owner' | 'admin' | 'member';
+export type MessageContentType = 'text' | 'markdown' | 'system';
+export type UserPresenceStatus = 'online' | 'away' | 'offline';
+export type ReportStatus = 'open' | 'reviewed' | 'resolved' | 'resolved_dismissed' | 'resolved_deleted';
 
 export interface Profile {
   id: string;
@@ -294,17 +299,145 @@ export interface Dispute {
   transaction?: Transaction;
 }
 
+export interface Conversation {
+  id: string;
+  type: ConversationType;
+  title?: string;
+  listing_id?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  last_message_id?: string;
+  last_message_at?: string;
+  archived_at?: string;
+  metadata?: Record<string, unknown>;
+  last_message?: Message;
+  listing?: Listing;
+}
+
+export interface ConversationParticipant {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  role: ParticipantRole;
+  joined_at: string;
+  left_at?: string;
+  last_read_message_id?: string;
+  last_read_at?: string;
+  is_muted: boolean;
+  muted_until?: string;
+  is_pinned: boolean;
+  is_archived: boolean;
+  user?: Profile;
+}
+
 export interface Message {
   id: string;
-  thread_id: string;
+  conversation_id: string;
   sender_id: string;
-  recipient_id: string;
+  recipient_id?: string; // kept for legacy 1:1 convenience; prefer participants in new code
   listing_id?: string;
   content: string;
+  content_type: MessageContentType;
+  reply_to_message_id?: string;
+  forwarded_from_message_id?: string;
+  edited_at?: string;
+  edited_by?: string;
+  deleted_at?: string;
   flagged_contact_info: boolean;
+  is_system_event: boolean;
+  system_event_type?: string;
+  metadata?: Record<string, unknown>;
   created_at: string;
   read_at?: string;
   sender?: Profile;
+  reply_to?: Message;
+  forwarded_from?: Message;
+  attachments?: MessageAttachment[];
+  reactions?: MessageReaction[];
+  reads?: MessageRead[];
+  delivered_to?: string[];
+}
+
+export interface MessageAttachment {
+  id: string;
+  message_id: string;
+  conversation_id: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  storage_bucket: string;
+  storage_path: string;
+  thumbnail_path?: string;
+  preview_path?: string;
+  width?: number;
+  height?: number;
+  duration_seconds?: number;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  url?: string;
+  thumbnail_url?: string;
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  reaction: string;
+  created_at: string;
+  user?: Profile;
+}
+
+export interface MessageRead {
+  id: string;
+  message_id: string;
+  conversation_id: string;
+  user_id: string;
+  read_at: string;
+  user?: Profile;
+}
+
+export interface MessageReport {
+  id: string;
+  message_id: string;
+  conversation_id: string;
+  reported_by: string;
+  reason: string;
+  details?: string;
+  status: ReportStatus;
+  created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  resolution_notes?: string;
+  reporter?: Profile;
+  resolver?: Profile;
+}
+
+export interface UserPresence {
+  id: string;
+  status: UserPresenceStatus;
+  last_seen_at: string;
+  last_active_at: string;
+  updated_at: string;
+  user?: Profile;
+}
+
+export interface TypingUser {
+  user_id: string;
+  display_name: string;
+  started_at: string;
+}
+
+export interface EmailQueueItem {
+  id: string;
+  recipient_id: string;
+  conversation_id: string;
+  message_id?: string;
+  sender_name?: string;
+  preview?: string;
+  scheduled_at: string;
+  sent_at?: string;
+  cancelled_at?: string;
 }
 
 export interface PriceSnapshot {

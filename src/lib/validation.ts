@@ -35,9 +35,78 @@ export function validateImageFile(file: File, maxSizeMB = 5): { ok: boolean; err
   return { ok: true };
 }
 
+const ATTACHMENT_TYPE_LIMITS: Record<string, { maxSizeMB: number; allowed: string[] }> = {
+  image: {
+    maxSizeMB: 10,
+    allowed: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic'],
+  },
+  video: {
+    maxSizeMB: 50,
+    allowed: ['video/mp4', 'video/quicktime', 'video/webm'],
+  },
+  audio: {
+    maxSizeMB: 20,
+    allowed: ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg'],
+  },
+  file: {
+    maxSizeMB: 25,
+    allowed: [
+      'application/pdf',
+      'application/zip',
+      'text/plain',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+    ],
+  },
+};
+
+export type AttachmentCategory = 'image' | 'video' | 'audio' | 'file';
+
+export function getAttachmentCategory(mimeType: string): AttachmentCategory | null {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+
+export function validateAttachmentFile(file: File): { ok: boolean; category?: AttachmentCategory; error?: string } {
+  const category = getAttachmentCategory(file.type);
+  if (!category) {
+    return { ok: false, error: 'Unsupported file type.' };
+  }
+  const config = ATTACHMENT_TYPE_LIMITS[category];
+  if (!config.allowed.includes(file.type)) {
+    return { ok: false, category, error: `Unsupported ${category} format.` };
+  }
+  if (file.size > config.maxSizeMB * 1024 * 1024) {
+    return { ok: false, category, error: `File too large. Maximum ${config.maxSizeMB}MB.` };
+  }
+  return { ok: true, category };
+}
+
+export function getAttachmentIcon(category: AttachmentCategory): string {
+  switch (category) {
+    case 'image': return 'image';
+    case 'video': return 'video';
+    case 'audio': return 'audio';
+    case 'file': return 'file';
+    default: return 'file';
+  }
+}
+
 /** Validate price */
 export function isValidPrice(price: number): boolean {
   return Number.isFinite(price) && price >= 10 && price <= 10_000_000;
+}
+
+/** Detect contact information shared in a message (LINE ID, phone, email, URL). */
+export function detectContactInfo(text: string): boolean {
+  const lineIdPattern = /(?:LINE[:\s]+|ไลน์\s+)([a-zA-Z0-9._-]+)|@([a-zA-Z0-9._-]+)/i;
+  const thaiPhonePattern = /0\d{1,2}[-.]?\d{3}[-.]?\d{4}/;
+  const emailPattern = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+  const urlPattern = /https?:\/\/[^\s]+|www\.[^\s]+/;
+  return lineIdPattern.test(text) || thaiPhonePattern.test(text) || emailPattern.test(text) || urlPattern.test(text);
 }
 
 /** Validate shipping address */

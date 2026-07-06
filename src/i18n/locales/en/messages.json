@@ -3,7 +3,8 @@
   "newMessage": "New message",
   "noThreads": "No conversations yet",
   "startConversation": "Start a conversation from a listing",
-  "typeMessage": "Type a message...",
+  "typeMessage": "Type a message…",
+  "editPlaceholder": "Edit your message…",
   "send": "Send",
   "unread": "Unread",
   "markRead": "Mark as read",
@@ -17,7 +18,10 @@
   },
   "errors": {
     "recipient": "Could not determine message recipient",
-    "sendFailed": "Failed to send message"
+    "sendFailed": "Failed to send message",
+    "deleteFailed": "Failed to delete message",
+    "copyFailed": "Failed to copy message",
+    "reportFailed": "Failed to report message"
   },
   "loading": "Loading conversations…",
   "emptyState": {
@@ -26,5 +30,31 @@
   },
   "reLabel": "Re: {{name}}",
   "noMessages": "No messages yet. Send the first message!",
-  "sendAria": "Send message"
+  "sendAria": "Send message",
+  "addEmoji": "Add emoji",
+  "replyingTo": "Replying to {{name}}",
+  "edited": "edited",
+  "deleted": "This message was deleted",
+  "copied": "Copied to clipboard",
+  "reportSubmitted": "Report submitted",
+  "search": "Search messages",
+  "attachFile": "Attach file",
+  "dropFiles": "Drop files here",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "actions": {
+    "reply": "Reply",
+    "edit": "Edit",
+    "delete": "Delete",
+    "forward": "Forward",
+    "copy": "Copy",
+    "report": "Report",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "call": "Call"
+  }
 }

@@ -3,10 +3,22 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, MESSAGES, getListingById, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, Message, PriceSnapshot, Plant, QRScan } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
+import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
+import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './messaging';
+
+// Messaging v2 re-exports for backward compatibility.
+export {
+  mapMessage,
+  hydrateUserMessages,
+  getUserThreads,
+  getThreadMessages,
+  markThreadRead,
+  getOrCreateThreadId,
+  detectContactInfo,
+} from './messaging';
 
 const FALLBACK_IMG = '/images/plants/monstera-thai.jpg';
 
@@ -1484,128 +1496,35 @@ export function checkPriceAlerts(speciesId: string, currentPrice: number): Price
   });
 }
 
-function mapMessage(r: DbRow): Message {
-  const senderId = r.sender_id as string;
-  return {
-    id: r.id as string,
-    thread_id: r.thread_id as string,
-    sender_id: senderId,
-    recipient_id: r.recipient_id as string,
-    listing_id: (r.listing_id as string | undefined) || undefined,
-    content: (r.content as string) || '',
-    flagged_contact_info: !!r.flagged_contact_info,
-    created_at: r.created_at as string,
-    read_at: (r.read_at as string | undefined) || undefined,
-    sender: profileCache[senderId] || USERS.find(u => u.id === senderId),
-  };
+// Backward-compatible sendMessage wrapper that routes to the new conversation-based implementation.
+interface LegacySendMessageInput {
+  thread_id: string;
+  sender_id: string;
+  recipient_id: string;
+  listing_id?: string;
+  content: string;
+  flagged_contact_info: boolean;
 }
 
-export async function hydrateUserMessages(userId: string): Promise<void> {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-      .order('created_at', { ascending: false })
-      .limit(500);
-    if (error) throw error;
-    // Insert in chronological order so upsertById is stable.
-    (data || []).reverse().forEach((r) => upsertById(MESSAGES, mapMessage(r)));
-  } catch (e) {
-    logger.warn('hydrateUserMessages failed', { error: e instanceof Error ? e.message : String(e) });
+export async function sendMessage(data: LegacySendMessageInput): Promise<import('@/types').Message> {
+  const parts = data.thread_id.split('_');
+  let conversationId = data.thread_id;
+
+  // Legacy thread ids have the shape thread_user1_user2_listing|general.
+  // Map them to a real conversation.
+  if (parts.length === 4 && parts[0] === 'thread') {
+    const otherUserId = parts[1] === data.sender_id ? parts[2] : parts[1];
+    const listingId = parts[3] === 'general' ? undefined : parts[3];
+    const conversation = await getOrCreateDirectConversation(data.sender_id, otherUserId, listingId);
+    conversationId = conversation.id;
   }
-}
 
-// ---------- messaging ----------
-export function detectContactInfo(text: string): boolean {
-  const lineIdPattern = /(?:LINE[:\s]+|ไลน์\s+)([a-zA-Z0-9._-]+)|@([a-zA-Z0-9._-]+)/i;
-  const thaiPhonePattern = /0\d{1,2}[-.]?\d{3}[-.]?\d{4}/;
-  const emailPattern = /[^\s@]+@[^\s@]+\.[^\s@]+/;
-  const urlPattern = /https?:\/\/[^\s]+|www\.[^\s]+/;
-  return lineIdPattern.test(text) || thaiPhonePattern.test(text) || emailPattern.test(text) || urlPattern.test(text);
-}
-
-export function getUserThreads(userId: string): { threadId: string; otherUser: Profile | undefined; lastMessage: Message; unreadCount: number; listing?: Listing }[] {
-  const userMessages = MESSAGES.filter(m => m.sender_id === userId || m.recipient_id === userId);
-  const threadIds = Array.from(new Set(userMessages.map(m => m.thread_id)));
-  return threadIds.map(threadId => {
-    const threadMessages = MESSAGES.filter(m => m.thread_id === threadId).sort((a, b) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    const lastMessage = threadMessages[threadMessages.length - 1];
-    const otherUserId = lastMessage.sender_id === userId ? lastMessage.recipient_id : lastMessage.sender_id;
-    const otherUser = USERS.find(u => u.id === otherUserId);
-    const unreadCount = threadMessages.filter(m => m.recipient_id === userId && !m.read_at).length;
-    const listing = lastMessage.listing_id ? getListingById(lastMessage.listing_id) : undefined;
-    return {
-      threadId,
-      otherUser,
-      lastMessage: { ...lastMessage, sender: lastMessage.sender || USERS.find(u => u.id === lastMessage.sender_id) },
-      unreadCount,
-      listing,
-    };
-  }).sort((a, b) => new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime());
-}
-
-export function getThreadMessages(threadId: string): Message[] {
-  return MESSAGES.filter(m => m.thread_id === threadId)
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-    .map(m => ({ ...m, sender: m.sender || USERS.find(u => u.id === m.sender_id) }));
-}
-
-export async function sendMessage(data: Omit<Message, 'id' | 'created_at' | 'sender'>): Promise<Message> {
-  const id = `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const created_at = new Date().toISOString();
-  const flagged = detectContactInfo(data.content);
-  const message: Message = {
-    ...data,
-    id,
-    created_at,
-    flagged_contact_info: flagged,
-    sender: USERS.find(u => u.id === data.sender_id),
-  };
-  try {
-    await supabase.from('messages').insert({
-      id,
-      thread_id: data.thread_id,
-      sender_id: data.sender_id,
-      recipient_id: data.recipient_id,
-      listing_id: data.listing_id,
-      content: data.content,
-      flagged_contact_info: flagged,
-      created_at,
-    });
-  } catch (e) {
-    logger.warn('sendMessage supabase failed, using local only', { error: e instanceof Error ? e.message : String(e) });
-  }
-  MESSAGES.push(message);
-  const senderName = USERS.find(u => u.id === data.sender_id)?.display_name || 'Someone';
-  notifyNewMessage(data.recipient_id, senderName, data.content, data.thread_id);
-  return message;
-}
-
-export async function markThreadRead(threadId: string, userId: string): Promise<void> {
-  const now = new Date().toISOString();
-  MESSAGES.forEach(m => {
-    if (m.thread_id === threadId && m.recipient_id === userId && !m.read_at) {
-      m.read_at = now;
-    }
+  return sendMessageV2({
+    conversationId,
+    senderId: data.sender_id,
+    content: data.content,
+    listingId: data.listing_id,
   });
-  try {
-    await supabase
-      .from('messages')
-      .update({ read_at: now })
-      .eq('thread_id', threadId)
-      .eq('recipient_id', userId)
-      .is('read_at', null);
-  } catch (e) {
-    logger.warn('markThreadRead supabase failed', { error: e instanceof Error ? e.message : String(e) });
-  }
-}
-
-export function getOrCreateThreadId(userId: string, otherUserId: string, listingId?: string): string {
-  const sortedIds = [userId, otherUserId].sort();
-  return `thread_${sortedIds[0]}_${sortedIds[1]}_${listingId || 'general'}`;
 }
 
 export { SPECIES };

@@ -304,7 +304,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">{t.otherUser?.display_name || 'Unknown'}</p>
-                          <p className="text-xs text-zinc-500 truncate max-w-xs">{t.lastMessage.content}</p>
+                          <p className="text-xs text-zinc-500 truncate max-w-xs">{t.lastMessage?.content}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                             {t.unreadCount}
                           </span>
                         )}
-                        <span className="text-xs text-zinc-600">{new Date(t.lastMessage.created_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-zinc-600">{t.lastMessage ? new Date(t.lastMessage.created_at).toLocaleDateString() : ''}</span>
                       </div>
                     </Link>
                   ))}
