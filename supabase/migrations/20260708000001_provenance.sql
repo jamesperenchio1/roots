@@ -72,7 +72,14 @@ CREATE POLICY "Transfers are service-write only"
 
 CREATE POLICY "QR scans are owner-or-scanner readable"
   ON public.qr_scans FOR SELECT
-  USING (scanner_user_id = auth.uid() OR current_owner_id = auth.uid());
+  USING (
+    scanner_user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.plants p
+      WHERE p.id = qr_scans.plant_id
+        AND p.current_owner_id = auth.uid()
+    )
+  );
 CREATE POLICY "QR scans are insertable by authenticated scanners"
   ON public.qr_scans FOR INSERT
   WITH CHECK (auth.role() = 'authenticated');

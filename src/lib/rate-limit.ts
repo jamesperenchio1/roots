@@ -1,53 +1,41 @@
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
 import { logger } from './logger';
-
-const redisUrl = import.meta.env.VITE_UPSTASH_REDIS_REST_URL as string | undefined;
-const redisToken = import.meta.env.VITE_UPSTASH_REDIS_REST_TOKEN as string | undefined;
-
-function getRedis(): Redis | null {
-  if (!redisUrl || !redisToken) return null;
-  try {
-    return new Redis({ url: redisUrl, token: redisToken });
-  } catch (e) {
-    logger.warn('Redis init failed', { error: e instanceof Error ? e.message : String(e) });
-    return null;
-  }
-}
-
-const redis = getRedis();
-
-const messageLimit = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.fixedWindow(30, '1 m'), analytics: false })
-  : null;
-
-const uploadLimit = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.fixedWindow(10, '10 m'), analytics: false })
-  : null;
-
-const searchLimit = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.fixedWindow(20, '1 m'), analytics: false })
-  : null;
+import { supabase } from './supabase';
 
 export type RateLimitType = 'message' | 'upload' | 'search';
 
-const limiters: Record<RateLimitType, Ratelimit | null> = {
-  message: messageLimit,
-  upload: uploadLimit,
-  search: searchLimit,
-};
+const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rate-limit`;
 
-export async function checkRateLimit(type: RateLimitType, identifier: string): Promise<{ ok: boolean; limit?: number; remaining?: number; reset?: number }> {
-  const limiter = limiters[type];
-  if (!limiter) {
-    // No Redis configured — allow through.
-    return { ok: true };
-  }
+export async function checkRateLimit(
+  type: RateLimitType,
+  identifier: string
+): Promise<{ ok: boolean; limit?: number; remaining?: number; reset?: number }> {
   try {
-    const result = await limiter.limit(identifier);
-    return { ok: result.success, limit: result.limit, remaining: result.remaining, reset: result.reset };
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      // Not logged in — allow (auth routes already gate functionality).
+      return { ok: true };
+    }
+
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      },
+      body: JSON.stringify({ type, identifier }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      logger.warn('rate-limit function returned non-ok', { status: res.status, text });
+      return { ok: true };
+    }
+
+    return (await res.json()) as { ok: boolean; limit?: number; remaining?: number; reset?: number };
   } catch (e) {
-    logger.warn('rate limit check failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('rate-limit check failed', { error: e instanceof Error ? e.message : String(e) });
     return { ok: true };
   }
 }

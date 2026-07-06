@@ -1,12 +1,8 @@
-// Verifies a buyer's payment slip against SlipOK, then auto-confirms the
-// transaction when the amount matches and the slip has not been used before.
-// Falls back to manual seller confirmation if SlipOK is not configured or fails.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { corsHeaders, preflightResponse } from '../_shared/cors.ts';
+import { errorResponse, jsonResponse } from '../_shared/auth.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const CORS_HEADERS = corsHeaders(null);
 
 type VerifyStatus = 'verified' | 'failed' | 'manual';
 
@@ -15,31 +11,52 @@ interface VerifyResponse {
   message?: string;
 }
 
+interface Transaction {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  payment_slip_path: string | null;
+  payment_confirmed: boolean;
+  sale_price_thb: number | null;
+  shipping_cost_thb: number | null;
+  payment_trans_ref?: string | null;
+}
+
+async function getAuthUser(req: Request, supabaseUrl: string, serviceRoleKey: string): Promise<User | null> {
+  const authHeader = req.headers.get('authorization');
+  const token = authHeader?.replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user;
+}
+
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS });
-  }
+  const origin = req.headers.get('origin');
+  if (req.method === 'OPTIONS') return preflightResponse(origin);
+  const headers = corsHeaders(origin);
 
   try {
-    const { transactionId } = await req.json();
-    if (!transactionId || typeof transactionId !== 'string') {
-      throw new Error('transactionId is required');
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Supabase environment variables are not configured');
+      throw new Error('Server misconfigured');
     }
 
-    const apiKey = Deno.env.get('SLIPOK_API_KEY');
-    const branchId = Deno.env.get('SLIPOK_BRANCH_ID');
-    if (!apiKey || !branchId) {
-      console.warn('SLIPOK_API_KEY or SLIPOK_BRANCH_ID not set; falling back to manual verification');
-      return json({ status: 'manual' });
+    const user = await getAuthUser(req, supabaseUrl, serviceRoleKey);
+    if (!user) return errorResponse('Unauthorized', 401, headers);
+
+    const { transactionId } = await req.json();
+    if (!transactionId || typeof transactionId !== 'string') {
+      return errorResponse('transactionId is required', 400, headers);
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const { data: tx, error: txError } = await admin
       .from('transactions')
@@ -48,29 +65,43 @@ Deno.serve(async (req) => {
       .single();
 
     if (txError || !tx) {
-      throw new Error('Transaction not found');
+      return errorResponse('Transaction not found', 404, headers);
     }
 
-    if (!tx.payment_slip_path) {
-      throw new Error('No payment slip uploaded for this transaction');
+    const transaction = tx as Transaction;
+
+    // Only the buyer or seller may trigger slip verification.
+    if (transaction.buyer_id !== user.id && transaction.seller_id !== user.id) {
+      return errorResponse('Forbidden', 403, headers);
     }
 
-    if (tx.payment_confirmed) {
-      return json({ status: 'verified', message: 'Payment already confirmed' });
+    if (!transaction.payment_slip_path) {
+      return errorResponse('No payment slip uploaded for this transaction', 400, headers);
     }
 
-    const expectedAmount = (Number(tx.sale_price_thb) || 0) + (Number(tx.shipping_cost_thb) || 0);
+    if (transaction.payment_confirmed) {
+      return jsonResponse({ status: 'verified', message: 'Payment already confirmed' } as VerifyResponse, 200, headers);
+    }
+
+    const expectedAmount = (Number(transaction.sale_price_thb) || 0) + (Number(transaction.shipping_cost_thb) || 0);
     if (expectedAmount <= 0) {
-      throw new Error('Invalid transaction amount');
+      return errorResponse('Invalid transaction amount', 400, headers);
+    }
+
+    const apiKey = Deno.env.get('SLIPOK_API_KEY');
+    const branchId = Deno.env.get('SLIPOK_BRANCH_ID');
+    if (!apiKey || !branchId) {
+      console.warn('SLIPOK_API_KEY or SLIPOK_BRANCH_ID not set; falling back to manual verification');
+      return jsonResponse({ status: 'manual' } as VerifyResponse, 200, headers);
     }
 
     const { data: blob, error: dlError } = await admin
       .storage
       .from('payment-slips')
-      .download(tx.payment_slip_path);
+      .download(transaction.payment_slip_path);
 
     if (dlError || !blob) {
-      throw new Error('Could not download the payment slip');
+      return errorResponse('Could not download the payment slip', 500, headers);
     }
 
     const arrayBuffer = await blob.arrayBuffer();
@@ -96,20 +127,20 @@ Deno.serve(async (req) => {
       const message = slipOkJson?.message || slipOkRes.statusText || 'SlipOK error';
 
       if (code === 1013) {
-        return json({ status: 'failed', message: 'Slip amount does not match order total' });
+        return jsonResponse({ status: 'failed', message: 'Slip amount does not match order total' } as VerifyResponse, 200, headers);
       }
 
       if (code === 1011) {
-        return json({ status: 'failed', message: 'QR code expired or transaction not found' });
+        return jsonResponse({ status: 'failed', message: 'QR code expired or transaction not found' } as VerifyResponse, 200, headers);
       }
 
       if (code === 1009 || code === 1010) {
         console.warn('SlipOK temporary/delay error; falling back to manual', message);
-        return json({ status: 'manual', message });
+        return jsonResponse({ status: 'manual', message } as VerifyResponse, 200, headers);
       }
 
       console.warn('SlipOK verify failed; falling back to manual', message);
-      return json({ status: 'manual', message });
+      return jsonResponse({ status: 'manual', message } as VerifyResponse, 200, headers);
     }
 
     const slipData = slipOkJson.data;
@@ -117,14 +148,13 @@ Deno.serve(async (req) => {
     const transRef = String(slipData?.transRef || '');
 
     if (Number.isNaN(slipAmount) || Math.abs(slipAmount - expectedAmount) > 0.01) {
-      return json({ status: 'failed', message: 'Slip amount does not match order total' });
+      return jsonResponse({ status: 'failed', message: 'Slip amount does not match order total' } as VerifyResponse, 200, headers);
     }
 
     if (!transRef) {
-      return json({ status: 'manual', message: 'Could not read transaction reference from slip' });
+      return jsonResponse({ status: 'manual', message: 'Could not read transaction reference from slip' } as VerifyResponse, 200, headers);
     }
 
-    // Local duplicate check: another order already used this transRef.
     try {
       const { data: existing, error: dupError } = await admin
         .from('transactions')
@@ -136,7 +166,7 @@ Deno.serve(async (req) => {
       if (dupError) {
         console.warn('Duplicate-check query failed', dupError.message);
       } else if (existing) {
-        return json({ status: 'failed', message: 'This slip has already been used' });
+        return jsonResponse({ status: 'failed', message: 'This slip has already been used' } as VerifyResponse, 200, headers);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -149,35 +179,30 @@ Deno.serve(async (req) => {
       payment_confirmed_at: new Date().toISOString(),
     };
 
-    try {
-      updatePayload.payment_trans_ref = transRef;
-      const { error: updateError } = await admin
-        .from('transactions')
-        .update(updatePayload)
-        .eq('id', transactionId);
+    updatePayload.payment_trans_ref = transRef;
+    const { error: updateError } = await admin
+      .from('transactions')
+      .update(updatePayload)
+      .eq('id', transactionId);
 
-      if (updateError) {
-        // If payment_trans_ref column does not exist yet, retry without it.
-        if (updateError.message?.includes('payment_trans_ref')) {
-          delete updatePayload.payment_trans_ref;
-          const { error: retryError } = await admin
-            .from('transactions')
-            .update(updatePayload)
-            .eq('id', transactionId);
-          if (retryError) throw retryError;
-        } else {
-          throw updateError;
-        }
+    if (updateError) {
+      if (updateError.message?.includes('payment_trans_ref')) {
+        delete updatePayload.payment_trans_ref;
+        const { error: retryError } = await admin
+          .from('transactions')
+          .update(updatePayload)
+          .eq('id', transactionId);
+        if (retryError) throw retryError;
+      } else {
+        throw updateError;
       }
-    } catch (e) {
-      throw e;
     }
 
-    return json({ status: 'verified' });
+    return jsonResponse({ status: 'verified' } as VerifyResponse, 200, headers);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('verify-slip error:', message);
-    return json({ status: 'manual', message });
+    return jsonResponse({ status: 'manual', message: 'Verification could not be completed' } as VerifyResponse, 200, headers);
   }
 });
 
@@ -188,11 +213,4 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + 1024));
   }
   return btoa(binary);
-}
-
-function json(body: VerifyResponse, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-  });
 }

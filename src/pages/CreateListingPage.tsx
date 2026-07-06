@@ -66,7 +66,7 @@ export default function CreateListingPage() {
   const [created, setCreated] = useState<Listing | null>(null);
   const [provenanceQR, setProvenanceQR] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, isLocalAdmin } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const photoCount = photos.length;
 
@@ -179,7 +179,7 @@ export default function CreateListingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    if (!user || isLocalAdmin) {
+    if (!user) {
       toast.error(t('marketplace:create.signUpSeller'));
       navigate('/signup');
       return;

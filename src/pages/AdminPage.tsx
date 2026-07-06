@@ -10,7 +10,6 @@ import { useState, useEffect } from 'react';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation(['common']);
-  const { isLocalAdmin } = useAuth();
   const location = useLocation();
   const tabs = [
     { id: '', labelKey: 'overview', icon: Shield },
@@ -24,15 +23,6 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
-        {isLocalAdmin && (
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-400">
-              {t('common:admin.localAdminWarning')}
-            </p>
-          </div>
-        )}
-
         <h1 className="text-2xl font-light tracking-tight mb-6">{t('common:admin.title')}</h1>
 
         <div className="flex overflow-x-auto gap-1 mb-6 pb-2 scrollbar-hide">
@@ -169,7 +159,6 @@ function Disputes() {
 
 function UsersPage() {
   const { t } = useTranslation(['common']);
-  const { isLocalAdmin } = useAuth();
   const [users, setUsers] = useState(USERS);
 
   useEffect(() => {
@@ -185,9 +174,7 @@ function UsersPage() {
     if (!target) return;
     const nextCount = target.strike_count + 1;
     try {
-      if (!isLocalAdmin) {
-        await adminUpdateUser(userId, { strike_count: nextCount });
-      }
+      await adminUpdateUser(userId, { strike_count: nextCount });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, strike_count: nextCount } : u));
       toast.success(t('common:admin.users.strikeToast'));
     } catch (err) {
@@ -197,9 +184,7 @@ function UsersPage() {
 
   const handleBan = async (userId: string) => {
     try {
-      if (!isLocalAdmin) {
-        await adminUpdateUser(userId, { is_banned: true });
-      }
+      await adminUpdateUser(userId, { is_banned: true });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: true } : u));
       toast.success(t('common:admin.users.banToast'));
     } catch (err) {

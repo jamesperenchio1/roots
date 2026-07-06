@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Leaf, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const { login, loginAsLocalAdmin, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
@@ -25,11 +25,6 @@ export default function LoginPage() {
     } else {
       setError(loginError || t('auth:login.error'));
     }
-  };
-
-  const handleLocalAdmin = () => {
-    loginAsLocalAdmin();
-    navigate('/admin');
   };
 
   return (
@@ -100,21 +95,6 @@ export default function LoginPage() {
           {t('auth:login.noAccount')}{' '}
           <Link to={`/signup${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">{t('auth:login.signup')}</Link>
         </div>
-
-        {import.meta.env.DEV && (
-          <div className="mt-8 pt-6 border-t border-white/5">
-            <button
-              onClick={handleLocalAdmin}
-              className="w-full flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-3 rounded-lg text-sm hover:bg-amber-500/20 transition-colors"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              Dev: Login as Local Admin
-            </button>
-            <p className="text-xs text-zinc-600 text-center mt-2">
-              This bypass is only available in development mode.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

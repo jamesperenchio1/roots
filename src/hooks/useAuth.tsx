@@ -31,10 +31,8 @@ interface SignupInput {
 interface AuthContextType {
   user: Profile | null;
   isAdmin: boolean;
-  isLocalAdmin: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signup: (input: SignupInput) => Promise<{ ok: boolean; error?: string; message?: string }>;
-  loginAsLocalAdmin: () => void;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ ok: boolean; error?: string }>;
@@ -46,10 +44,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAdmin: false,
-  isLocalAdmin: false,
   login: async () => ({ ok: false }),
   signup: async () => ({ ok: false, error: 'Signup not available' }),
-  loginAsLocalAdmin: () => {},
   logout: () => {},
   refreshProfile: async () => {},
   resetPassword: async () => ({ ok: false }),
@@ -87,16 +83,9 @@ async function fetchProfile(id: string): Promise<Profile | null> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
-  const [isLocalAdmin, setIsLocalAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-
-  // Restore an existing session on load and react to auth changes.
-  const isLocalAdminRef = useRef(isLocalAdmin);
-  useEffect(() => {
-    isLocalAdminRef.current = isLocalAdmin;
-  }, [isLocalAdmin]);
 
   const startSubscriptions = useCallback((uid: string) => {
     unsubscribeRef.current?.();
@@ -159,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(p);
             startSubscriptions(session.user.id);
           }
-        } else if (!isLocalAdminRef.current) {
+        } else {
           setUser(null);
           stopSubscriptions();
         }
@@ -191,7 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (p) {
         setUser(p);
-        setIsLocalAdmin(false);
         await hydrateUserTransactions();
         await hydrateUserNotifications(p.id);
         await hydrateUserOffers();
@@ -281,26 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loginAsLocalAdmin = useCallback(() => {
-    if (!import.meta.env.DEV) {
-      logger.warn('loginAsLocalAdmin blocked in production');
-      return;
-    }
-    const adminUser: Profile = {
-      id: 'local-admin',
-      display_name: 'Local Dev Admin',
-      is_admin: true,
-      strike_count: 0,
-      is_banned: false,
-      language_preference: 'en',
-      created_at: '2023-01-01',
-      updated_at: '2024-01-01',
-      location: 'Bangkok',
-    };
-    setUser(adminUser);
-    setIsLocalAdmin(true);
-  }, []);
-
   const logout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -308,12 +276,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.warn('logout failed', { error: err instanceof Error ? err.message : String(err) });
     }
     setUser(null);
-    setIsLocalAdmin(false);
     stopSubscriptions();
   }, [stopSubscriptions]);
 
   const refreshProfile = useCallback(async () => {
-    if (user && !isLocalAdmin) {
+    if (user) {
       try {
         const p = await fetchProfile(user.id);
         if (p) setUser(p);
@@ -321,22 +288,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logger.warn('refreshProfile failed', { error: err instanceof Error ? err.message : String(err) });
       }
     }
-  }, [user, isLocalAdmin]);
+  }, [user]);
 
   const value = useMemo(() => ({
     user,
     isAdmin: user?.is_admin || false,
-    isLocalAdmin,
     login,
     signup,
-    loginAsLocalAdmin,
     logout,
     refreshProfile,
     resetPassword,
     updatePassword,
     isLoading,
     isRestoring,
-  }), [user, isLocalAdmin, login, signup, loginAsLocalAdmin, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring]);
+  }), [user, login, signup, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring]);
 
   return (
     <AuthContext.Provider value={value}>
