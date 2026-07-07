@@ -109,6 +109,17 @@ export function detectContactInfo(text: string): boolean {
   return lineIdPattern.test(text) || thaiPhonePattern.test(text) || emailPattern.test(text) || urlPattern.test(text);
 }
 
+/** Validate password strength. Matches Supabase `lower_upper_letters_digits_symbols` policy. */
+export function isStrongPassword(password: string): boolean {
+  return (
+    password.length >= 8 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /\d/.test(password) &&
+    /[^a-zA-Z0-9]/.test(password)
+  );
+}
+
 /** Validate shipping address */
 export function validateShippingAddress(addr: Record<string, string>): { ok: boolean; errors: Record<string, string> } {
   const errors: Record<string, string> = {};

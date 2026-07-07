@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import { useAuth } from '@/hooks/useAuth';
-import { isValidEmail } from '@/lib/validation';
+import { isValidEmail, isStrongPassword } from '@/lib/validation';
 import { sanitizeRedirect } from '@/lib/navigation';
 import { getProvinceOptions } from '@/lib/provinces';
 
@@ -39,8 +39,12 @@ export default function SignupPage() {
       setError(t('common:errors.invalidEmail'));
       return;
     }
-    if (password.length < 6) {
-      setError(t('common:errors.minLength', { count: 6 }));
+    if (password.length < 8) {
+      setError(t('common:errors.minLength', { count: 8 }));
+      return;
+    }
+    if (!isStrongPassword(password)) {
+      setError(t('auth:signup.passwordRequirements', { defaultValue: 'Password must include uppercase, lowercase, number, and symbol.' }));
       return;
     }
     if (trimmedName.length < 2) {

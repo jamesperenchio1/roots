@@ -10,9 +10,6 @@ import { createOrder, uploadPaymentSlip, requestSlipVerification } from '@/lib/a
 import { generatePromptPayQR } from '@/lib/promptpay';
 import { validateShippingAddress } from '@/lib/validation';
 
-// Platform fallback PromptPay (used only if a seller has not set their own).
-const PLATFORM_PROMPTPAY = '0812345678';
-
 export default function CheckoutPage() {
   const { listingId } = useParams<{ listingId: string }>();
   const listing = getListingById(listingId || '');
@@ -32,10 +29,11 @@ export default function CheckoutPage() {
 
   const shipping = listing?.shipping_cost_thb || 0;
   const total = (listing?.price_thb || 0) + shipping;
-  const sellerPromptPay = listing?.seller?.promptpay_id || PLATFORM_PROMPTPAY;
+  const sellerPromptPay = listing?.seller?.promptpay_id;
+  const canCheckout = Boolean(sellerPromptPay);
 
   useEffect(() => {
-    if (listing && method === 'promptpay') {
+    if (listing && method === 'promptpay' && sellerPromptPay) {
       generatePromptPayQR(sellerPromptPay, total).then(setQr).catch(() => setQr(''));
     }
   }, [listing, method, sellerPromptPay, total]);
@@ -52,6 +50,10 @@ export default function CheckoutPage() {
   const handlePay = () => {
     if (!user) {
       navigate('/login');
+      return;
+    }
+    if (!canCheckout) {
+      toast.error(t('checkout:errors.sellerNoPromptPay', { defaultValue: 'This seller has not set a PromptPay ID and cannot accept payments right now.' }));
       return;
     }
     const validation = validateShippingAddress(address);
@@ -205,9 +207,15 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {!canCheckout && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 text-sm text-red-400">
+            {t('checkout:errors.sellerNoPromptPay', { defaultValue: 'This seller has not set a PromptPay ID and cannot accept payments right now.' })}
+          </div>
+        )}
+
         <Button
           onClick={handlePay}
-          disabled={paying}
+          disabled={paying || !canCheckout}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
         >
           {paying ? t('checkout:confirming') : t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}

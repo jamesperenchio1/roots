@@ -1293,8 +1293,13 @@ export async function uploadMessageAttachment(
   messageId: string
 ): Promise<MessageAttachment> {
   await ensureMessageAttachmentBucket();
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user?.id;
+  if (!userId) throw new Error('Authentication required to upload attachments');
+
   const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'bin';
-  const path = `${conversationId}/${messageId}/${crypto.randomUUID()}.${ext}`;
+  const path = `${userId}/${conversationId}/${messageId}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(MESSAGE_ATTACHMENT_BUCKET).upload(path, file, { upsert: false });
   if (error) throw error;
 
