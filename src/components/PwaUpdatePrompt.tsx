@@ -9,12 +9,14 @@ export default function PwaUpdatePrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      if (r) {
+      if (r && import.meta.env.DEV) {
         console.log('[PWA] Service worker registered', r.scope);
       }
     },
     onRegisterError(error) {
-      console.error('[PWA] Service worker registration error', error);
+      if (import.meta.env.DEV) {
+        console.error('[PWA] Service worker registration error', error);
+      }
     },
   });
 

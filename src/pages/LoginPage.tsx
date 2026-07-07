@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { sanitizeRedirect } from '@/lib/navigation';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
@@ -14,7 +15,7 @@ export default function LoginPage() {
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  const redirect = sanitizeRedirect(searchParams.get('redirect'));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +27,8 @@ export default function LoginPage() {
       setError(loginError || t('auth:login.error'));
     }
   };
+
+  const signupRedirect = redirect === '/' ? '' : `?redirect=${encodeURIComponent(redirect)}`;
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6 min-h-[80vh] flex items-center justify-center">
@@ -93,7 +96,7 @@ export default function LoginPage() {
 
         <div className="mt-6 text-center text-sm text-zinc-500">
           {t('auth:login.noAccount')}{' '}
-          <Link to={`/signup${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">{t('auth:login.signup')}</Link>
+          <Link to={`/signup${signupRedirect}`} className="text-emerald-400 hover:underline">{t('auth:login.signup')}</Link>
         </div>
       </div>
     </div>

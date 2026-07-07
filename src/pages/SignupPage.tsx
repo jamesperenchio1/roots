@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import { isValidEmail } from '@/lib/validation';
+import { sanitizeRedirect } from '@/lib/navigation';
 import { getProvinceOptions } from '@/lib/provinces';
-import { useMemo } from 'react';
 
 export default function SignupPage() {
   const { t, i18n } = useTranslation(['auth', 'common']);
@@ -23,7 +23,8 @@ export default function SignupPage() {
   const { signup, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  const redirect = sanitizeRedirect(searchParams.get('redirect'));
+  const loginRedirect = redirect === '/' ? '' : `?redirect=${encodeURIComponent(redirect)}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +153,7 @@ export default function SignupPage() {
 
         <div className="mt-6 text-center text-sm text-zinc-500">
           {t('auth:signup.hasAccount')}{' '}
-          <Link to={`/login${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-emerald-400 hover:underline">{t('auth:signup.login')}</Link>
+          <Link to={`/login${loginRedirect}`} className="text-emerald-400 hover:underline">{t('auth:signup.login')}</Link>
         </div>
       </div>
     </div>

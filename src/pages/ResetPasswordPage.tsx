@@ -14,19 +14,20 @@ export default function ResetPasswordPage() {
   const { updatePassword, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Supabase puts the access_token in the URL fragment after redirect
+  // Supabase puts the access_token in the URL fragment after redirect.
+  // Strip it from history once detected so it does not linger in the URL.
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes('type=recovery') || hash.includes('access_token=')) {
-      // Session is already set by supabase auth listener
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (password.length < 6) {
-      setError(t('common:errors.minLength', { count: 6 }));
+    if (password.length < 8) {
+      setError(t('common:errors.minLength', { count: 8 }));
       return;
     }
     if (password !== confirm) {

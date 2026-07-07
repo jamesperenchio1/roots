@@ -16,7 +16,8 @@ if (import.meta.env.PROD && sentryDsn) {
     integrations: [
       Sentry.browserTracingIntegration(),
       Sentry.replayIntegration({
-        maskAllText: false,
+        maskAllText: true,
+        maskAllInputs: true,
         blockAllMedia: true,
       }),
     ],

@@ -1,6 +1,7 @@
 /**
  * Simple structured logger.
  * Errors and warnings are forwarded to Sentry when a DSN is configured.
+ * Info/debug logs stay local; PII is scrubbed before leaving the browser.
  */
 
 import { Scope, captureException, captureMessage } from '@sentry/react';
@@ -15,6 +16,21 @@ interface LogEntry {
   error?: Error;
 }
 
+const SENSITIVE_KEYS = [
+  'email',
+  'password',
+  'token',
+  'access_token',
+  'refresh_token',
+  'apikey',
+  'api_key',
+  'secret',
+  'authorization',
+  'promptpay_id',
+  'phone',
+  'address',
+];
+
 function envBool(value: unknown): boolean {
   return value === true || value === 'true';
 }
@@ -25,6 +41,36 @@ function isDev(): boolean {
 
 function sentryEnabled(): boolean {
   return !isDev() && Boolean(import.meta.env.VITE_SENTRY_DSN);
+}
+
+function isSensitiveKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  return SENSITIVE_KEYS.some((s) => lower.includes(s));
+}
+
+function scrubValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    // Redact anything that looks like an email, JWT, or long token.
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return '[REDACTED_EMAIL]';
+    if (/^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/i.test(value)) return '[REDACTED_JWT]';
+    if (/^[A-Za-z0-9_=-]{32,}$/i.test(value)) return '[REDACTED_TOKEN]';
+  }
+  return value;
+}
+
+function scrubContext(context?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!context) return undefined;
+  const scrubbed: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(context)) {
+    if (isSensitiveKey(key)) {
+      scrubbed[key] = '[REDACTED]';
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      scrubbed[key] = scrubContext(value as Record<string, unknown>);
+    } else {
+      scrubbed[key] = scrubValue(value);
+    }
+  }
+  return scrubbed;
 }
 
 class Logger {
@@ -45,19 +91,21 @@ class Logger {
       this.buffer.shift();
     }
 
-    // Console output
-    const prefix = `[${entry.timestamp}] [${level.toUpperCase()}]`;
-    if (level === 'error') {
-      console.error(prefix, message, context || '', error || '');
-    } else if (level === 'warn') {
-      console.warn(prefix, message, context || '');
-    } else if (isDev()) {
-      console.log(prefix, message, context || '');
+    // Console output: only in development; never print context in production.
+    if (isDev()) {
+      const prefix = `[${entry.timestamp}] [${level.toUpperCase()}]`;
+      if (level === 'error') {
+        console.error(prefix, message, context || '', error || '');
+      } else if (level === 'warn') {
+        console.warn(prefix, message, context || '');
+      } else {
+        console.log(prefix, message, context || '');
+      }
     }
 
-    // Forward to Sentry
-    if (sentryEnabled()) {
-      this.sendToSentry(entry);
+    // Forward only warnings and errors to Sentry, and scrub context first.
+    if (sentryEnabled() && (level === 'warn' || level === 'error')) {
+      this.sendToSentry({ ...entry, context: scrubContext(entry.context) });
     }
   }
 
@@ -87,14 +135,12 @@ class Logger {
       if (entry.context) scope.setContext('logger', entry.context);
       if (entry.level === 'error') {
         captureException(entry.error || new Error(entry.message), scope);
-      } else if (entry.level === 'warn') {
-        captureMessage(entry.message, { level: 'warning', extra: entry.context });
       } else {
-        captureMessage(entry.message, { level: entry.level, extra: entry.context });
+        captureMessage(entry.message, { level: 'warning', extra: entry.context });
       }
     } catch (e) {
       // Fail silently so logging never crashes the app.
-      console.warn('[Logger] Sentry send failed', e);
+      if (isDev()) console.warn('[Logger] Sentry send failed', e);
     }
   }
 }

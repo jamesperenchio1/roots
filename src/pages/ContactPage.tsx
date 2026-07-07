@@ -1,7 +1,7 @@
 import { Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { sanitizeText } from '@/lib/validation';
+
 import { logger } from '@/lib/logger';
 import { useTranslation } from 'react-i18next';
 
@@ -47,8 +47,6 @@ export default function ContactPage() {
     window.open(`mailto:rootsthailand1@gmail.com?subject=${subject}&body=${body}`, '_blank');
 
     logger.info('Contact form submitted', {
-      name: sanitizeText(form.name, 100),
-      email: sanitizeText(form.email, 100),
       topic: form.topic,
     });
   };
