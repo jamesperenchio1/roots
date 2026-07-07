@@ -87,6 +87,14 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     pickup_lat: (r.pickup_lat as number | undefined) ?? undefined,
     pickup_lng: (r.pickup_lng as number | undefined) ?? undefined,
     status: (r.status as Listing['status'] | undefined) || 'active',
+    review_status: (r.review_status as string | undefined) || undefined,
+    qr_verification_photo_url: (r.qr_verification_photo_url as string | undefined) || undefined,
+    qr_verified_at: (r.qr_verified_at as string | undefined) || undefined,
+    qr_verified_by: (r.qr_verified_by as string | undefined) || undefined,
+    reviewed_at: (r.reviewed_at as string | undefined) || undefined,
+    reviewed_by: (r.reviewed_by as string | undefined) || undefined,
+    review_reason: (r.review_reason as string | undefined) || undefined,
+    review_notes: (r.review_notes as string | undefined) || undefined,
     created_at: r.created_at as string,
     last_photo_update_at: (r.last_photo_update_at as string | undefined) || (r.created_at as string),
     view_count: (r.view_count as number | undefined) ?? 0,
@@ -344,6 +352,7 @@ function mapOffer(r: DbRow): Offer {
     message: (r.message as string | undefined) || undefined,
     status: r.status as Offer['status'],
     counter_price_thb: (r.counter_price_thb as number | undefined) ?? undefined,
+    conversation_id: (r.conversation_id as string | undefined) || undefined,
     created_at: r.created_at as string,
     responded_at: (r.responded_at as string | undefined) || undefined,
   };
@@ -442,6 +451,7 @@ export interface NewListingInput {
   category: Category;
   price_thb: number;
   size_category: string;
+  status?: Listing['status'];
   pot_size_cm?: number;
   description: string;
   delivery_options: string[];
@@ -466,6 +476,7 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
       category: input.category,
       price_thb: input.price_thb,
       size_category: input.size_category,
+      status: input.status || 'pending_review',
       pot_size_cm: input.pot_size_cm,
       description: sanitizeText(input.description, 2000),
       delivery_options: input.delivery_options,
@@ -1380,19 +1391,31 @@ export function getOffersForListing(listingId: string): Offer[] {
 export async function createOffer(
   data: Omit<Offer, 'id' | 'created_at' | 'status' | 'responded_at'>
 ): Promise<Offer> {
+  // Open a conversation thread for the offer first so the DB row can store it.
+  let conversationId: string | undefined;
+  try {
+    const conv = await getOrCreateDirectConversation(data.buyer_id, data.seller_id, data.listing_id);
+    conversationId = conv.id;
+  } catch (e) {
+    logger.warn('createOffer could not open conversation', { error: e instanceof Error ? e.message : String(e) });
+  }
+
   // Insert and read back so the local copy uses the DB-generated id — otherwise
   // a later hydrate would duplicate the offer under a different id, and
   // respond/withdraw (which match by id) would target the wrong row.
+  const insert: Record<string, unknown> = {
+    listing_id: data.listing_id,
+    buyer_id: data.buyer_id,
+    seller_id: data.seller_id,
+    offer_price_thb: data.offer_price_thb,
+    message: data.message || null,
+    status: 'pending',
+  };
+  if (conversationId) insert.conversation_id = conversationId;
+
   const { data: row, error } = await supabase
     .from('offers')
-    .insert({
-      listing_id: data.listing_id,
-      buyer_id: data.buyer_id,
-      seller_id: data.seller_id,
-      offer_price_thb: data.offer_price_thb,
-      message: data.message || null,
-      status: 'pending',
-    })
+    .insert(insert)
     .select('*')
     .single();
   if (error) {
@@ -1404,9 +1427,29 @@ export async function createOffer(
         ...data,
         id: `o-${crypto.randomUUID().slice(0, 8)}`,
         status: 'pending',
+        conversation_id: conversationId,
         created_at: new Date().toISOString(),
       };
   upsertById(OFFERS, offer);
+
+  // Seed the chat with the offer details.
+  if (conversationId) {
+    try {
+      const currency = 'THB';
+      const offerText = data.message?.trim()
+        ? `Offer: ${data.offer_price_thb.toLocaleString()} ${currency} — ${data.message.trim()}`
+        : `Offer: ${data.offer_price_thb.toLocaleString()} ${currency}`;
+      await sendMessageV2({
+        conversationId,
+        senderId: data.buyer_id,
+        content: offerText,
+        listingId: data.listing_id,
+      });
+    } catch (e) {
+      logger.warn('createOffer could not seed chat message', { error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   const offerListingName = LISTINGS.find(l => l.id === data.listing_id)?.species?.common_name_en || 'plant';
   notifyOfferReceived(data.seller_id, offer.id, offerListingName, data.offer_price_thb);
   return offer;

@@ -5,7 +5,7 @@ const DEFAULT_DELAY_MINUTES = 2;
 const QUIET_HOURS_START = 22; // 10 PM
 const QUIET_HOURS_END = 8; // 8 AM
 
-function getScheduledAt(_recipientId: string): string {
+function getScheduledAt(): string {
   const now = new Date();
   const scheduled = new Date(now.getTime() + DEFAULT_DELAY_MINUTES * 60 * 1000);
 
@@ -37,7 +37,7 @@ export async function scheduleEmailNotification(
         message_id: messageId,
         sender_name: senderName,
         preview,
-        scheduled_at: getScheduledAt(recipientId),
+        scheduled_at: getScheduledAt(),
       },
       { onConflict: 'recipient_id,conversation_id' }
     );

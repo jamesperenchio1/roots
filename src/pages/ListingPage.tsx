@@ -168,9 +168,16 @@ export default function ListingPage() {
               <Link to={`/species/${speciesId}`} className="text-sm text-emerald-400 hover:underline mb-1 block">
                 {listing.species?.scientific_name}
               </Link>
-              <h1 className="text-2xl sm:text-3xl font-light tracking-tight mb-2">
-                {listing.species?.common_name_en || listing.species?.common_name_th}
-              </h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-light tracking-tight">
+                  {listing.species?.common_name_en || listing.species?.common_name_th}
+                </h1>
+                {listing.status !== 'active' && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    {listing.status === 'pending_review' ? 'Pending review' : listing.status}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-zinc-500 mb-3">
                 {listing.species?.common_name_th && `${listing.species.common_name_th} · `}
                 {listing.species?.scientific_name}
@@ -281,12 +288,20 @@ export default function ListingPage() {
             )}
 
             <div className="flex gap-3 pt-4">
-              <Link to={`/checkout/${listing.id}`} className="flex-1">
-                <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl">
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  {t('marketplace:listing.buy')}
-                </Button>
-              </Link>
+              {listing.status === 'active' ? (
+                <Link to={`/checkout/${listing.id}`} className="flex-1">
+                  <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl">
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    {t('marketplace:listing.buy')}
+                  </Button>
+                </Link>
+              ) : (
+                <div className="flex-1">
+                  <Button disabled className="w-full h-12 rounded-xl bg-zinc-800 text-zinc-500 cursor-not-allowed">
+                    {listing.status === 'pending_review' ? 'Under review' : 'Not available'}
+                  </Button>
+                </div>
+              )}
               {listing.status === 'active' && user && user.id !== listing.seller_id && (
                 <Button
                   type="button"

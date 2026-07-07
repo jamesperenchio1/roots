@@ -7,6 +7,7 @@ import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPr
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
+import SavedPlacesManager from '@/components/SavedPlacesManager';
 
 const TABS = [
   { id: 'purchases', label: 'Purchases', icon: ShoppingBag },
@@ -389,6 +390,9 @@ export default function DashboardPage() {
             >
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
+            <div className="pt-6 border-t border-white/10">
+              <SavedPlacesManager />
+            </div>
           </div>
         );
       default:

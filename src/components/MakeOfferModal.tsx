@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Tag, TrendingUp, Clock, Eye, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import type { Listing } from '@/types';
 import { createOffer } from '@/lib/api';
 import { getPriceSnapshotsForSpecies, getSpeciesPriceStats, getProvenanceChain } from '@/data/mockData';
@@ -17,6 +18,7 @@ interface MakeOfferModalProps {
 
 export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }: MakeOfferModalProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { t } = useTranslation(['marketplace', 'common']);
   const [price, setPrice] = useState('');
   const [message, setMessage] = useState('');
@@ -47,7 +49,7 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
     }
     setSubmitting(true);
     try {
-      await createOffer({
+      const offer = await createOffer({
         listing_id: listing.id,
         buyer_id: user.id,
         seller_id: listing.seller_id,
@@ -59,6 +61,9 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
       setMessage('');
       onSubmitted();
       onClose();
+      if (offer.conversation_id) {
+        navigate(`/messages/${offer.conversation_id}`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('marketplace:offer.error'));
     } finally {

@@ -21,6 +21,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
   const [isNewSpecies, setIsNewSpecies] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const justSelected = useRef(false);
 
   useEffect(() => {
     setQuery(value);
@@ -38,6 +39,10 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
 
   // Perform search on debounced query
   useEffect(() => {
+    if (justSelected.current) {
+      justSelected.current = false;
+      return;
+    }
     setIsOpen(true);
     setSelectedIndex(-1);
 
@@ -63,6 +68,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
   }, [onChange]);
 
   const handleSelect = (species: SpeciesEntry) => {
+    justSelected.current = true;
     setQuery(`${species.scientific_name} (${species.common_name_en})`);
     setIsOpen(false);
     setIsNewSpecies(false);

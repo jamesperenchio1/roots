@@ -5,12 +5,15 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
+import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { getSpeciesPriceStats } from '@/data/mockData';
 import { searchSpecies, type SpeciesEntry as SpeciesDbEntry } from '@/data/speciesDatabase';
 import { getLatestResult } from '@/lib/identification/api-identification';
 import { useAuth } from '@/hooks/useAuth';
 import { createListing, uploadListingPhoto, fetchPlant } from '@/lib/api';
+import { getUserLocations } from '@/lib/locations';
+import type { UserLocation } from '@/types';
 import { generateQR } from '@/lib/promptpay';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
 import { getProvinceOptions } from '@/lib/provinces';
@@ -40,7 +43,10 @@ export default function CreateListingPage() {
   const prefillSpeciesId = searchParams.get('speciesId');
   const [prefillResult, setPrefillResult] = useState<IdentificationResult | null>(null);
   const [prefillLoading, setPrefillLoading] = useState(false);
+  const [placesLoading, setPlacesLoading] = useState(false);
   const [step, setStep] = useState<'form' | 'qr'>('form');
+  const [savedPlaces, setSavedPlaces] = useState<UserLocation[]>([]);
+  const [selectedPlaceId, setSelectedPlaceId] = useState('');
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
   const [speciesQuery, setSpeciesQuery] = useState('');
   const [price, setPrice] = useState('');
@@ -69,6 +75,25 @@ export default function CreateListingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const photoCount = photos.length;
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    setPlacesLoading(true);
+    getUserLocations(user.id)
+      .then((places) => { if (mounted) setSavedPlaces(places); })
+      .catch(() => { /* saved places are optional */ })
+      .finally(() => { if (mounted) setPlacesLoading(false); });
+    return () => { mounted = false; };
+  }, [user]);
+
+  useEffect(() => {
+    const place = savedPlaces.find((p) => p.id === selectedPlaceId);
+    if (!place) return;
+    if (place.province) setProvince(place.province);
+    if (place.address_line) setPickupLocation(place.address_line);
+    if (place.lat && place.lng) setPickupCoords({ lat: place.lat, lng: place.lng });
+  }, [selectedPlaceId, savedPlaces]);
 
   useEffect(() => {
     if (!identificationId) return;
@@ -198,6 +223,7 @@ export default function CreateListingPage() {
         category: (species?.category as Category) || 'other',
         price_thb: parseInt(price),
         size_category: size,
+        status: 'pending_review',
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
         description: sanitizeText(description, 2000),
         delivery_options: delivery,
@@ -451,6 +477,24 @@ export default function CreateListingPage() {
             </div>
           )}
 
+          {placesLoading ? (
+            <p className="text-xs text-zinc-500">Loading saved places…</p>
+          ) : savedPlaces.length > 0 ? (
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Pickup from saved place</label>
+              <select
+                value={selectedPlaceId}
+                onChange={(e) => setSelectedPlaceId(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
+              >
+                <option value="">Select a saved place (optional)</option>
+                {savedPlaces.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}{p.province ? ` · ${p.province}` : ''}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.potSizeLabel')}</label>
@@ -464,16 +508,12 @@ export default function CreateListingPage() {
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.provinceLabel')}</label>
-              <select
+              <ProvinceCombobox
                 value={province}
-                onChange={(e) => setProvince(e.target.value)}
-                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
-              >
-                <option value="">{t('marketplace:create.selectProvince')}</option>
-                {provinceOptions.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
+                onChange={setProvince}
+                placeholder={t('marketplace:create.selectProvince')}
+                options={provinceOptions}
+              />
               {errors.province && <p className="text-xs text-red-400 mt-1">{errors.province}</p>}
             </div>
           </div>
@@ -632,7 +672,11 @@ export default function CreateListingPage() {
               <Shield className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-zinc-300">
-                  {t('marketplace:create.feeNotice')}
+                  {t('marketplace:create.feeNotice', {
+                    net: Math.max(0, (parseInt(price) || 0) - Math.round((parseInt(price) || 0) * 0.08)).toLocaleString(),
+                    fee: Math.round((parseInt(price) || 0) * 0.08).toLocaleString(),
+                    currency,
+                  })}
                 </p>
               </div>
             </div>

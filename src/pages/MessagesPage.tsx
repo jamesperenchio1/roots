@@ -217,7 +217,7 @@ export default function MessagesPage() {
       unsubscribeStore();
       setOffline();
     };
-  }, [user?.id, refreshPresenceMap]);
+  }, [user, refreshPresenceMap]);
 
   // Hydrate and subscribe to presence for all conversation partners.
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function MessagesPage() {
     refreshPresenceMap();
     const unsubscribe = subscribeToPresenceChannel(partnerIds);
     return () => { unsubscribe(); };
-  }, [conversations, user?.id, refreshPresenceMap]);
+  }, [conversations, user, refreshPresenceMap]);
 
   const hasContactFlag = messages.some((m) => m.flagged_contact_info);
 

@@ -106,6 +106,15 @@
     "activeListingsCount": "Active Listings ({{count}})",
     "noActiveListings": "No active listings from this seller."
   },
+  "reviews": {
+    "noneYet": "No reviews yet.",
+    "all": "All",
+    "count": "{{count}} reviews",
+    "count_plural": "{{count}} reviews",
+    "viewAll": "View all {{count}} reviews",
+    "noTagMatch": "No reviews match this tag.",
+    "anonymous": "Anonymous"
+  },
   "market": {
     "title": "Market Prices",
     "trendingUp": "Trending up",
@@ -126,7 +135,7 @@
   },
   "create": {
     "title": "Create Listing",
-    "subtitle": "List any plant — from basil to variegated monsters",
+    "subtitle": "Create a new plant listing",
     "stepIndicator": "Step 1 of 2",
     "photosLabel": "Photos (1-10)",
     "photoAlt": "Photo {{index}}",
@@ -135,7 +144,7 @@
     "photosReady": "{{count}} photo ready",
     "photosReady_plural": "{{count}} photos ready",
     "speciesLabel": "Plant Species *",
-    "speciesPlaceholder": "Type 'basil', 'monstera', 'pothos'...",
+    "speciesPlaceholder": "Search species...",
     "careLabel": "Care",
     "priceLabel": "Price (THB) *",
     "pricePlaceholder": "e.g. 500",
@@ -181,8 +190,8 @@
     "published": "Listing published to the market!",
     "createFailed": "Could not create listing",
     "successTitle": "Listing Created!",
-    "successSubtitle": "Your {{name}} is now live on Root.",
-    "successDescription": "Buyers can find it, compare prices, and purchase with escrow protection.",
+    "successSubtitle": "Your {{name}} has been submitted for review.",
+    "successDescription": "Once approved, buyers can find it, compare prices, and purchase with escrow protection.",
     "provenanceQrTitle": "Provenance QR Code",
     "provenanceQrAlt": "Provenance QR",
     "autoDownloaded": "Auto-downloaded to your device.",

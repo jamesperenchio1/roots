@@ -15,7 +15,7 @@ import {
   MESSAGE_READS,
   USERS,
 } from '@/data/mockData';
-import type { Conversation, ConversationParticipant, Message, Profile } from '@/types';
+import type { Conversation, Message, Profile } from '@/types';
 
 function seedUser(id: string, name: string): Profile {
   const profile: Profile = {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore, useMemo } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore, useMemo, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  getActiveListings, getTransactionsWithDetails, USERS, getSpeciesPriceStats,
+  LISTINGS, getTransactionsWithDetails, USERS, getSpeciesPriceStats,
 } from '@/data/mockData';
 import {
   getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived,
@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import OfferCard from '@/components/OfferCard';
+
 import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
@@ -103,7 +104,7 @@ export default function SellerDashboardPage() {
   }, [activeTab, user, refresh]);
 
   const me = USERS.find(u => u.id === user?.id);
-  const listings = getActiveListings().filter(l => l.seller_id === user?.id);
+  const listings = LISTINGS.filter(l => l.seller_id === user?.id);
   const allSales = getTransactionsWithDetails().filter(t => t.seller_id === user?.id);
   const completedSales = allSales.filter(s => s.status === 'completed');
   const pendingSales = allSales.filter(s => ['paid_in_escrow', 'shipped', 'disputed'].includes(s.status));
@@ -312,17 +313,57 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
 }
 
 function ListingActions({ listing, onWithdraw, onDuplicate, t }: { listing: Listing; onWithdraw: (id: string) => void; onDuplicate: () => void; t: TFunction }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleVerifyFile = async (file: File) => {
+    if (!user) return;
+    setVerifying(true);
+    try {
+      const { submitListingQrVerification } = await import('@/lib/listing-review');
+      const result = await submitListingQrVerification(listing, file, user.id);
+      if (result.ok) {
+        toast.success('QR verified. Your listing is now in the admin review queue.');
+      } else {
+        toast.error(result.error || 'QR verification failed');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not verify QR');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen(!open)} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) handleVerifyFile(file);
+        }}
+      />
+      <button onClick={() => setOpen(!open)} disabled={verifying} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50">
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 w-44 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-20 py-1">
           <Link to={`/listing/${listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Eye className="w-3.5 h-3.5" /> {t('common:actions.view')}</Link>
           <Link to={`/listing/${listing.id}/edit`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Settings className="w-3.5 h-3.5" /> {t('common:actions.edit')}</Link>
+          {listing.status === 'pending_review' && (
+            <button
+              onClick={() => { fileRef.current?.click(); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-white/5"
+            >
+              <ScanSearch className="w-3.5 h-3.5" /> Verify QR
+            </button>
+          )}
           <button onClick={() => { onDuplicate(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Copy className="w-3.5 h-3.5" /> {t('common:actions.duplicate')}</button>
           <button onClick={() => { onWithdraw(listing.id); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-white/5"><Archive className="w-3.5 h-3.5" /> {t('common:actions.withdraw')}</button>
           <Link to={`/p/${listing.plant_id || listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Printer className="w-3.5 h-3.5" /> {t('common:actions.print')} QR</Link>

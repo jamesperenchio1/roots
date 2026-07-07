@@ -1,5 +1,5 @@
 export type Category = 'aroid' | 'hoya' | 'cactus' | 'orchid' | 'succulent' | 'fern' | 'other';
-export type ListingStatus = 'active' | 'sold' | 'withdrawn' | 'draft';
+export type ListingStatus = 'draft' | 'pending_review' | 'active' | 'sold' | 'withdrawn' | 'rejected';
 export type TransactionStatus = 'pending_payment' | 'paid_in_escrow' | 'shipped' | 'delivered' | 'completed' | 'disputed' | 'refunded' | 'cancelled';
 export type PlantStatus = 'active' | 'deceased' | 'lost';
 export type DisputeStatus = 'open' | 'under_review' | 'resolved_buyer' | 'resolved_seller' | 'resolved_partial';
@@ -44,6 +44,21 @@ export interface ShippingAddress {
   phone: string;
 }
 
+export interface UserLocation {
+  id: string;
+  profile_id: string;
+  name: string;
+  address_line?: string;
+  province?: string;
+  lat?: number;
+  lng?: number;
+  is_default: boolean;
+  verified_at?: string;
+  verification_method?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Species {
   id: string;
   scientific_name: string;
@@ -86,6 +101,14 @@ export interface Listing {
   pickup_lat?: number;
   pickup_lng?: number;
   status: ListingStatus;
+  review_status?: string;
+  qr_verification_photo_url?: string;
+  qr_verified_at?: string;
+  qr_verified_by?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  review_reason?: string;
+  review_notes?: string;
   created_at: string;
   last_photo_update_at: string;
   plant?: Plant;
@@ -556,6 +579,7 @@ export interface Offer {
   message?: string;
   status: OfferStatus;
   counter_price_thb?: number;
+  conversation_id?: string;
   created_at: string;
   responded_at?: string;
   listing?: Listing;

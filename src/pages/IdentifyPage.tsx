@@ -56,20 +56,7 @@ export default function IdentifyPage() {
   const [notes, setNotes] = useState('');
   const initialized = useRef(false);
 
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-    const id = searchParams.get('id');
-    if (id) {
-      loadRequest(id);
-    } else {
-      createIdentificationRequest({ userId: user?.id, country }).then((req) => {
-        setRequestId(req.id);
-      }).catch((err) => toast.error(err.message));
-    }
-  }, [searchParams, user?.id, country]);
-
-  const loadRequest = async (id: string) => {
+  const loadRequest = useCallback(async (id: string) => {
     const req = await getIdentificationRequest(id);
     if (!req) {
       toast.error('Identification request not found');
@@ -86,7 +73,20 @@ export default function IdentifyPage() {
       if (latest) setResult(latest);
       setCurrentStepIndex(EVIDENCE_FLOW.length + 2);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    const id = searchParams.get('id');
+    if (id) {
+      loadRequest(id);
+    } else {
+      createIdentificationRequest({ userId: user?.id, country }).then((req) => {
+        setRequestId(req.id);
+      }).catch((err) => toast.error(err.message));
+    }
+  }, [searchParams, user?.id, country, loadRequest]);
 
   const handleMediaUploaded = useCallback((media: UploadedMedia, type: EvidenceType) => {
     setEvidence((prev) => {

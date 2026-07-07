@@ -106,6 +106,14 @@
     "activeListingsCount": "รายการที่กำลังขาย ({{count}})",
     "noActiveListings": "ผู้ขายรายนี้ไม่มีรายการที่กำลังขาย"
   },
+  "reviews": {
+    "noneYet": "ยังไม่มีรีวิว",
+    "all": "ทั้งหมด",
+    "count": "{{count}} รีวิว",
+    "viewAll": "ดูรีวิวทั้งหมด {{count}} รายการ",
+    "noTagMatch": "ไม่มีรีวิวที่ตรงกับแท็กนี้",
+    "anonymous": "ไม่ระบุชื่อ"
+  },
   "market": {
     "title": "ราคาตลาด",
     "trendingUp": "ราคาขึ้น",
@@ -126,7 +134,7 @@
   },
   "create": {
     "title": "สร้างรายการ",
-    "subtitle": "ลงขายต้นไม้ทุกชนิด — ตั้งแต่โหระพาถึงมอนสเตอร่าด่าง",
+    "subtitle": "สร้างรายการขายต้นไม้ใหม่",
     "stepIndicator": "ขั้นตอนที่ 1 จาก 2",
     "photosLabel": "รูปภาพ (1-10)",
     "photoAlt": "รูปที่ {{index}}",
@@ -135,7 +143,7 @@
     "photosReady": "{{count}} รูปพร้อมแล้ว",
     "photosReady_plural": "{{count}} รูปพร้อมแล้ว",
     "speciesLabel": "สายพันธุ์ต้นไม้ *",
-    "speciesPlaceholder": "พิมพ์ 'โหระพา', 'มอนสเตอร่า', 'พลูด่าง'...",
+    "speciesPlaceholder": "ค้นหาสายพันธุ์...",
     "careLabel": "การดูแล",
     "priceLabel": "ราคา (บาท) *",
     "pricePlaceholder": "เช่น 500",
@@ -181,8 +189,8 @@
     "published": "รายการของคุณเผยแพร่สู่ตลาดแล้ว",
     "createFailed": "ไม่สามารถสร้างรายการได้",
     "successTitle": "สร้างรายการสำเร็จ",
-    "successSubtitle": "{{name}} ของคุณเปิดขายบน Root แล้ว",
-    "successDescription": "ผู้ซื้อสามารถค้นหา เปรียบเทียบราคา และซื้อด้วยความปลอดภัยจากเอสโครว",
+    "successSubtitle": "{{name}} ของคุณถูกส่งเพื่อตรวจสอบแล้ว",
+    "successDescription": "เมื่อได้รับการอนุมัติ ผู้ซื้อจะสามารถค้นหา เปรียบเทียบราคา และซื้อด้วยการคุ้มครองเอสโครว์",
     "provenanceQrTitle": "คิวอาร์โค้ดตรวจสอบที่มา",
     "provenanceQrAlt": "คิวอาร์โค้ดตรวจสอบที่มา",
     "autoDownloaded": "ดาวน์โหลดลงอุปกรณ์ของคุณโดยอัตโนมัติ",
