@@ -15,19 +15,22 @@ CREATE TABLE IF NOT EXISTS public.offers (
 ALTER TABLE public.offers ENABLE ROW LEVEL SECURITY;
 
 -- Sellers and buyers can see their own offers.
-CREATE POLICY IF NOT EXISTS offers_select_own
+DROP POLICY IF EXISTS offers_select_own ON public.offers;
+CREATE POLICY offers_select_own
   ON public.offers
   FOR SELECT
   USING (buyer_id = auth.uid() OR seller_id = auth.uid());
 
 -- Buyers can insert offers.
-CREATE POLICY IF NOT EXISTS offers_insert_buyer
+DROP POLICY IF EXISTS offers_insert_buyer ON public.offers;
+CREATE POLICY offers_insert_buyer
   ON public.offers
   FOR INSERT
   WITH CHECK (buyer_id = auth.uid());
 
 -- Both parties can update offers they participate in (accept/reject/counter/withdraw).
-CREATE POLICY IF NOT EXISTS offers_update_parties
+DROP POLICY IF EXISTS offers_update_parties ON public.offers;
+CREATE POLICY offers_update_parties
   ON public.offers
   FOR UPDATE
   USING (buyer_id = auth.uid() OR seller_id = auth.uid());

@@ -15,22 +15,26 @@ CREATE TABLE IF NOT EXISTS public.user_locations (
 
 ALTER TABLE public.user_locations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS user_locations_select_own
+DROP POLICY IF EXISTS user_locations_select_own ON public.user_locations;
+CREATE POLICY user_locations_select_own
   ON public.user_locations
   FOR SELECT
   USING (profile_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS user_locations_insert_own
+DROP POLICY IF EXISTS user_locations_insert_own ON public.user_locations;
+CREATE POLICY user_locations_insert_own
   ON public.user_locations
   FOR INSERT
   WITH CHECK (profile_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS user_locations_update_own
+DROP POLICY IF EXISTS user_locations_update_own ON public.user_locations;
+CREATE POLICY user_locations_update_own
   ON public.user_locations
   FOR UPDATE
   USING (profile_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS user_locations_delete_own
+DROP POLICY IF EXISTS user_locations_delete_own ON public.user_locations;
+CREATE POLICY user_locations_delete_own
   ON public.user_locations
   FOR DELETE
   USING (profile_id = auth.uid());
