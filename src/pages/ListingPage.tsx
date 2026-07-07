@@ -89,11 +89,32 @@ export default function ListingPage() {
   const goTo = (i: number) => setActiveImage((i + gallery.length) % gallery.length);
   const goNext = () => goTo(activeImage + 1);
   const goPrev = () => goTo(activeImage - 1);
-  const priceData = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 90).map(ps => ({
-    date: ps.snapshot_date,
-    price: ps.median_price_thb,
-    volume: ps.sale_count
-  }));
+  const priceData = (() => {
+    const snapshots = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 90).map(ps => ({
+      date: ps.snapshot_date,
+      price: ps.median_price_thb,
+      volume: ps.sale_count
+    }));
+    if (snapshots.length > 0) return snapshots;
+
+    // No market history yet — draw a line from the listing price so the
+    // chart is never empty on a real product page. Falls back to 0 when
+    // price is missing.
+    const price = listing.price_thb ?? 0;
+    const today = new Date();
+    const created = listing.created_at ? new Date(listing.created_at) : today;
+    // Ensure at least two days so Recharts draws a visible line.
+    if (created.toDateString() === today.toDateString()) {
+      created.setDate(today.getDate() - 1);
+    }
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const synthetic: { date: string; price: number; volume: number }[] = [];
+    for (let d = new Date(created); d <= today; d.setDate(d.getDate() + 1)) {
+      synthetic.push({ date: fmt(new Date(d)), price, volume: 0 });
+    }
+    return synthetic;
+  })();
 
   const median30d = priceData.length > 0
     ? priceData.slice(-30).reduce((s, d) => s + d.price, 0) / Math.min(30, priceData.length)
@@ -331,7 +352,7 @@ export default function ListingPage() {
           </p>
           <PriceChart data={priceData} height={300} showVolume={true} />
           <div className="mt-6">
-            <StatsPanel speciesId={speciesId} />
+            <StatsPanel speciesId={speciesId} fallbackPrice={listing.price_thb} />
           </div>
         </div>
       </div>

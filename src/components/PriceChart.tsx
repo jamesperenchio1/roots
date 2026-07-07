@@ -137,7 +137,12 @@ export function Sparkline({ data, width = 80, height = 24, color = '#4ade80' }: 
   );
 }
 
-export function StatsPanel({ speciesId }: { speciesId: string }) {
+interface StatsPanelProps {
+  speciesId: string;
+  fallbackPrice?: number;
+}
+
+export function StatsPanel({ speciesId, fallbackPrice }: StatsPanelProps) {
   const { t } = useTranslation(['marketplace', 'common']);
   const stats30 = getSpeciesPriceStats(speciesId, 30);
   const stats90 = getSpeciesPriceStats(speciesId, 90);
@@ -146,15 +151,15 @@ export function StatsPanel({ speciesId }: { speciesId: string }) {
     : 0;
   const allTimeData = getPriceSnapshotsForSpecies(speciesId, undefined, 180);
   const allPrices = allTimeData.map(d => d.median_price_thb);
-  const lowest = allPrices.length > 0 ? Math.min(...allPrices) : 0;
-  const highest = allPrices.length > 0 ? Math.max(...allPrices) : 0;
+  const lowest = allPrices.length > 0 ? Math.min(...allPrices) : (fallbackPrice ?? 0);
+  const highest = allPrices.length > 0 ? Math.max(...allPrices) : (fallbackPrice ?? 0);
   const totalSales = allTimeData.reduce((s, d) => s + d.sale_count, 0);
 
   const fmtPrice = (n: number) => `${n.toLocaleString()} ${t('common:currency')}`;
 
   const stats = [
-    { label: t('marketplace:stats.median30d'), value: stats30 ? fmtPrice(stats30.median) : t('marketplace:stats.na') },
-    { label: t('marketplace:stats.mean90d'), value: stats90 ? fmtPrice(stats90.mean) : t('marketplace:stats.na') },
+    { label: t('marketplace:stats.median30d'), value: stats30 ? fmtPrice(stats30.median) : (fallbackPrice !== undefined ? fmtPrice(fallbackPrice) : t('marketplace:stats.na')) },
+    { label: t('marketplace:stats.mean90d'), value: stats90 ? fmtPrice(stats90.mean) : (fallbackPrice !== undefined ? fmtPrice(fallbackPrice) : t('marketplace:stats.na')) },
     { label: t('marketplace:stats.lowest'), value: fmtPrice(lowest) },
     { label: t('marketplace:stats.highest'), value: fmtPrice(highest) },
     { label: t('marketplace:stats.totalSales'), value: `${totalSales}` },
