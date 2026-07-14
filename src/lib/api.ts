@@ -720,6 +720,31 @@ export async function withdrawListing(id: string): Promise<void> {
   if (local) local.status = 'withdrawn';
 }
 
+export async function markListingSold(id: string, buyerId?: string): Promise<void> {
+  const { error } = await supabase.from('listings').update({ status: 'sold' }).eq('id', id);
+  if (error) throw error;
+  const local = LISTINGS.find(l => l.id === id);
+  if (local) local.status = 'sold';
+  // If a buyer is provided, record a manual transfer so provenance stays intact.
+  if (buyerId && local) {
+    const { data: plant, error: plantError } = await supabase
+      .from('plants')
+      .select('id')
+      .eq('id', local.plant_id || '')
+      .single();
+    if (!plantError && plant) {
+      await supabase.from('transfers').insert({
+        plant_id: plant.id,
+        from_user_id: local.seller_id,
+        to_user_id: buyerId,
+        sale_price_thb: local.price_thb,
+        transferred_at: new Date().toISOString(),
+      }).then(() => {});
+      await supabase.from('plants').update({ current_owner_id: buyerId }).eq('id', plant.id).then(() => {});
+    }
+  }
+}
+
 export async function fetchPlant(plantId: string): Promise<Plant | null> {
   try {
     const { data, error } = await supabase.from('plants').select('*').eq('id', plantId).single();

@@ -14,7 +14,7 @@ import {
 } from '@/data/mockData';
 import {
   getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived,
-  getSignedSlipUrl, withdrawListing, updateProfile,
+  getSignedSlipUrl, withdrawListing, markListingSold, updateProfile,
   hydrateUserTransactions, hydrateUserOffers, subscribeOffers, getOffersVersion
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -68,6 +68,7 @@ export default function SellerDashboardPage() {
   const [activeTab, setActiveTab] = useState(tab && TABS_DEF.some(t => t.id === tab) ? tab : 'listings');
   const [shipModalOrder, setShipModalOrder] = useState<string | null>(null);
   const [withdrawConfirm, setWithdrawConfirm] = useState<string | null>(null);
+  const [markSoldConfirm, setMarkSoldConfirm] = useState<string | null>(null);
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState<string>('all');
   const [, setRefreshKey] = useState(0);
@@ -134,6 +135,17 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handleMarkSold = async (id: string) => {
+    try {
+      await markListingSold(id);
+      toast.success(t('dashboard:seller.markedSold'));
+      setMarkSoldConfirm(null);
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
+    }
+  };
+
   const handleDuplicate = useCallback(async () => {
     toast.info(t('dashboard:seller.duplicateComingSoon'));
   }, [t]);
@@ -168,6 +180,15 @@ export default function SellerDashboardPage() {
             onCancel={() => setWithdrawConfirm(null)}
             onConfirm={() => handleWithdraw(withdrawConfirm)}
             confirmText={t('common:actions.withdraw')}
+          />
+        )}
+        {markSoldConfirm && (
+          <ConfirmModal
+            title={t('dashboard:seller.markAsSold')}
+            description={t('dashboard:seller.markAsSoldConfirm')}
+            onCancel={() => setMarkSoldConfirm(null)}
+            onConfirm={() => handleMarkSold(markSoldConfirm)}
+            confirmText={t('dashboard:seller.markAsSold')}
           />
         )}
         {shipModalOrder && (
@@ -212,7 +233,7 @@ export default function SellerDashboardPage() {
         </div>
 
         {activeTab === 'listings' && (
-          <ListingsTab listings={listings} onWithdraw={setWithdrawConfirm} onDuplicate={handleDuplicate} t={t} />
+          <ListingsTab listings={listings} sales={allSales} onWithdraw={setWithdrawConfirm} onMarkSold={setMarkSoldConfirm} onDuplicate={handleDuplicate} t={t} />
         )}
         {activeTab === 'orders' && (
           <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onViewSlip={handleViewSlip} onConfirmPayment={handleConfirmPayment} onShip={setShipModalOrder} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
@@ -247,7 +268,7 @@ function ConfirmModal({ title, description, onCancel, onConfirm, confirmText }: 
   );
 }
 
-function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listing[]; onWithdraw: (id: string) => void; onDuplicate: () => void; t: TFunction }) {
+function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplicate, t }: { listings: Listing[]; sales: Transaction[]; onWithdraw: (id: string) => void; onMarkSold: (id: string) => void; onDuplicate: () => void; t: TFunction }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -270,6 +291,8 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
           const speciesData = ALL_SPECIES.find(s => l.plant_id?.includes(s.id));
           const price30d = getSpeciesPriceStats(l.plant_id?.replace('p-', 'sp-') || '', 30);
           const vsMarket = price30d ? ((l.price_thb - price30d.median) / price30d.median * 100).toFixed(0) : '0';
+          const sale = sales.find(s => s.listing_id === l.id);
+          const soldTo = sale?.buyer?.display_name;
           return (
             <div key={l.id} className="group bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/15 hover:-translate-y-0.5 transition-all">
               <div className="flex items-start gap-4">
@@ -282,6 +305,9 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
                     <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400 shrink-0">{t(`common:status.${l.status}`)}</span>
                   </div>
                   <p className="text-xs text-zinc-500 truncate mb-2">{l.species?.scientific_name || speciesData?.scientific_name}</p>
+                  {l.status === 'sold' && soldTo && (
+                    <p className="text-xs text-emerald-400 mb-2">{t('dashboard:seller.soldTo', { name: soldTo })}</p>
+                  )}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
                     <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
                     <span>{l.size_category}</span>
@@ -292,7 +318,7 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
                   </div>
                 </div>
                 <div className="shrink-0">
-                  <ListingActions listing={l} onWithdraw={onWithdraw} onDuplicate={onDuplicate} t={t} />
+                  <ListingActions listing={l} onWithdraw={onWithdraw} onMarkSold={onMarkSold} onDuplicate={onDuplicate} t={t} />
                 </div>
               </div>
             </div>
@@ -311,7 +337,7 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
   );
 }
 
-function ListingActions({ listing, onWithdraw, onDuplicate, t }: { listing: Listing; onWithdraw: (id: string) => void; onDuplicate: () => void; t: TFunction }) {
+function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t }: { listing: Listing; onWithdraw: (id: string) => void; onMarkSold: (id: string) => void; onDuplicate: () => void; t: TFunction }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -361,6 +387,14 @@ function ListingActions({ listing, onWithdraw, onDuplicate, t }: { listing: List
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-white/5"
             >
               <ScanSearch className="w-3.5 h-3.5" /> Verify QR
+            </button>
+          )}
+          {(listing.status === 'active' || listing.status === 'pending_review') && (
+            <button
+              onClick={() => { onMarkSold(listing.id); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-white/5"
+            >
+              <DollarSign className="w-3.5 h-3.5" /> {t('dashboard:seller.markAsSold')}
             </button>
           )}
           <button onClick={() => { onDuplicate(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Copy className="w-3.5 h-3.5" /> {t('common:actions.duplicate')}</button>

@@ -5,7 +5,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 interface SocialAuthButtonsProps {
+  /** Full URL used as Supabase redirectTo (must not contain a hash fragment). */
   redirect?: string;
+  /** In-app path to return the user to after OAuth succeeds (e.g. `/browse`). */
+  returnPath?: string;
 }
 
 const PROVIDERS: { id: Provider; labelKey: string; icon: React.ReactNode }[] = [
@@ -44,7 +47,7 @@ const PROVIDERS: { id: Provider; labelKey: string; icon: React.ReactNode }[] = [
   },
 ];
 
-export function SocialAuthButtons({ redirect }: SocialAuthButtonsProps) {
+export function SocialAuthButtons({ redirect, returnPath }: SocialAuthButtonsProps) {
   const { t } = useTranslation(['auth', 'common']);
   const { signInWithOAuth, isLoading } = useAuth();
 
@@ -53,6 +56,11 @@ export function SocialAuthButtons({ redirect }: SocialAuthButtonsProps) {
     // clean origin; Supabase appends the session tokens and the app's
     // onAuthStateChange listener picks them up.
     const cleanRedirect = redirect ? redirect.split('#')[0] : `${window.location.origin}/`;
+    if (returnPath) {
+      sessionStorage.setItem('oauth_return_path', returnPath);
+    } else {
+      sessionStorage.removeItem('oauth_return_path');
+    }
     const res = await signInWithOAuth(provider, cleanRedirect);
     if (!res.ok && res.error) {
       toast.error(res.error);

@@ -70,6 +70,24 @@ function networkErrorMessage(): string {
   return i18n.t('common:errors.network');
 }
 
+function consumeOAuthReturnPath(): string | null {
+  try {
+    const path = sessionStorage.getItem('oauth_return_path');
+    if (path) {
+      sessionStorage.removeItem('oauth_return_path');
+      return path;
+    }
+  } catch {
+    // sessionStorage may be unavailable in private/incognito or restricted contexts.
+  }
+  return null;
+}
+
+function applyOAuthReturnPath(path: string) {
+  const target = path === '/' || path === '' ? '/#/' : `/#${path}`;
+  window.location.replace(target);
+}
+
 async function fetchProfile(id: string): Promise<Profile | null> {
   try {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
@@ -150,6 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (p) {
             setUser(p);
             startSubscriptions(session.user.id);
+            const returnPath = consumeOAuthReturnPath();
+            if (returnPath) applyOAuthReturnPath(returnPath);
           }
         } else {
           setUser(null);
