@@ -122,8 +122,8 @@ export default function Navbar() {
           <Link to="/market" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.market')}</Link>
           <Link to="/about" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.about')}</Link>
           <Link to="/contact" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.contact')}</Link>
-          <Link to="/how-it-works" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">How It Works</Link>
-          <Link to="/fees" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">Fees</Link>
+          <Link to="/how-it-works" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('home:sections.howItWorks')}</Link>
+          <Link to="/fees" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('common:nav.fees')}</Link>
           {user ? (
             <>
               <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.dashboard')}</Link>

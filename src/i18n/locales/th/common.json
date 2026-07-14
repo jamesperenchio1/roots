@@ -17,7 +17,9 @@
     "signup": "สมัครสมาชิก",
     "logout": "ออกจากระบบ",
     "scan": "สแกน QR",
-    "search": "ค้นหาต้นไม้..."
+    "search": "ค้นหาต้นไม้...",
+    "fees": "ค่าธรรมเนียม",
+    "qrProvenance": "QR ตรวจสอบที่มา"
   },
   "actions": {
     "save": "บันทึก",
@@ -104,6 +106,7 @@
     "switch": "เปลี่ยนภาษา"
   },
   "unknown": "ไม่ระบุพันธุ์ไม้",
+  "unknownUser": "ผู้ใช้ที่ไม่ระบุ",
   "errorBoundary": {
     "title": "เกิดข้อผิดพลาด",
     "description": "เราพบข้อผิดพลาดที่ไม่คาดคิด กรุณาลองรีเฟรชหน้าใหม่",
@@ -144,15 +147,122 @@
     "light": "แสง: {{level}} {{detail}}",
     "fallbackNote": "แสดงเคล็ดลับการดูแลจากฐานข้อมูลในประเทศ เชื่อมต่อ Perenual เพื่อดูคู่มือฉบับเต็ม"
   },
-  "reviews": {
-    "anonymous": "ไม่ระบุชื่อ",
-    "noneYet": "ยังไม่มีรีวิว",
-    "sellerReviews": "รีวิวผู้ขาย",
-    "count_one": "{{count}} รีวิว",
-    "count_other": "{{count}} รีวิว",
-    "all": "ทั้งหมด",
-    "viewAll": "ดูรีวิวทั้ง {{count}} รายการ",
-    "noTagMatch": "ไม่มีรีวิวที่ตรงกับแท็กนี้"
+  "comments": {
+    "title": "พูดคุยในชุมชน",
+    "sectionLabel": "การสนทนาในชุมชน",
+    "placeholder": "แชร์ความคืบหน้า ถามคำถาม หรือเริ่มบทสนทนา…",
+    "replyPlaceholder": "เขียนตอบกลับ…",
+    "reply": "ตอบกลับ",
+    "edited": "แก้ไขแล้ว",
+    "deleted": "ลบแล้ว",
+    "deletedMessage": "ความคิดเห็นนี้ถูกลบแล้ว",
+    "showReplies": "ดู {{count}} การตอบกลับ",
+    "showReplies_one": "ดู {{count}} การตอบกลับ",
+    "hideReplies": "ซ่อนการตอบกลับ",
+    "viewThread": "ดูเธรด",
+    "emptyTitle": "ยังไม่มีการสนทนา",
+    "emptyDescription": "เป็นคนแรกที่แชร์รูปถ่าย ถามคำถาม หรือแบ่งปันคำแนะนำการดูแล",
+    "loginToJoin": "เข้าสู่ระบบเพื่อร่วมสนทนา",
+    "replyingTo": "กำลังตอบกลับ {{author}}",
+    "viewImage": "ดูรูปภาพ {{index}}",
+    "imageAlt": "รูปภาพความคิดเห็น {{index}}",
+    "imageLightbox": "ดูรูปภาพขยาย",
+    "reactions": {
+      "like": "ถูกใจ",
+      "addReaction": "เพิ่มรีแอคชัน",
+      "reactWith": "รีแอคด้วย {{reaction}}"
+    },
+    "report": {
+      "label": "รายงาน",
+      "title": "รายงานความคิดเห็น",
+      "description": "ช่วยให้ ROOTS เป็นพื้นที่ที่น่าต้อนรับ ทีมงานจะตรวจสอบการรายงาน",
+      "reason": "เหตุผล",
+      "selectReason": "เลือกเหตุผล",
+      "details": "รายละเอียดเพิ่มเติม (ถ้ามี)",
+      "detailsPlaceholder": "บอกเราเพิ่มเติมเกี่ยวกับเหตุผลที่รายงาน…",
+      "reasons": {
+        "spam": "สแปม",
+        "harassment": "การคุกคาม",
+        "misinformation": "ข้อมูลเท็จ",
+        "inappropriate": "เนื้อหาไม่เหมาะสม",
+        "off_topic": "นอกประเด็น",
+        "other": "อื่น ๆ"
+      },
+      "submit": "ส่งรายงาน"
+    },
+    "deleteConfirm": "ลบความคิดเห็นนี้หรือไม่ การกระทำนี้ไม่สามารถย้อนกลับได้"
+  },
+  "sellerReviews": {
+    "title": "รีวิวผู้ขาย",
+    "overallRating": "คะแนนโดยรวม",
+    "writtenReview": "รีวิวเป็นลายลักษณ์",
+    "tapToRate": "แตะเพื่อให้คะแนน",
+    "rateStar": "ให้ {{star}} ดาว",
+    "wouldBuyAgain": "จะกลับมาซื้ออีก",
+    "yes": "ใช่",
+    "no": "ไม่",
+    "dimensions": {
+      "packaging": "การแพ็ค",
+      "plant_condition": "สภาพต้นไม้",
+      "communication": "การสื่อสาร",
+      "shipping_speed": "ความเร็วการจัดส่ง",
+      "listing_accuracy": "ความถูกต้องของรายการ"
+    },
+    "rateDimension": "ให้คะแนน {{dimension}} {{star}} ดาว",
+    "optionalPhotos": "รูปภาพ (ไม่บังคับ)",
+    "submitReview": "ส่งรีวิว",
+    "noReviewsYet": "ยังไม่มีรีวิว",
+    "firstReviewPrompt": "เป็นคนแรกที่แชร์ประสบการณ์หลังการซื้อ",
+    "basedOnCount": "จาก {{count}} รีวิว",
+    "verifiedBuyer": "ผู้ซื้อที่ยืนยันแล้ว",
+    "ratingOutOf": "{{rating}} จาก 5 ดาว",
+    "wouldBuyAgainYes": "จะกลับมาซื้ออีก",
+    "wouldBuyAgainNo": "ไม่กลับมาซื้ออีก",
+    "reviewImageAlt": "รูปรีวิว {{index}}",
+    "ratingLabels": {
+      "1": "แย่",
+      "2": "พอใช้",
+      "3": "ดี",
+      "4": "ดีมาก",
+      "5": "ยอดเยี่ยม"
+    },
+    "ratingRequired": "กรุณาให้คะแนนดาวโดยรวม",
+    "commentPlaceholder": "แชร์ประสบการณ์กับผู้ขายรายนี้... (อย่างน้อย 20 ตัวอักษร)",
+    "commentMinLength": "ความคิดเห็นต้องมีอย่างน้อย 20 ตัวอักษร"
+  },
+  "savedPlaces": {
+    "title": "สถานที่บันทึกไว้",
+    "addPlace": "เพิ่มสถานที่",
+    "placeName": "ชื่อสถานที่",
+    "placeNamePlaceholder": "บ้าน ร้านค้า โรงเรือน...",
+    "addressArea": "ที่อยู่ / พื้นที่",
+    "addressPlaceholder": "เช่น ตลาดนัดจตุจักร กรุงเทพฯ",
+    "pinOnMap": "ปักหมุดบนแผนที่",
+    "makeDefault": "ตั้งเป็นสถานที่รับสินค้าเริ่มต้น",
+    "update": "อัปเดตสถานที่",
+    "save": "บันทึกสถานที่",
+    "loading": "กำลังโหลดสถานที่…",
+    "noAddress": "ไม่มีที่อยู่",
+    "setDefault": "ตั้งเป็นค่าเริ่มต้น",
+    "verifyGps": "ยืนยันด้วยตำแหน่ง GPS ปัจจุบัน",
+    "confirmOnMap": "ยืนยันบนแผนที่",
+    "empty": "ยังไม่มีสถานที่ที่บันทึกไว้",
+    "saved": "บันทึกสถานที่แล้ว",
+    "updated": "อัปเดตสถานที่แล้ว",
+    "removed": "ลบสถานที่แล้ว",
+    "verifiedGps": "ยืนยันตำแหน่งด้วย GPS แล้ว",
+    "confirmedMap": "ยืนยันตำแหน่งบนแผนที่แล้ว",
+    "errors": {
+      "nameRequired": "กรุณาตั้งชื่อสถานที่",
+      "pinRequired": "กรุณาปักหมุดบนแผนที่",
+      "saveFailed": "ไม่สามารถบันทึกสถานที่ได้",
+      "removeFailed": "ไม่สามารถลบสถานที่ได้",
+      "setDefaultFailed": "ไม่สามารถตั้งเป็นค่าเริ่มต้นได้",
+      "tooFar": "คุณอยู่ห่าง {{distance}} เมตร ต้องอยู่ในระยะ 500 เมตรเพื่อยืนยัน",
+      "gpsFailed": "ไม่สามารถรับตำแหน่งอุปกรณ์ของคุณได้",
+      "verificationFailed": "การยืนยันล้มเหลว",
+      "confirmFailed": "ไม่สามารถยืนยันได้"
+    }
   },
   "notifications": {
     "time": {
@@ -282,7 +392,7 @@
       "ruleBuyer": "ตัดสินให้ผู้ซื้อ",
       "ruleSeller": "ตัดสินให้ผู้ขาย",
       "partialRefund": "คืนเงินบางส่วน",
-      "resolvedAt": "ระงับแล้ว: {{date}} — {{amount}} บาท",
+      "resolvedAt": "ระงับแล้ว: {{date}} — {{amount}} {{currency}}",
       "resolutions": {
         "buyer": "ผู้ซื้อ",
         "seller": "ผู้ขาย",
@@ -315,7 +425,41 @@
       },
       "dismissed": "ปิดคดีรายงานแล้ว",
       "deleted": "ลบข้อความแล้ว"
+    },
+    "review": {
+      "loading": "กำลังโหลดคิวตรวจสอบ…",
+      "emptyTitle": "คิวตรวจสอบว่างเปล่า",
+      "emptyDescription": "ไม่มีรายการที่รอการอนุมัติ",
+      "pendingCount": "รอ {{count}} รายการ",
+      "sellerLabel": "ผู้ขาย",
+      "pickupLabel": "สถานที่รับเอง",
+      "qrVerified": "ตรวจสอบ QR แล้ว",
+      "qrVerifiedWithPhoto": "ตรวจสอบ QR แล้วพร้อมรูป",
+      "qrNotVerified": "ผู้ขายยังไม่ได้ตรวจสอบ QR",
+      "qrVerificationAlt": "การตรวจสอบ QR ของผู้ขาย",
+      "reasonLabel": "เหตุผล",
+      "selectReason": "เลือกเหตุผล",
+      "notesLabel": "บันทึก (ไม่บังคับ)",
+      "fail": "✗ ไม่ผ่าน",
+      "pass": "✓ ผ่าน",
+      "loadError": "ไม่สามารถโหลดรายการได้",
+      "approved": "อนุมัติรายการแล้ว",
+      "rejected": "ปฏิเสธรายการแล้ว",
+      "reviewFailed": "การตรวจสอบล้มเหลว",
+      "reasons": {
+        "qrVerified": "ตรวจสอบ QR แล้ว",
+        "manualPass": "ผ่านด้วยตนเอง",
+        "photoUnclear": "รูปภาพไม่ชัดเจน",
+        "wrongPlant": "ต้นไม้ไม่ตรง",
+        "manualFail": "ไม่ผ่านด้วยตนเอง"
+      }
     }
+  },
+  "footer": {
+    "company": "บริษัท",
+    "copyright": "2025 ROOTS Plant Market Co., Ltd. กรุงเทพฯ ประเทศไทย",
+    "termsShort": "ข้อกำหนด",
+    "privacyShort": "ความเป็นส่วนตัว"
   },
   "contact": {
     "title": "ติดต่อเรา",

@@ -1,7 +1,8 @@
 import type {
   Species, Profile, Listing, Transaction, Transfer, PriceSnapshot,
   Message, Dispute, WatchlistItem, PriceAlert, MarketOverview, DashboardStats,
-  ProvenanceChain, Review, Notification, Offer, TrendingSpecies,
+  ProvenanceChain, SellerReview, Comment, CommentImage, CommentReaction,
+  CommentMention, CommentReport, Notification, Offer, TrendingSpecies,
   Conversation, ConversationParticipant, MessageAttachment, MessageReaction,
   MessageRead, MessageReport, UserPresence, EmailQueueItem
 } from '@/types';
@@ -91,7 +92,17 @@ export const WATCHLIST: WatchlistItem[] = [];
 
 export const PRICE_ALERTS: PriceAlert[] = [];
 
-export const REVIEWS: Review[] = [];
+export const SELLER_REVIEWS: SellerReview[] = [];
+
+export const COMMENTS: Comment[] = [];
+
+export const COMMENT_IMAGES: CommentImage[] = [];
+
+export const COMMENT_REACTIONS: CommentReaction[] = [];
+
+export const COMMENT_MENTIONS: CommentMention[] = [];
+
+export const COMMENT_REPORTS: CommentReport[] = [];
 
 export const NOTIFICATIONS: Notification[] = [];
 

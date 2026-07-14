@@ -1,5 +1,6 @@
 import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getTransactionsWithDetails, WATCHLIST, DISPUTES, getSpeciesById } from '@/data/mockData';
@@ -9,19 +10,21 @@ import { sanitizeText } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
 import SavedPlacesManager from '@/components/SavedPlacesManager';
 
-const TABS = [
-  { id: 'purchases', label: 'Purchases', icon: ShoppingBag },
-  { id: 'plants', label: 'My Plants', icon: Leaf },
-  { id: 'watchlist', label: 'Watchlist', icon: Heart },
-  { id: 'messages', label: 'Messages', icon: MessageSquare },
-  { id: 'disputes', label: 'Disputes', icon: AlertTriangle },
-  { id: 'settings', label: 'Settings', icon: Settings },
+const getTabs = (t: (key: string) => string) => [
+  { id: 'purchases', label: t('dashboard:buyer.purchases'), icon: ShoppingBag },
+  { id: 'plants', label: t('dashboard:buyer.myPlants'), icon: Leaf },
+  { id: 'watchlist', label: t('dashboard:buyer.watchlist'), icon: Heart },
+  { id: 'messages', label: t('dashboard:buyer.messages'), icon: MessageSquare },
+  { id: 'disputes', label: t('dashboard:buyer.disputes'), icon: AlertTriangle },
+  { id: 'settings', label: t('dashboard:buyer.settings'), icon: Settings },
 ];
 
 export default function DashboardPage() {
   const { user, refreshProfile } = useAuth();
   const { tab } = useParams<{ tab?: string }>();
-  const [activeTab, setActiveTab] = useState(tab && TABS.some(t => t.id === tab) ? tab : 'purchases');
+  const { t, i18n } = useTranslation(['dashboard', 'common', 'marketplace', 'messages']);
+  const tabs = getTabs(t);
+  const [activeTab, setActiveTab] = useState(tab && tabs.some(ta => ta.id === tab) ? tab : 'purchases');
   const [saving, setSaving] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     display_name: user?.display_name || '',
@@ -36,10 +39,10 @@ export default function DashboardPage() {
   useSyncExternalStore(subscribeOffers, getOffersVersion);
 
   useEffect(() => {
-    if (tab && TABS.some(t => t.id === tab)) {
+    if (tab && tabs.some(ta => ta.id === tab)) {
       setActiveTab(tab);
     }
-  }, [tab]);
+  }, [tab, tabs]);
 
   // Keep form in sync when user loads
   useEffect(() => {
@@ -95,9 +98,9 @@ export default function DashboardPage() {
         updated_at: new Date().toISOString(),
       });
       await refreshProfile();
-      toast.success('Settings saved.');
+      toast.success(t('dashboard:buyer.settingsSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save settings.');
+      toast.error(err instanceof Error ? err.message : t('dashboard:buyer.settingsSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -108,9 +111,9 @@ export default function DashboardPage() {
     setLocalWatchlist(prev => prev.filter(w => w.id !== watchId));
     try {
       await toggleWatch(user.id, type, targetId, false);
-      toast.success('Removed from watchlist');
+      toast.success(t('marketplace:listing.removedFromWatchlist'));
     } catch {
-      toast.error('Could not remove from watchlist');
+      toast.error(t('marketplace:listing.watchlistError'));
     }
   };
 
@@ -121,7 +124,7 @@ export default function DashboardPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-medium mb-1">My Offers ({myOffers.filter(o => o.status === 'pending').length} pending)</h2>
+              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.offers')} ({myOffers.filter(o => o.status === 'pending').length} {t('common:status.pending').toLowerCase()})</h2>
               <div className="space-y-3">
                 {myOffers.length > 0 ? myOffers.map(o => (
                   <OfferCard
@@ -131,20 +134,20 @@ export default function DashboardPage() {
                     onWithdraw={async () => {
                       try {
                         await withdrawOffer(o.id);
-                        toast.success('Offer withdrawn');
+                        toast.success(t('dashboard:buyer.offerWithdrawn'));
                         setOffersRefreshKey(k => k + 1);
                       } catch (err) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to withdraw');
+                        toast.error(err instanceof Error ? err.message : t('dashboard:buyer.offerWithdrawFailed'));
                       }
                     }}
                   />
                 )) : (
-                  <p className="text-zinc-600 text-sm py-4 text-center">No offers made yet</p>
+                  <p className="text-zinc-600 text-sm py-4 text-center">{t('dashboard:buyer.noOffers')}</p>
                 )}
               </div>
             </div>
             <div>
-              <h2 className="text-lg font-medium mb-1">Purchases ({transactions.length})</h2>
+              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.purchases')} ({transactions.length})</h2>
               <div className="space-y-3">
                 {transactions.length > 0 ? transactions.map(tx => (
                   <Link to={`/order/${tx.id}`} key={tx.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
@@ -153,8 +156,8 @@ export default function DashboardPage() {
                         <Package className="w-5 h-5 text-zinc-500" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Order #{tx.id.slice(-4)}</p>
-                        <p className="text-xs text-zinc-500">{tx.sale_price_thb.toLocaleString()} THB from {tx.seller?.display_name}</p>
+                        <p className="text-sm font-medium">{t('dashboard:buyer.orderLabel', { id: tx.id.slice(-4) })}</p>
+                        <p className="text-xs text-zinc-500">{tx.sale_price_thb.toLocaleString()} {t('common:currency')} {t('dashboard:buyer.fromSeller', { name: tx.seller?.display_name })}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -164,14 +167,14 @@ export default function DashboardPage() {
                         tx.status === 'delivered' ? 'bg-purple-500/10 text-purple-400' :
                         tx.status === 'disputed' ? 'bg-red-500/10 text-red-400' :
                         'bg-amber-500/10 text-amber-400'
-                      }`}>{tx.status}</span>
+                      }`}>{t(`common:status.${tx.status}`)}</span>
                       <ChevronRight className="w-4 h-4 text-zinc-600" />
                     </div>
                   </Link>
                 )) : (
                   <div className="text-center py-12">
-                    <p className="text-zinc-500 mb-2">No purchases yet</p>
-                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants</Link>
+                    <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noPurchases')}</p>
+                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">{t('common:empty.cta')}</Link>
                   </div>
                 )}
               </div>
@@ -184,18 +187,18 @@ export default function DashboardPage() {
           <div className="grid sm:grid-cols-2 gap-4">
             {getTransactionsWithDetails().filter(t => t.buyer_id === user?.id && t.status === 'completed').map(tx => (
               <div key={tx.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
-                <p className="text-sm font-medium mb-1">Plant #{tx.plant_id.slice(-4)}</p>
-                <p className="text-xs text-zinc-500 mb-2">Purchased for {tx.sale_price_thb.toLocaleString()} THB</p>
+                <p className="text-sm font-medium mb-1">{t('dashboard:buyer.plantLabel', { id: tx.plant_id.slice(-4) })}</p>
+                <p className="text-xs text-zinc-500 mb-2">{t('dashboard:buyer.purchasedFor', { amount: tx.sale_price_thb.toLocaleString(), currency: t('common:currency') })}</p>
                 <div className="flex gap-2">
-                  <Link to={`/p/${tx.plant_id}`} className="text-xs text-emerald-400 hover:underline">View Provenance</Link>
-                  <Link to={`/seller-dashboard/listings/new`} className="text-xs text-emerald-400 hover:underline">Relist</Link>
+                  <Link to={`/p/${tx.plant_id}`} className="text-xs text-emerald-400 hover:underline">{t('dashboard:buyer.viewProvenance')}</Link>
+                  <Link to={`/seller-dashboard/listings/new`} className="text-xs text-emerald-400 hover:underline">{t('common:actions.relist')}</Link>
                 </div>
               </div>
             ))}
             {getTransactionsWithDetails().filter(t => t.buyer_id === user?.id && t.status === 'completed').length === 0 && (
               <div className="text-center py-12 col-span-2">
-                <p className="text-zinc-500 mb-2">You don't own any plants yet</p>
-                <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Start collecting</Link>
+                <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noPlants')}</p>
+                <Link to="/browse" className="text-emerald-400 text-sm hover:underline">{t('dashboard:buyer.startCollecting')}</Link>
               </div>
             )}
           </div>
@@ -204,7 +207,7 @@ export default function DashboardPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-medium mb-1">My Price Alerts ({priceAlerts.length})</h2>
+              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.priceAlerts')} ({priceAlerts.length})</h2>
               <div className="space-y-3">
                 {priceAlerts.length > 0 ? priceAlerts.map(pa => (
                   <div key={pa.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
@@ -213,8 +216,8 @@ export default function DashboardPage() {
                         <Bell className="w-4 h-4 text-emerald-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{pa.species?.common_name_en || pa.species?.scientific_name || 'Unknown'}</p>
-                        <p className="text-xs text-zinc-500">Alert when price goes {pa.direction} {pa.threshold_thb.toLocaleString()} THB</p>
+                        <p className="text-sm font-medium">{pa.species?.common_name_en || pa.species?.scientific_name || t('common:unknown')}</p>
+                        <p className="text-xs text-zinc-500">{t('dashboard:buyer.priceAlertSummary', { direction: pa.direction, amount: pa.threshold_thb.toLocaleString(), currency: t('common:currency') })}</p>
                       </div>
                     </div>
                     <button
@@ -222,31 +225,31 @@ export default function DashboardPage() {
                         try {
                           await deletePriceAlert(pa.id);
                           setPriceAlerts(prev => prev.filter(p => p.id !== pa.id));
-                          toast.success('Price alert deleted');
+                          toast.success(t('dashboard:buyer.priceAlertDeleted'));
                         } catch (err) {
-                          toast.error(err instanceof Error ? err.message : 'Failed to delete');
+                          toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
                         }
                       }}
                       className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
                     >
-                      <Trash2 className="w-3 h-3" /> Remove
+                      <Trash2 className="w-3 h-3" /> {t('common:actions.remove')}
                     </button>
                   </div>
                 )) : (
-                  <p className="text-zinc-600 text-sm py-4 text-center">No price alerts set</p>
+                  <p className="text-zinc-600 text-sm py-4 text-center">{t('dashboard:buyer.noPriceAlerts')}</p>
                 )}
               </div>
             </div>
             <div>
-              <h2 className="text-lg font-medium mb-1">Watchlist ({localWatchlist.length})</h2>
+              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.watchlist')} ({localWatchlist.length})</h2>
               <div className="space-y-3">
                 {localWatchlist.length > 0 ? localWatchlist.map(w => {
                   const species = w.watch_type === 'species' ? getSpeciesById(w.target_id) : null;
                   return (
                     <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
                       <div>
-                        <p className="text-sm font-medium">{w.watch_type === 'species' ? 'Species' : 'Listing'} watch</p>
-                        <p className="text-xs text-zinc-500">Target: {species?.common_name_en || w.target_id}</p>
+                        <p className="text-sm font-medium">{w.watch_type === 'species' ? t('dashboard:buyer.speciesWatch') : t('dashboard:buyer.listingWatch')}</p>
+                        <p className="text-xs text-zinc-500">{t('dashboard:buyer.watchTarget', { name: species?.common_name_en || w.target_id })}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {w.watch_type === 'species' && (
@@ -254,7 +257,7 @@ export default function DashboardPage() {
                             to={`/species/${w.target_id}`}
                             className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
                           >
-                            <Bell className="w-3 h-3" /> Set Price Alert
+                            <Bell className="w-3 h-3" /> {t('marketplace:species.setPriceAlert')}
                           </Link>
                         )}
                         <button
@@ -262,15 +265,15 @@ export default function DashboardPage() {
                           onClick={() => handleRemoveWatch(w.id, w.target_id, w.watch_type)}
                           className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
                         >
-                          <X className="w-3 h-3" /> Remove
+                          <X className="w-3 h-3" /> {t('common:actions.remove')}
                         </button>
                       </div>
                     </div>
                   );
                 }) : (
                   <div className="text-center py-12">
-                    <p className="text-zinc-500 mb-2">Your watchlist is empty</p>
-                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Browse plants to watch</Link>
+                    <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noWatchlist')}</p>
+                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">{t('dashboard:buyer.browseToWatch')}</Link>
                   </div>
                 )}
               </div>
@@ -286,43 +289,43 @@ export default function DashboardPage() {
               if (threads.length === 0) {
                 return (
                   <div className="text-center py-12">
-                    <p className="text-zinc-500 mb-2">No messages yet</p>
-                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">Find plants to message sellers</Link>
+                    <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noMessages')}</p>
+                    <Link to="/browse" className="text-emerald-400 text-sm hover:underline">{t('dashboard:buyer.findPlantsToMessage')}</Link>
                   </div>
                 );
               }
               return (
                 <>
-                  {threads.slice(0, 3).map(t => (
-                    <Link to={`/messages/${t.threadId}`} key={t.threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
+                  {threads.slice(0, 3).map(thread => (
+                    <Link to={`/messages/${thread.threadId}`} key={thread.threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden">
-                          {t.listing?.photos?.[0] ? (
-                            <img src={t.listing.photos[0].storage_path} className="w-full h-full object-cover" alt="" />
+                          {thread.listing?.photos?.[0] ? (
+                            <img src={thread.listing.photos[0].storage_path} className="w-full h-full object-cover" alt="" />
                           ) : (
                             <MessageSquare className="w-4 h-4 text-zinc-500" />
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{t.otherUser?.display_name || 'Unknown'}</p>
-                          <p className="text-xs text-zinc-500 truncate max-w-xs">{t.lastMessage?.content}</p>
+                          <p className="text-sm font-medium">{thread.otherUser?.display_name || t('common:unknownUser')}</p>
+                          <p className="text-xs text-zinc-500 truncate max-w-xs">{thread.lastMessage?.content}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {t.unreadCount > 0 && (
+                        {thread.unreadCount > 0 && (
                           <span className="bg-emerald-500 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                            {t.unreadCount}
+                            {thread.unreadCount}
                           </span>
                         )}
-                        <span className="text-xs text-zinc-600">{t.lastMessage ? new Date(t.lastMessage.created_at).toLocaleDateString() : ''}</span>
+                        <span className="text-xs text-zinc-600">{thread.lastMessage ? new Date(thread.lastMessage.created_at).toLocaleDateString(i18n.language === 'th' ? 'th-TH' : 'en-GB') : ''}</span>
                       </div>
                     </Link>
                   ))}
                   <div className="flex items-center justify-between pt-2">
                     {totalUnread > 0 && (
-                      <span className="text-xs text-emerald-400">{totalUnread} unread message{totalUnread !== 1 ? 's' : ''}</span>
+                      <span className="text-xs text-emerald-400">{t('dashboard:buyer.unreadMessages', { count: totalUnread })}</span>
                     )}
-                    <Link to="/messages" className="text-sm text-emerald-400 hover:underline ml-auto">View All Messages</Link>
+                    <Link to="/messages" className="text-sm text-emerald-400 hover:underline ml-auto">{t('dashboard:buyer.viewAllMessages')}</Link>
                   </div>
                 </>
               );
@@ -335,17 +338,17 @@ export default function DashboardPage() {
             {DISPUTES.filter(d => d.status === 'open').map(d => (
               <div key={d.id} className="bg-zinc-900/30 border border-red-500/10 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Dispute #{d.id.slice(-4)}</span>
-                  <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{d.status}</span>
+                  <span className="text-sm font-medium">{t('dashboard:buyer.disputeLabel', { id: d.id.slice(-4) })}</span>
+                  <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{t(`common:status.${d.status}`)}</span>
                 </div>
-                <p className="text-xs text-zinc-500 mb-1">Reason: {d.reason}</p>
+                <p className="text-xs text-zinc-500 mb-1">{t('checkout:dispute.reasonLabel')}: {d.reason}</p>
                 <p className="text-sm text-zinc-400">{d.description}</p>
               </div>
             ))}
             {DISPUTES.filter(d => d.status === 'open').length === 0 && (
               <div className="text-center py-12">
-                <p className="text-zinc-500 mb-2">No active disputes</p>
-                <p className="text-zinc-600 text-sm">That is a good thing.</p>
+                <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noDisputes')}</p>
+                <p className="text-zinc-600 text-sm">{t('dashboard:buyer.noDisputesSubtitle')}</p>
               </div>
             )}
           </div>
@@ -354,7 +357,7 @@ export default function DashboardPage() {
         return (
           <div className="space-y-4 max-w-md">
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">Display Name</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('dashboard:buyer.displayNameLabel')}</label>
               <input
                 type="text"
                 value={settingsForm.display_name}
@@ -363,24 +366,24 @@ export default function DashboardPage() {
               />
             </div>
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">PromptPay ID</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('dashboard:buyer.promptpayIdLabel')}</label>
               <input
                 type="text"
                 value={settingsForm.promptpay_id}
                 onChange={e => setSettingsForm({ ...settingsForm, promptpay_id: e.target.value })}
-                placeholder="Phone or National ID"
+                placeholder={t('dashboard:buyer.promptpayPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
             <div>
-              <label className="text-sm text-zinc-400 mb-1.5 block">Language</label>
+              <label className="text-sm text-zinc-400 mb-1.5 block">{t('dashboard:buyer.languageLabel')}</label>
               <select
                 value={settingsForm.language_preference}
                 onChange={e => setSettingsForm({ ...settingsForm, language_preference: e.target.value as 'th' | 'en' })}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="th">Thai</option>
-                <option value="en">English</option>
+                <option value="th">{t('common:language.th')}</option>
+                <option value="en">{t('common:language.en')}</option>
               </select>
             </div>
             <button
@@ -388,7 +391,7 @@ export default function DashboardPage() {
               disabled={saving}
               className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? t('common:actions.saving') : t('common:actions.save')}
             </button>
             <div className="pt-6 border-t border-white/10">
               <SavedPlacesManager />
@@ -403,10 +406,10 @@ export default function DashboardPage() {
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-light tracking-tight mb-6">Dashboard</h1>
+        <h1 className="text-2xl font-light tracking-tight mb-6">{t('common:nav.dashboard')}</h1>
 
         <div className="flex overflow-x-auto gap-1 mb-6 pb-2 scrollbar-hide">
-          {TABS.map(tab => (
+          {tabs.map(tab => (
             <button
               key={tab.id}
               type="button"

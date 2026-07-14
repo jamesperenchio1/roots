@@ -40,6 +40,7 @@
     "viewSlip": "View payment slip",
     "openDispute": "Open dispute",
     "leaveReview": "Leave review",
+    "leaveSellerReview": "Leave seller review",
     "timeline": {
       "pending": "Order placed",
       "paid": "Payment confirmed",
@@ -52,6 +53,7 @@
     "statusUpdated": "Order status updated: {{status}}",
     "notFound": "Order not found",
     "qrVerified": "QR verified — escrow released to seller.",
+    "qrVerifyFailed": "QR verification failed. Please scan again or contact support.",
     "photoVerified": "Receipt confirmed — escrow released to seller.",
     "confirmError": "Failed to confirm receipt. Please try again.",
     "idLabel": "Order #{{id}}",
@@ -97,7 +99,8 @@
   },
   "errors": {
     "fixAddress": "Please fix the errors in your shipping address.",
-    "slipRequired": "Please upload your payment slip so the seller can verify it."
+    "slipRequired": "Please upload your payment slip so the seller can verify it.",
+    "sellerNoPromptPay": "This seller has not set a PromptPay ID and cannot accept payments right now."
   },
   "toast": {
     "paymentAutoVerified": "Payment verified automatically — your order is protected by escrow.",
@@ -140,28 +143,24 @@
     },
     "confirm": "Confirm Shipment"
   },
-  "review": {
-    "tags": {
-      "greatPackaging": "great packaging",
-      "asDescribed": "as described",
-      "fastShipping": "fast shipping",
-      "healthyPlant": "healthy plant",
-      "greatCommunication": "great communication",
-      "wouldRecommend": "would recommend",
-      "shippingDamage": "shipping damage",
-      "pests": "pests"
+  "sellerReview": {
+    "title": "Leave a Seller Review",
+    "overallRating": "Overall rating",
+    "dimension": {
+      "packaging": "Packaging",
+      "plantCondition": "Plant condition",
+      "communication": "Communication",
+      "shippingSpeed": "Shipping speed",
+      "listingAccuracy": "Listing accuracy"
     },
-    "loginRequired": "Log in to leave a review.",
-    "starRequired": "Please select a star rating.",
+    "wouldBuyAgain": "Would buy again",
+    "commentPlaceholder": "Share your experience with this seller... (min 20 characters)",
+    "characters": "{{count}} / 20+ characters",
+    "images": "Photos (optional)",
+    "starRequired": "Please select an overall star rating.",
     "commentMinLength": "Comment must be at least 20 characters.",
     "success": "Review submitted!",
     "error": "Failed to submit review.",
-    "title": "Leave a Review",
-    "ratingLabel": "{{rating}} stars",
-    "selectRating": "Select a rating",
-    "commentPlaceholder": "Share your experience with this seller... (min 20 characters)",
-    "characters": "{{count}} / 20+ characters",
-    "tagsLabel": "Select tags (optional)",
     "submit": "Submit Review"
   },
   "dispute": {

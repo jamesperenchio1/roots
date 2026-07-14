@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
+import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, ChevronLeft, ChevronRight, X, ZoomIn, MessageSquare } from 'lucide-react';
 import PlantCareCard from '@/components/PlantCareCard';
 import WeatherWidget from '@/components/WeatherWidget';
 import { PROVINCE_CITIES } from '@/lib/weather';
@@ -13,13 +13,14 @@ import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { toggleWatch, getOrCreateThreadId, fetchPlant } from '@/lib/api';
-import ReviewSection from '@/components/ReviewSection';
+
 import { generateQR } from '@/lib/promptpay';
 import MakeOfferModal from '@/components/MakeOfferModal';
 import ShareButtons from '@/components/ShareButtons';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import ProvenanceInfo from '@/components/ProvenanceInfo';
 import { getSrcSet, RESPONSIVE_WIDTHS, HERO_SIZES } from '@/lib/images';
+import { CommentSection } from '@/components/comments/CommentSection';
 
 export default function ListingPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
@@ -90,28 +91,24 @@ export default function ListingPage() {
   const goNext = () => goTo(activeImage + 1);
   const goPrev = () => goTo(activeImage - 1);
   const priceData = (() => {
-    const snapshots = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 90).map(ps => ({
+    // Load a full year so the chart range selector (30d/90d/6m/1y/all) has data to filter.
+    const snapshots = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 365).map(ps => ({
       date: ps.snapshot_date,
       price: ps.median_price_thb,
       volume: ps.sale_count
     }));
     if (snapshots.length > 0) return snapshots;
 
-    // No market history yet — draw a line from the listing price so the
-    // chart is never empty on a real product page. Falls back to 0 when
-    // price is missing.
+    // No market history yet — draw a flat line across a year so every range button shows data.
     const price = listing.price_thb ?? 0;
     const today = new Date();
-    const created = listing.created_at ? new Date(listing.created_at) : today;
-    // Ensure at least two days so Recharts draws a visible line.
-    if (created.toDateString() === today.toDateString()) {
-      created.setDate(today.getDate() - 1);
-    }
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const synthetic: { date: string; price: number; volume: number }[] = [];
-    for (let d = new Date(created); d <= today; d.setDate(d.getDate() + 1)) {
-      synthetic.push({ date: fmt(new Date(d)), price, volume: 0 });
+    for (let i = 365; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      synthetic.push({ date: fmt(d), price, volume: 0 });
     }
     return synthetic;
   })();
@@ -195,7 +192,7 @@ export default function ListingPage() {
                 </h1>
                 {listing.status !== 'active' && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    {listing.status === 'pending_review' ? 'Pending review' : listing.status}
+                    {listing.status === 'pending_review' ? t('marketplace:listing.pendingReview') : t(`common:status.${listing.status}`)}
                   </span>
                 )}
               </div>
@@ -214,10 +211,14 @@ export default function ListingPage() {
                 />
               </div>
 
-              {listing.seller_id && (
-                <div className="mt-4">
-                  <ReviewSection sellerId={listing.seller_id} compact />
-                </div>
+              {listing.species?.id && (
+                <Link
+                  to={`/species/${listing.species.id}#discussion`}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/5 bg-zinc-900/30 px-4 py-3 text-sm text-zinc-300 hover:border-white/10 hover:text-white transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4 text-emerald-400" />
+                  {t('marketplace:listing.joinDiscussion', { species: listing.species.common_name_en || listing.species.scientific_name })}
+                </Link>
               )}
             </div>
 
@@ -319,7 +320,7 @@ export default function ListingPage() {
               ) : (
                 <div className="flex-1">
                   <Button disabled className="w-full h-12 rounded-xl bg-zinc-800 text-zinc-500 cursor-not-allowed">
-                    {listing.status === 'pending_review' ? 'Under review' : 'Not available'}
+                    {listing.status === 'pending_review' ? t('marketplace:listing.underReview') : t('marketplace:listing.notAvailable')}
                   </Button>
                 </div>
               )}
@@ -354,6 +355,11 @@ export default function ListingPage() {
           <div className="mt-6">
             <StatsPanel speciesId={speciesId} fallbackPrice={listing.price_thb} />
           </div>
+        </div>
+
+        {/* Listing Comments */}
+        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6">
+          <CommentSection listingId={listing.id} />
         </div>
       </div>
 

@@ -86,6 +86,10 @@
     "escrowProtected": "ป้องกันด้วยเอสโครว — เงินจะถูกปล่อยหลังจากยืนยันการได้รับสินค้า",
     "qrTag": "มาพร้อมแท็ก QR ตรวจสอบที่มา",
     "scanQrCta": "สแกนเพื่อตรวจสอบที่มา",
+    "pendingReview": "รอการตรวจสอบ",
+    "underReview": "อยู่ระหว่างตรวจสอบ",
+    "notAvailable": "ไม่พร้อมขาย",
+    "joinDiscussion": "เข้าร่วมพูดคุยเกี่ยวกับ {{species}}",
     "priceHistoryDescription": "ข้อมูลการขายย้อนหลังของ {{species}} — ขนาด {{size}}"
   },
   "seller": {
@@ -113,6 +117,43 @@
     "viewAll": "ดูรีวิวทั้งหมด {{count}} รายการ",
     "noTagMatch": "ไม่มีรีวิวที่ตรงกับแท็กนี้",
     "anonymous": "ไม่ระบุชื่อ"
+  },
+  "sellerReviews": {
+    "verifiedBuyer": "ผู้ซื้อที่ยืนยันแล้ว",
+    "noReviewsYet": "ยังไม่มีรีวิว",
+    "firstReviewPrompt": "เป็นคนแรกที่รีวิวประสบการณ์การซื้อของคุณ",
+    "basedOnCount": "จาก {{count}} รีวิว",
+    "basedOnCount_one": "จาก {{count}} รีวิว",
+    "ratingOutOf": "{{rating}} จาก 5 ดาว",
+    "wouldBuyAgainYes": "จะซื้ออีก",
+    "wouldBuyAgainNo": "จะไม่ซื้ออีก",
+    "reviewImageAlt": "รูปภาพรีวิว {{index}}",
+    "overallRating": "คะแนนโดยรวม",
+    "ratingRequired": "กรุณาเลือกคะแนนโดยรวม",
+    "ratingLabels": {
+      "1": "แย่มาก",
+      "2": "แย่",
+      "3": "พอใช้",
+      "4": "ดี",
+      "5": "ดีมาก"
+    },
+    "tapToRate": "แตะเพื่อให้คะแนน",
+    "writtenReview": "รีวิวเป็นรูปแบบข้อความ",
+    "commentPlaceholder": "บรรจุภัณฑ์ สภาพต้นไม้ และการติดต่อสื่อสารเป็นอย่างไร",
+    "wouldBuyAgain": "คุณจะซื้อจากผู้ขายรายนี้อีกหรือไม่",
+    "yes": "ใช่",
+    "no": "ไม่",
+    "rateStar": "ให้ {{star}} ดาว",
+    "rateDimension": "ให้คะแนน {{dimension}} {{star}} ดาว",
+    "submitReview": "ส่งรีวิว",
+    "dimensions": {
+      "packaging": "บรรจุภัณฑ์",
+      "plant_condition": "สภาพต้นไม้",
+      "communication": "การติดต่อสื่อสาร",
+      "shipping_speed": "ความเร็วในการจัดส่ง",
+      "listing_accuracy": "ความตรงตามรายการ"
+    },
+    "unknownBuyer": "ผู้ซื้อไม่ระบุชื่อ"
   },
   "market": {
     "title": "ราคาตลาด",
@@ -191,6 +232,26 @@
     "successTitle": "สร้างรายการสำเร็จ",
     "successSubtitle": "{{name}} ของคุณถูกส่งเพื่อตรวจสอบแล้ว",
     "successDescription": "เมื่อได้รับการอนุมัติ ผู้ซื้อจะสามารถค้นหา เปรียบเทียบราคา และซื้อด้วยการคุ้มครองเอสโครว์",
+    "loadingIdentification": "กำลังโหลดผลการระบุพันธุ์…",
+    "prefilledFromIdentification": "เติมข้อมูลจากการระบุพันธุ์",
+    "commonNames": "ชื่อสามัญ: {{names}}",
+    "suggestedPrice": "ราคาแนะนำ {{price}} {{currency}}",
+    "loadingSavedPlaces": "กำลังโหลดสถานที่บันทึกไว้…",
+    "pickupFromSavedPlace": "รับเองจากสถานที่บันทึกไว้",
+    "selectSavedPlace": "เลือกสถานที่บันทึกไว้ (ไม่บังคับ)",
+    "tagSuggestions": {
+      "variegated": "ด่าง",
+      "rare": "หายาก",
+      "mature": "โตเต็มที่",
+      "seedling": "กล้า",
+      "cutting": "ตัดหัว",
+      "rooted": "มีราก",
+      "unrooted": "ยังไม่ราก",
+      "flowering": "ออกดอก",
+      "fragrant": "หอม",
+      "pet-friendly": "ปลอดภัยสำหรับสัตว์",
+      "beginner-friendly": "เหมาะกับมือใหม่"
+    },
     "provenanceQrTitle": "คิวอาร์โค้ดตรวจสอบที่มา",
     "provenanceQrAlt": "คิวอาร์โค้ดตรวจสอบที่มา",
     "autoDownloaded": "ดาวน์โหลดลงอุปกรณ์ของคุณโดยอัตโนมัติ",
@@ -225,6 +286,35 @@
     "saveFailed": "ไม่สามารถบันทึกการเปลี่ยนแปลงได้",
     "feeNotice": "เมื่อขายได้ คุณจะได้รับ {{net}} {{currency}} หลังหักค่าธรรมเนียมแพลตฟอร์ม 8% ({{fee}} {{currency}})",
     "feeNote": "ไม่มีค่าธรรมเนียมในการลงขาย ไม่มีค่าบริการรายเดือน จ่ายเมื่อขายได้เท่านั้น"
+  },
+  "identify": {
+    "title": "ระบุพันธุ์ต้นไม้",
+    "subtitle": "อัปโหลดหลักฐานและรับการระบุพันธุ์ฟรี พร้อมข้อมูลตลาด",
+    "sellThisPlant": "ลงขายต้นไม้นี้",
+    "processing": "กำลังระบุพันธุ์ต้นไม้ของคุณ…",
+    "processingDescription": "กำลังประมวลผลด้วยโมเดลวิสัยทัศน์ฟรี และตรวจสอบข้อมูลตลาด",
+    "contextTitle": "บริบทการเจริญเติบโต",
+    "country": "ประเทศ",
+    "growingConditions": "สภาพการเจริญเติบโต",
+    "growingConditionsPlaceholder": "เช่น แสงสว่างรำไร ความชื้น 70%",
+    "notes": "บันทึกเพิ่มเติม",
+    "notesPlaceholder": "ข้อมูลอื่น ๆ ที่อาจช่วยในการระบุพันธุ์",
+    "identifyButton": "ระบุพันธุ์",
+    "continueButton": "ดำเนินการต่อ",
+    "skipButton": "ข้าม",
+    "uploadEvidence": "อัปโหลด{{type}}",
+    "evidenceDescriptions": {
+      "overall": "ถ่ายต้นไม้ทั้งกอในหนึ่งเฟรม",
+      "leaf": "ภาพใบที่ชัดเจน สว่าง มีประโยชน์มาก",
+      "stem": "เนื้อสัมผัสและสีของลำต้นช่วยแยกสายพันธุ์",
+      "flower": "ดอกมักเป็นลักษณะที่เฉพาะเจาะจงที่สุด",
+      "default": "ไม่บังคับ แต่ช่วยเพิ่มความมั่นใจ"
+    },
+    "errors": {
+      "requestNotFound": "ไม่พบคำขอระบุพันธุ์",
+      "pleaseUpload": "กรุณาอัปโหลด{{type}}",
+      "failed": "การระบุพันธุ์ล้มเหลว"
+    }
   },
   "species": {
     "notFound": "ไม่พบสายพันธุ์",

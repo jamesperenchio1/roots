@@ -31,7 +31,7 @@ export default function Footer() {
               <li><Link to="/browse" className="hover:text-white transition-colors">{t('common:nav.browse')}</Link></li>
               <li><Link to="/market" className="hover:text-white transition-colors">{t('common:nav.market')}</Link></li>
               <li><Link to="/how-it-works" className="hover:text-white transition-colors">{t('home:sections.howItWorks')}</Link></li>
-              <li><Link to="/fees" className="hover:text-white transition-colors">Fees</Link></li>
+              <li><Link to="/fees" className="hover:text-white transition-colors">{t('common:nav.fees')}</Link></li>
             </ul>
           </div>
 
@@ -42,27 +42,27 @@ export default function Footer() {
               <li><Link to="/seller-dashboard/listings/new" className="hover:text-white transition-colors">{t('common:nav.sell')}</Link></li>
               <li><Link to="/seller-dashboard" className="hover:text-white transition-colors">{t('common:nav.sellerDashboard')}</Link></li>
               <li><Link to="/seller-dashboard/payouts" className="hover:text-white transition-colors">{t('dashboard:seller.payouts')}</Link></li>
-              <li><Link to="/provenance" className="hover:text-white transition-colors">QR Provenance</Link></li>
+              <li><Link to="/provenance" className="hover:text-white transition-colors">{t('common:nav.qrProvenance')}</Link></li>
             </ul>
           </div>
 
           {/* Company */}
           <div>
-            <h4 className="text-sm font-semibold mb-4 text-zinc-300">Company</h4>
+            <h4 className="text-sm font-semibold mb-4 text-zinc-300">{t('common:footer.company')}</h4>
             <ul className="space-y-2.5 text-sm text-zinc-500">
               <li><Link to="/about" className="hover:text-white transition-colors">{t('common:nav.about')}</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors">{t('common:actions.contactUs')}</Link></li>
-              <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
-              <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-white transition-colors">{t('common:terms.title')}</Link></li>
+              <li><Link to="/privacy" className="hover:text-white transition-colors">{t('common:privacy.title')}</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-zinc-600">2025 ROOTS Plant Market Co., Ltd. Bangkok, Thailand.</p>
+          <p className="text-xs text-zinc-600">{t('common:footer.copyright')}</p>
           <div className="flex items-center gap-4 text-xs text-zinc-600">
-            <Link to="/terms" className="hover:text-zinc-400 transition-colors">Terms</Link>
-            <Link to="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-zinc-400 transition-colors">{t('common:footer.termsShort')}</Link>
+            <Link to="/privacy" className="hover:text-zinc-400 transition-colors">{t('common:footer.privacyShort')}</Link>
             <Link to="/contact" className="hover:text-zinc-400 transition-colors">{t('common:actions.contactUs')}</Link>
           </div>
         </div>

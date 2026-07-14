@@ -48,7 +48,7 @@ interface PayoutItem {
 }
 
 export default function SellerDashboardPage() {
-  const { t } = useTranslation(['dashboard', 'common', 'checkout']);
+  const { t } = useTranslation(['dashboard', 'common', 'checkout', 'auth', 'marketplace']);
   const { user } = useAuth();
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
@@ -62,7 +62,6 @@ export default function SellerDashboardPage() {
     { id: 'performance', label: t('dashboard:seller.performance'), icon: TrendingUp },
     { id: 'inventory', label: t('dashboard:seller.inventory'), icon: Boxes },
     { id: 'qr', label: t('dashboard:seller.qrManagement'), icon: QrCode },
-    { id: 'reviews', label: t('dashboard:seller.reviews'), icon: Star },
     { id: 'account', label: t('dashboard:seller.account'), icon: Store },
   ], [t]);
 
@@ -141,21 +140,21 @@ export default function SellerDashboardPage() {
 
   const filteredOrders = orderFilter === 'all' ? allSales : allSales.filter(o => o.status === orderFilter);
 
-  const payouts = completedSales.map(t => ({
-    id: t.id,
-    date: (t.completed_at || t.created_at).slice(0, 10),
+  const payouts = completedSales.map(sale => ({
+    id: sale.id,
+    date: (sale.completed_at || sale.created_at).slice(0, 10),
     status: 'completed' as const,
-    totalAmount: t.seller_payout_thb,
-    method: 'PromptPay',
-    destination: me?.promptpay_id || 'Not set',
-    processedAt: t.completed_at ? t.completed_at.replace('T', ' ').slice(0, 19) : null,
+    totalAmount: sale.seller_payout_thb,
+    method: t('dashboard:seller.payoutMethodValue'),
+    destination: me?.promptpay_id || t('dashboard:seller.notSet'),
+    processedAt: sale.completed_at ? sale.completed_at.replace('T', ' ').slice(0, 19) : null,
     transactions: [{
-      orderId: t.id,
-      plant: t.listing?.species?.common_name_en || t.listing?.species?.scientific_name || 'Plant',
-      buyer: t.buyer?.display_name || 'Buyer',
-      price: t.sale_price_thb,
-      fee: t.platform_fee_thb,
-      net: t.seller_payout_thb,
+      orderId: sale.id,
+      plant: sale.listing?.species?.common_name_en || sale.listing?.species?.scientific_name || t('common:unknown'),
+      buyer: sale.buyer?.display_name || t('common:unknownUser'),
+      price: sale.sale_price_thb,
+      fee: sale.platform_fee_thb,
+      net: sale.seller_payout_thb,
     }],
   }));
 
@@ -179,9 +178,9 @@ export default function SellerDashboardPage() {
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center text-xl font-medium overflow-hidden">
               {me?.avatar_url ? (
-                <img src={me.avatar_url} alt={`${me?.display_name || 'Seller'} avatar`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img src={me.avatar_url} alt={`${me?.display_name || t('common:unknownUser')} avatar`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
-                me?.display_name?.charAt(0) || 'S'
+                me?.display_name?.charAt(0) || '?'
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -189,7 +188,7 @@ export default function SellerDashboardPage() {
               <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 mt-1">
                 <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {me?.rating || '4.9'}</span>
                 <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {me?.sales_count || 0} {t('marketplace:seller.sales')}</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {me?.location || 'Bangkok'}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {me?.location || t('dashboard:seller.defaultLocation')}</span>
               </div>
             </div>
             <div className="text-right hidden sm:block">
@@ -224,7 +223,6 @@ export default function SellerDashboardPage() {
         {activeTab === 'performance' && <PerformanceTab allSales={allSales} t={t} />}
         {activeTab === 'inventory' && <InventoryTab listings={listings} t={t} />}
         {activeTab === 'qr' && <QrManagementTab listings={listings} t={t} />}
-        {activeTab === 'reviews' && <ReviewsTab t={t} />}
         {activeTab === 'account' && <AccountTab me={me} t={t} />}
       </div>
     </div>
@@ -234,13 +232,14 @@ export default function SellerDashboardPage() {
 function ConfirmModal({ title, description, onCancel, onConfirm, confirmText }: {
   title: string; description: string; onCancel: () => void; onConfirm: () => void; confirmText: string;
 }) {
+  const { t } = useTranslation(['common']);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
       <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-sm p-6">
         <h3 className="text-lg font-medium mb-2">{title}</h3>
         <p className="text-sm text-zinc-400 mb-6">{description}</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5">Cancel</button>
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5">{t('common:actions.cancel')}</button>
           <button onClick={onConfirm} className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-black">{confirmText}</button>
         </div>
       </div>
@@ -258,7 +257,7 @@ function ListingsTab({ listings, onWithdraw, onDuplicate, t }: { listings: Listi
         </div>
         <div className="flex items-center gap-2">
           <Link to="/identify?returnTo=/seller-dashboard/listings/new" className="flex items-center gap-1.5 border border-white/10 text-zinc-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors">
-            <ScanSearch className="w-4 h-4" /> Identify
+            <ScanSearch className="w-4 h-4" /> {t('dashboard:seller.identify')}
           </Link>
           <Link to="/seller-dashboard/listings/new" className="flex items-center gap-1.5 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
             <Plus className="w-4 h-4" /> {t('dashboard:seller.newListing')}
@@ -325,12 +324,12 @@ function ListingActions({ listing, onWithdraw, onDuplicate, t }: { listing: List
       const { submitListingQrVerification } = await import('@/lib/listing-review');
       const result = await submitListingQrVerification(listing, file, user.id);
       if (result.ok) {
-        toast.success('QR verified. Your listing is now in the admin review queue.');
+        toast.success(t('dashboard:seller.qrVerifiedToast'));
       } else {
-        toast.error(result.error || 'QR verification failed');
+        toast.error(result.error || t('dashboard:seller.qrVerifyFailed'));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not verify QR');
+      toast.error(err instanceof Error ? err.message : t('dashboard:seller.qrVerifyError'));
     } finally {
       setVerifying(false);
     }
@@ -394,7 +393,7 @@ function OrdersTab({ orders, orderFilter, setOrderFilter, onViewSlip, onConfirmP
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 col-span-2">
           <p className="text-xs text-zinc-500 mb-2">{t('dashboard:seller.filterByStatus')}</p>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setOrderFilter('all')} className={`text-xs px-3 py-1.5 rounded-full border ${orderFilter === 'all' ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-zinc-400 hover:text-white'}`}>All</button>
+            <button onClick={() => setOrderFilter('all')} className={`text-xs px-3 py-1.5 rounded-full border ${orderFilter === 'all' ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-zinc-400 hover:text-white'}`}>{t('dashboard:seller.all')}</button>
             {statusOptions.map(s => (
               <button key={s} onClick={() => setOrderFilter(s)} className={`text-xs px-3 py-1.5 rounded-full border ${orderFilter === s ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-zinc-400 hover:text-white'}`}>{t(`common:status.${s}`)}</button>
             ))}
@@ -643,7 +642,7 @@ function AnalyticsTab({ listings, allSales, t }: { listings: Listing[]; allSales
 
 function PerformanceTab({ allSales, t }: { allSales: Transaction[]; t: TFunction }) {
   const avgRating = '5.0';
-  const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+  const months = t('dashboard:seller.monthLabels', { returnObjects: true }) as string[];
   const monthly = Array(12).fill(0);
   allSales.forEach(s => { const d = new Date(s.created_at); monthly[d.getMonth()]++; });
   const maxMonth = Math.max(...monthly, 1);
@@ -651,7 +650,7 @@ function PerformanceTab({ allSales, t }: { allSales: Transaction[]; t: TFunction
   const buyerMap: Record<string, { name: string; count: number; total: number }> = {};
   allSales.forEach(s => {
     const id = s.buyer_id || 'unknown';
-    if (!buyerMap[id]) buyerMap[id] = { name: s.buyer?.display_name || 'Unknown', count: 0, total: 0 };
+    if (!buyerMap[id]) buyerMap[id] = { name: s.buyer?.display_name || t('common:unknownUser'), count: 0, total: 0 };
     buyerMap[id].count++; buyerMap[id].total += s.sale_price_thb;
   });
   const topBuyers = Object.values(buyerMap).sort((a, b) => b.total - a.total).slice(0, 5);
@@ -662,7 +661,7 @@ function PerformanceTab({ allSales, t }: { allSales: Transaction[]; t: TFunction
         <h3 className="font-medium mb-4">{t('dashboard:seller.sellerScore')}</h3>
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-full border-4 border-emerald-500 flex items-center justify-center">
-            <div className="text-center"><p className="text-2xl font-semibold">{avgRating}</p><p className="text-xs text-zinc-500">/ 5.0</p></div>
+            <div className="text-center"><p className="text-2xl font-semibold">{avgRating}</p><p className="text-xs text-zinc-500">{t('dashboard:seller.scoreOutOf')}</p></div>
           </div>
           <div className="flex-1 space-y-2">
             {[
@@ -721,7 +720,7 @@ function InventoryTab({ listings, t }: { listings: Listing[]; t: TFunction }) {
             <div className="flex items-center gap-3">
               <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt="" className="w-12 h-12 rounded-lg object-cover" />
               <div>
-                <p className="text-sm font-medium">{l.species?.common_name_en || 'Unknown'}</p>
+                <p className="text-sm font-medium">{l.species?.common_name_en || t('common:unknown')}</p>
                 <p className="text-xs text-zinc-500">{l.price_thb.toLocaleString()} {t('common:currency')}</p>
               </div>
             </div>
@@ -789,7 +788,7 @@ function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction })
               <div className="flex items-center gap-3 mb-3">
                 <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt="" className="w-12 h-12 rounded-lg object-cover" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{l.species?.common_name_en || l.species?.common_name_th || l.species?.scientific_name || 'Unknown'}</p>
+                  <p className="text-sm font-medium truncate">{l.species?.common_name_en || l.species?.common_name_th || l.species?.scientific_name || t('common:unknown')}</p>
                   <p className="text-xs text-zinc-500 truncate">{plantId}</p>
                 </div>
               </div>
@@ -806,15 +805,7 @@ function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction })
   );
 }
 
-function ReviewsTab({ t }: { t: TFunction }) {
-  return (
-    <div className="text-center py-16 bg-zinc-900/20 rounded-xl">
-      <Star className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-      <p className="text-zinc-500 mb-2">{t('dashboard:seller.reviews')}</p>
-      <p className="text-zinc-600 text-sm">{t('dashboard:seller.reviewsComingSoon')}</p>
-    </div>
-  );
-}
+
 
 function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
   const { user, refreshProfile } = useAuth();
@@ -840,8 +831,8 @@ function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
         <h3 className="font-medium mb-4">{t('dashboard:seller.paymentSettings')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-zinc-400 mb-1.5 block">PromptPay ID</label>
-            <input type="text" value={promptpayId} onChange={e => setPromptpayId(e.target.value)} placeholder="Phone number or National ID" className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
+            <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.promptpayId')}</label>
+            <input type="text" value={promptpayId} onChange={e => setPromptpayId(e.target.value)} placeholder={t('dashboard:seller.promptpayPlaceholder')} className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
             <p className="text-xs text-zinc-600 mt-1">{t('dashboard:seller.payoutDestination')}</p>
           </div>
         </div>

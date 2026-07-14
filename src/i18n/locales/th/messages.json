@@ -56,5 +56,24 @@
     "mute": "ปิดเสียง",
     "unmute": "เปิดเสียง",
     "call": "โทร"
+  },
+  "read": "อ่านแล้ว",
+  "delivered": "ส่งแล้ว",
+  "searchButton": "ค้นหา",
+  "searchEmpty": "ไม่พบข้อความ",
+  "addEmoji": "เพิ่มอีโมจิ",
+  "attachments": {
+    "video": "วิดีโอ",
+    "audio": "เสียง"
+  },
+  "presence": {
+    "online": "ออนไลน์",
+    "offline": "ออฟไลน์",
+    "lastSeen": "ใช้งานล่าสุด {{time}}"
+  },
+  "typing": {
+    "single": "{{name}} กำลังพิมพ์",
+    "two": "{{name1}} และ {{name2}} กำลังพิมพ์",
+    "multiple": "{{name}} และอีก {{count}} คนกำลังพิมพ์"
   }
 }

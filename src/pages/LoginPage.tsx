@@ -5,6 +5,7 @@ import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { sanitizeRedirect } from '@/lib/navigation';
 import { Button } from '@/components/ui/button';
+import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 
 export default function LoginPage() {
   const { t } = useTranslation(['auth', 'common']);
@@ -54,7 +55,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t('auth:login.emailPlaceholder')}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               required
             />
@@ -83,7 +84,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer">
               <input type="checkbox" className="rounded bg-zinc-900 border-white/10" />
-              {t('common:actions.rememberMe', { defaultValue: 'Remember me' })}
+              {t('common:actions.rememberMe')}
             </label>
             <Link to="/forgot-password" className="text-xs text-emerald-400 hover:underline">
               {t('auth:login.forgotPassword')}
@@ -93,6 +94,10 @@ export default function LoginPage() {
             {isLoading ? t('common:actions.loading') : t('auth:login.submit')}
           </Button>
         </form>
+
+        <div className="mt-6">
+          <SocialAuthButtons redirect={`${window.location.origin}/#${redirect}`} />
+        </div>
 
         <div className="mt-6 text-center text-sm text-zinc-500">
           {t('auth:login.noAccount')}{' '}

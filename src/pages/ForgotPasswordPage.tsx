@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
             <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
             <h2 className="text-lg font-medium mb-1">{t('auth:forgotPassword.success')}</h2>
             <p className="text-sm text-zinc-500 mb-4">
-              {t('auth:forgotPassword.successMessage', { defaultValue: 'If this email is registered, you will receive a reset link.' })}
+              {t('auth:forgotPassword.successMessage')}
             </p>
             <Link to="/login" className="text-emerald-400 hover:underline text-sm">
               {t('auth:forgotPassword.backToLogin')}
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('auth:login.emailPlaceholder')}
                   className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                   required
                 />

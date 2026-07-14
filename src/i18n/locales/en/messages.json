@@ -56,5 +56,24 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "call": "Call"
+  },
+  "read": "Read",
+  "delivered": "Delivered",
+  "searchButton": "Search",
+  "searchEmpty": "No messages found.",
+  "addEmoji": "Add emoji",
+  "attachments": {
+    "video": "Video",
+    "audio": "Audio"
+  },
+  "presence": {
+    "online": "Online",
+    "offline": "Offline",
+    "lastSeen": "Last seen {{time}}"
+  },
+  "typing": {
+    "single": "{{name}} is typing",
+    "two": "{{name1}} and {{name2}} are typing",
+    "multiple": "{{name}} and {{count}} others are typing"
   }
 }

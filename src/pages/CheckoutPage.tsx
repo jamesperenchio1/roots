@@ -53,7 +53,7 @@ export default function CheckoutPage() {
       return;
     }
     if (!canCheckout) {
-      toast.error(t('checkout:errors.sellerNoPromptPay', { defaultValue: 'This seller has not set a PromptPay ID and cannot accept payments right now.' }));
+      toast.error(t('checkout:errors.sellerNoPromptPay'));
       return;
     }
     const validation = validateShippingAddress(address);
@@ -209,7 +209,7 @@ export default function CheckoutPage() {
 
         {!canCheckout && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 text-sm text-red-400">
-            {t('checkout:errors.sellerNoPromptPay', { defaultValue: 'This seller has not set a PromptPay ID and cannot accept payments right now.' })}
+            {t('checkout:errors.sellerNoPromptPay')}
           </div>
         )}
 

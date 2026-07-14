@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function SavedPlacesManager() {
   const { user } = useAuth();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation(['common', 'auth', 'marketplace']);
   const [places, setPlaces] = useState<UserLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<UserLocation | null>(null);
@@ -42,7 +42,7 @@ export default function SavedPlacesManager() {
       const data = await getUserLocations(user.id);
       setPlaces(data);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not load saved places');
+      toast.error(err instanceof Error ? err.message : t('common:savedPlaces.errors.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -77,11 +77,11 @@ export default function SavedPlacesManager() {
   const handleSave = async () => {
     if (!user) return;
     if (!name.trim()) {
-      toast.error('Please give this place a name');
+      toast.error(t('common:savedPlaces.errors.nameRequired'));
       return;
     }
     if (!pin) {
-      toast.error('Please set a pin on the map');
+      toast.error(t('common:savedPlaces.errors.pinRequired'));
       return;
     }
     try {
@@ -99,11 +99,11 @@ export default function SavedPlacesManager() {
       } else {
         await createUserLocation(input);
       }
-      toast.success(editing ? 'Place updated' : 'Place saved');
+      toast.success(editing ? t('common:savedPlaces.updated') : t('common:savedPlaces.saved'));
       resetForm();
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save place');
+      toast.error(err instanceof Error ? err.message : t('common:savedPlaces.errors.saveFailed'));
     }
   };
 
@@ -111,9 +111,9 @@ export default function SavedPlacesManager() {
     try {
       await deleteUserLocation(id);
       setPlaces((prev) => prev.filter((p) => p.id !== id));
-      toast.success('Place removed');
+      toast.success(t('common:savedPlaces.removed'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not remove place');
+      toast.error(err instanceof Error ? err.message : t('common:savedPlaces.errors.removeFailed'));
     }
   };
 
@@ -123,7 +123,7 @@ export default function SavedPlacesManager() {
       await setDefaultUserLocation(user.id, id);
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not set default');
+      toast.error(err instanceof Error ? err.message : t('common:savedPlaces.errors.setDefaultFailed'));
     }
   };
 
@@ -136,20 +136,20 @@ export default function SavedPlacesManager() {
           const device = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           const distance = haversineMeters({ lat: place.lat!, lng: place.lng! }, device);
           if (distance > 500) {
-            toast.error(`You are ${Math.round(distance)} m away. Must be within 500 m to verify.`);
+            toast.error(t('common:savedPlaces.errors.tooFar', { distance: Math.round(distance) }));
           } else {
             await verifyUserLocationWithGps(place.id, device);
-            toast.success('Location verified by GPS');
+            toast.success(t('common:savedPlaces.verifiedGps'));
             refresh();
           }
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Verification failed');
+          toast.error(err instanceof Error ? err.message : t('common:savedPlaces.errors.verificationFailed'));
         } finally {
           setVerifyingGps(false);
         }
       },
       () => {
-        toast.error('Could not get your device location');
+        toast.error(t('common:savedPlaces.errors.gpsFailed'));
         setVerifyingGps(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -159,24 +159,24 @@ export default function SavedPlacesManager() {
   const handleConfirmMap = async (place: UserLocation) => {
     try {
       await confirmUserLocationOnMap(place.id);
-      toast.success('Location confirmed on map');
+      toast.success(t('common:savedPlaces.confirmedMap'));
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not confirm');
+      toast.error(err instanceof Error ? err.message : t('common:savedPlaces.errors.confirmFailed'));
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Saved places</h3>
+        <h3 className="text-lg font-medium">{t('common:savedPlaces.title')}</h3>
         {!isAdding && (
           <button
             type="button"
             onClick={() => setIsAdding(true)}
             className="inline-flex items-center gap-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-black font-medium px-3 py-1.5 rounded-lg"
           >
-            <Plus className="w-3.5 h-3.5" /> Add place
+            <Plus className="w-3.5 h-3.5" /> {t('common:savedPlaces.addPlace')}
           </button>
         )}
       </div>
@@ -185,32 +185,32 @@ export default function SavedPlacesManager() {
         <div className="bg-zinc-900/30 border border-white/10 rounded-xl p-4 space-y-4">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-zinc-400 block mb-1">Place name</label>
+              <label className="text-xs text-zinc-400 block mb-1">{t('common:savedPlaces.placeName')}</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Home, Shop, Greenhouse..."
+                placeholder={t('common:savedPlaces.placeNamePlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-400 block mb-1">Province</label>
-              <ProvinceCombobox value={province} onChange={setProvince} options={provinceOptions} placeholder="Select province" />
+              <label className="text-xs text-zinc-400 block mb-1">{t('auth:signup.location')}</label>
+              <ProvinceCombobox value={province} onChange={setProvince} options={provinceOptions} placeholder={t('marketplace:create.selectProvince')} />
             </div>
           </div>
           <div>
-            <label className="text-xs text-zinc-400 block mb-1">Address / area</label>
+            <label className="text-xs text-zinc-400 block mb-1">{t('common:savedPlaces.addressArea')}</label>
             <input
               type="text"
               value={addressLine}
               onChange={(e) => setAddressLine(e.target.value)}
-              placeholder="e.g. Chatuchak Market, Bangkok"
+              placeholder={t('common:savedPlaces.addressPlaceholder')}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
             />
           </div>
           <div>
-            <label className="text-xs text-zinc-400 block mb-1">Pin on map</label>
+            <label className="text-xs text-zinc-400 block mb-1">{t('common:savedPlaces.pinOnMap')}</label>
             <MapLocationPicker value={pin} onChange={setPin} />
           </div>
           <label className="flex items-center gap-2 text-sm text-zinc-300">
@@ -220,7 +220,7 @@ export default function SavedPlacesManager() {
               onChange={(e) => setIsDefault(e.target.checked)}
               className="accent-emerald-500"
             />
-            Make this my default pickup place
+            {t('common:savedPlaces.makeDefault')}
           </label>
           <div className="flex gap-2 justify-end">
             <button
@@ -228,20 +228,20 @@ export default function SavedPlacesManager() {
               onClick={resetForm}
               className="text-xs px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5"
             >
-              Cancel
+              {t('common:actions.cancel')}
             </button>
             <button
               type="button"
               onClick={handleSave}
               className="text-xs bg-emerald-500 hover:bg-emerald-600 text-black font-medium px-3 py-1.5 rounded-lg"
             >
-              {editing ? 'Update place' : 'Save place'}
+              {editing ? t('common:savedPlaces.update') : t('common:savedPlaces.save')}
             </button>
           </div>
         </div>
       )}
 
-      {loading && <p className="text-sm text-zinc-500">Loading places…</p>}
+      {loading && <p className="text-sm text-zinc-500">{t('common:savedPlaces.loading')}</p>}
 
       <div className="space-y-2">
         {places.map((place) => (
@@ -257,7 +257,7 @@ export default function SavedPlacesManager() {
                   {place.verified_at && <Check className="w-3 h-3 text-emerald-400" />}
                 </div>
                 <p className="text-xs text-zinc-500">
-                  {place.address_line || place.province || 'No address'}
+                  {place.address_line || place.province || t('common:savedPlaces.noAddress')}
                   {place.lat && place.lng && ` · ${place.lat.toFixed(4)}, ${place.lng.toFixed(4)}`}
                 </p>
               </div>
@@ -267,7 +267,7 @@ export default function SavedPlacesManager() {
                 <button
                   type="button"
                   onClick={() => handleSetDefault(place.id)}
-                  title="Set default"
+                  title={t('common:savedPlaces.setDefault')}
                   className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/5 rounded"
                 >
                   <Star className="w-3.5 h-3.5" />
@@ -279,7 +279,7 @@ export default function SavedPlacesManager() {
                     type="button"
                     onClick={() => handleVerifyGps(place)}
                     disabled={verifyingGps}
-                    title="Verify with current GPS location"
+                    title={t('common:savedPlaces.verifyGps')}
                     className="p-1.5 text-zinc-500 hover:text-emerald-400 hover:bg-white/5 rounded disabled:opacity-50"
                   >
                     <LocateFixed className="w-3.5 h-3.5" />
@@ -287,7 +287,7 @@ export default function SavedPlacesManager() {
                   <button
                     type="button"
                     onClick={() => handleConfirmMap(place)}
-                    title="Confirm on map"
+                    title={t('common:savedPlaces.confirmOnMap')}
                     className="p-1.5 text-zinc-500 hover:text-emerald-400 hover:bg-white/5 rounded"
                   >
                     <Check className="w-3.5 h-3.5" />
@@ -297,7 +297,7 @@ export default function SavedPlacesManager() {
               <button
                 type="button"
                 onClick={() => startEdit(place)}
-                title="Edit"
+                title={t('common:actions.edit')}
                 className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/5 rounded"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -305,7 +305,7 @@ export default function SavedPlacesManager() {
               <button
                 type="button"
                 onClick={() => handleDelete(place.id)}
-                title="Delete"
+                title={t('common:actions.delete')}
                 className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-white/5 rounded"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -314,7 +314,7 @@ export default function SavedPlacesManager() {
           </div>
         ))}
         {!loading && places.length === 0 && (
-          <p className="text-sm text-zinc-600 text-center py-6">No saved places yet.</p>
+          <p className="text-sm text-zinc-600 text-center py-6">{t('common:savedPlaces.empty')}</p>
         )}
       </div>
     </div>

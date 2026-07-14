@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isValidEmail, isStrongPassword } from '@/lib/validation';
 import { sanitizeRedirect } from '@/lib/navigation';
 import { getProvinceOptions } from '@/lib/provinces';
+import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 
 export default function SignupPage() {
   const { t, i18n } = useTranslation(['auth', 'common']);
@@ -44,7 +45,7 @@ export default function SignupPage() {
       return;
     }
     if (!isStrongPassword(password)) {
-      setError(t('auth:signup.passwordRequirements', { defaultValue: 'Password must include uppercase, lowercase, number, and symbol.' }));
+      setError(t('auth:signup.passwordRequirements'));
       return;
     }
     if (trimmedName.length < 2) {
@@ -92,7 +93,7 @@ export default function SignupPage() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={t('auth:signup.displayName')}
+              placeholder={t('auth:signup.displayNamePlaceholder')}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               required
             />
@@ -103,7 +104,7 @@ export default function SignupPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t('auth:signup.emailPlaceholder')}
               className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               required
             />
@@ -136,7 +137,7 @@ export default function SignupPage() {
                 type="text"
                 value={promptpayId}
                 onChange={(e) => setPromptpayId(e.target.value)}
-                placeholder="08xxxxxxxx"
+                placeholder={t('auth:signup.promptpayPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
@@ -145,7 +146,7 @@ export default function SignupPage() {
               <ProvinceCombobox
                 value={location}
                 onChange={setLocation}
-                placeholder={t('auth:signup.location')}
+                placeholder={t('auth:signup.locationPlaceholder')}
                 options={provinceOptions}
               />
             </div>
@@ -154,6 +155,10 @@ export default function SignupPage() {
             {isLoading ? t('common:actions.loading') : t('auth:signup.submit')}
           </Button>
         </form>
+
+        <div className="mt-6">
+          <SocialAuthButtons redirect={`${window.location.origin}/#${redirect}`} />
+        </div>
 
         <div className="mt-6 text-center text-sm text-zinc-500">
           {t('auth:signup.hasAccount')}{' '}

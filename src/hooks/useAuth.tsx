@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
 import { supabase } from '@/lib/supabase';
+import type { Provider } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 import i18n from '@/i18n/config';
 import {
@@ -33,6 +34,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signup: (input: SignupInput) => Promise<{ ok: boolean; error?: string; message?: string }>;
+  signInWithOAuth: (provider: Provider, redirectTo?: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ ok: boolean; error?: string }>;
@@ -46,6 +48,7 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   login: async () => ({ ok: false }),
   signup: async () => ({ ok: false, error: 'Signup not available' }),
+  signInWithOAuth: async () => ({ ok: false }),
   logout: () => {},
   refreshProfile: async () => {},
   resetPassword: async () => ({ ok: false }),
@@ -64,7 +67,7 @@ function isNetworkErrorMessage(message: string): boolean {
 }
 
 function networkErrorMessage(): string {
-  return i18n.t('common:errors.network', { defaultValue: 'Network error. Please check your connection.' });
+  return i18n.t('common:errors.network');
 }
 
 async function fetchProfile(id: string): Promise<Profile | null> {
@@ -171,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: isNetworkErrorMessage(error.message) ? networkErrorMessage() : error.message };
       }
       if (!data.user) {
-        return { ok: false, error: i18n.t('auth:login.error', { defaultValue: 'Invalid email or password' }) };
+        return { ok: false, error: i18n.t('auth:login.error') };
       }
       let p = await fetchProfile(data.user.id);
       if (!p) {
@@ -189,14 +192,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         startSubscriptions(p.id);
         return { ok: true };
       }
-      return { ok: false, error: i18n.t('auth:login.error', { defaultValue: 'Invalid email or password' }) };
+      return { ok: false, error: i18n.t('auth:login.error') };
     } catch (err) {
       logger.warn('login failed', { error: err instanceof Error ? err.message : String(err) });
       return {
         ok: false,
         error: err instanceof Error && isNetworkError(err)
           ? networkErrorMessage()
-          : i18n.t('common:errors.generic', { defaultValue: 'Something went wrong. Please try again.' }),
+          : i18n.t('common:errors.generic'),
       };
     } finally {
       setIsLoading(false);
@@ -224,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data.session || !data.user) {
         return {
           ok: true,
-          message: i18n.t('auth:signup.pendingConfirmation', { defaultValue: 'Account created. Please check your email to confirm, then log in.' }),
+          message: i18n.t('auth:signup.pendingConfirmation'),
         };
       }
       // Make sure the profiles row exists even if the Supabase trigger is missing or delayed.
@@ -233,17 +236,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { ok } = await login(input.email.trim(), input.password);
       return ok
         ? { ok: true }
-        : { ok: false, error: i18n.t('auth:signup.loginRequired', { defaultValue: 'Account created — please log in.' }) };
+        : { ok: false, error: i18n.t('auth:signup.loginRequired') };
     } catch (err) {
       logger.warn('signup failed', { error: err instanceof Error ? err.message : String(err) });
       const message = err instanceof Error && isNetworkError(err)
         ? networkErrorMessage()
-        : i18n.t('common:errors.generic', { defaultValue: 'Something went wrong. Please try again.' });
+        : i18n.t('common:errors.generic');
       return { ok: false, error: message };
     } finally {
       setIsLoading(false);
     }
   }, [login]);
+
+  const signInWithOAuth = useCallback(async (provider: Provider, redirectTo?: string): Promise<{ ok: boolean; error?: string }> => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: redirectTo || `${window.location.origin}/#/`,
+          queryParams: provider === 'apple'
+            ? { response_mode: 'form_post' }
+            : undefined,
+        },
+      });
+      if (error) {
+        return { ok: false, error: isNetworkErrorMessage(error.message) ? networkErrorMessage() : error.message };
+      }
+      return { ok: true };
+    } catch (err) {
+      logger.warn('signInWithOAuth failed', { error: err instanceof Error ? err.message : String(err) });
+      return {
+        ok: false,
+        error: err instanceof Error && isNetworkError(err)
+          ? networkErrorMessage()
+          : i18n.t('common:errors.generic'),
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<{ ok: boolean; error?: string }> => {
     try {
@@ -265,7 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     } catch (err) {
       logger.warn('updatePassword failed', { error: err instanceof Error ? err.message : String(err) });
-      return { ok: false, error: i18n.t('common:errors.network', { defaultValue: 'Network error. Please check your connection.' }) };
+      return { ok: false, error: i18n.t('common:errors.network') };
     }
   }, []);
 
@@ -295,13 +327,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: user?.is_admin || false,
     login,
     signup,
+    signInWithOAuth,
     logout,
     refreshProfile,
     resetPassword,
     updatePassword,
     isLoading,
     isRestoring,
-  }), [user, login, signup, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring]);
+  }), [user, login, signup, signInWithOAuth, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring]);
 
   return (
     <AuthContext.Provider value={value}>

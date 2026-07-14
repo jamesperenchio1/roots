@@ -1,4 +1,5 @@
 import { MessageSquare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ConversationWithDetails } from '@/lib/messaging';
 import type { UserPresence } from '@/types';
 import PresenceIndicator from './PresenceIndicator';
@@ -12,6 +13,7 @@ interface ConversationItemProps {
 }
 
 export default function ConversationItem({ conversation, isActive, dateFormatter, presence, onClick }: ConversationItemProps) {
+  const { t } = useTranslation(['messages', 'common']);
   const { otherUser, lastMessage, unreadCount, listing } = conversation;
 
   return (
@@ -33,7 +35,7 @@ export default function ConversationItem({ conversation, isActive, dateFormatter
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium truncate flex items-center gap-1.5">
-            {otherUser?.display_name || 'Unknown'}
+            {otherUser?.display_name || t('common:unknownUser')}
             <PresenceIndicator presence={presence} />
           </p>
           {lastMessage && (
@@ -43,7 +45,7 @@ export default function ConversationItem({ conversation, isActive, dateFormatter
           )}
         </div>
         <p className={`text-xs truncate ${unreadCount > 0 ? 'text-zinc-200 font-medium' : 'text-zinc-500'}`}>
-          {lastMessage?.content || 'No messages yet'}
+          {lastMessage?.content || t('messages:noMessages')}
         </p>
       </div>
       {unreadCount > 0 && (

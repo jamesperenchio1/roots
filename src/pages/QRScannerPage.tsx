@@ -35,6 +35,12 @@ export default function QRScannerPage() {
       navigate(`/p/${raw}`);
       return;
     }
+    // Legacy plant slug support (e.g. p-1 used by early seed data).
+    if (/^p-[a-z0-9-]+$/i.test(raw)) {
+      scannerRef.current?.stop().catch(() => {});
+      navigate(`/p/${raw}`);
+      return;
+    }
     toast.error(t('common:qrScanner.errors.invalid'));
   }, [navigate, t]);
 

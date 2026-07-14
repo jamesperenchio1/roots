@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import PrintTag from '@/components/PrintTag';
 import { getSpeciesById, PLANT_IMAGES, USERS } from '@/data/mockData';
-import { fetchProvenance, recordQRScan, verifyQRSignature } from '@/lib/api';
+import { fetchProvenance, recordQRScan } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
 import { PriceChart } from '@/components/PriceChart';
@@ -103,7 +103,7 @@ export default function PlantQRPage() {
   const [signatureValid, setSignatureValid] = useState<boolean | null>(null);
   const [showPrintTag, setShowPrintTag] = useState(false);
 
-  const speciesId = plant?.species_id || plantId?.replace('p-', 'sp-') || '';
+  const speciesId = plant?.species_id || listing?.species?.id || '';
   const dbSpecies = getSpeciesById(speciesId);
   const species = dbSpecies || plant?.species || listing?.species || null;
 
@@ -115,7 +115,7 @@ export default function PlantQRPage() {
 
     let active = true;
     const load = async () => {
-      const { listing: l, transfers, plant: p, scans: scanRows } = await fetchProvenance(plantId);
+      const { listing: l, transfers, plant: p, scans: scanRows, signatureValid: valid } = await fetchProvenance(plantId, signature);
       if (!active) return;
 
       setListing(l);
@@ -126,16 +126,8 @@ export default function PlantQRPage() {
         scanner: s.scanner?.display_name,
         source: s.scan_source,
       })));
+      setSignatureValid(valid);
       setLoading(false);
-
-      // Validate signature only when one is present.
-      if (signature && p) {
-        verifyQRSignature(plantId, signature).then(setSignatureValid);
-      } else if (!signature) {
-        setSignatureValid(null);
-      } else {
-        setSignatureValid(false);
-      }
 
       // Record this page view as a scan (best-effort).
       recordQRScan(plantId, 'url', user?.id);

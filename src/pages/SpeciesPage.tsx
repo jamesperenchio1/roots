@@ -14,6 +14,7 @@ import { Sparkline } from '@/components/PriceChart';
 import { useState, useEffect } from 'react';
 import type { SizeCategory } from '@/types';
 import PlantCareCard from '@/components/PlantCareCard';
+import { CommentSection } from '@/components/comments/CommentSection';
 import { useAuth } from '@/hooks/useAuth';
 import { getProvinceLabel } from '@/lib/provinces';
 import { createPriceAlert, getUserPriceAlerts, deletePriceAlert } from '@/lib/api';
@@ -247,7 +248,7 @@ export default function SpeciesPage() {
         )}
 
         {/* Active Listings */}
-        <div>
+        <div className="mb-10">
           <h2 className="text-lg font-medium mb-4">{t('marketplace:species.activeListingsCount', { count: listings.length })}</h2>
           {listings.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -269,6 +270,11 @@ export default function SpeciesPage() {
           ) : (
             <p className="text-zinc-500">{t('marketplace:species.noActiveListings')}</p>
           )}
+        </div>
+
+        {/* Community Discussion */}
+        <div id="discussion">
+          <CommentSection speciesId={id || ''} />
         </div>
       </div>
     </div>

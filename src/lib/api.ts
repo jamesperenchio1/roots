@@ -3,8 +3,8 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, REVIEWS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, Review, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
+import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './messaging';
@@ -33,7 +33,7 @@ type DbRow = Record<string, unknown>;
 
 export function mapProfile(r: DbRow): Profile {
   const id = r.id as string;
-  const stats = getReviewStats(id);
+  const stats = getSellerReviewStats(id);
   const existingRating = (r.rating as number | undefined) ?? undefined;
   return {
     id,
@@ -188,7 +188,7 @@ type PublicDataCache = {
   timestamp: number;
   users: Profile[];
   listings: Listing[];
-  reviews: Review[];
+  sellerReviews: SellerReview[];
 };
 
 function loadPublicDataCache(): PublicDataCache | null {
@@ -203,13 +203,13 @@ function loadPublicDataCache(): PublicDataCache | null {
   }
 }
 
-function savePublicDataCache(users: Profile[], listings: Listing[], reviews: Review[]) {
+function savePublicDataCache(users: Profile[], listings: Listing[], sellerReviews: SellerReview[]) {
   try {
     localStorage.setItem(PUBLIC_DATA_CACHE_KEY, JSON.stringify({
       timestamp: Date.now(),
       users,
       listings,
-      reviews,
+      sellerReviews,
     }));
   } catch {
     // Private mode / quota exceeded — ignore.
@@ -222,8 +222,8 @@ function applyPublicDataCache(cache: PublicDataCache) {
   USERS.push(...cache.users);
   LISTINGS.length = 0;
   LISTINGS.push(...cache.listings);
-  REVIEWS.length = 0;
-  REVIEWS.push(...cache.reviews);
+  SELLER_REVIEWS.length = 0;
+  SELLER_REVIEWS.push(...cache.sellerReviews);
   USERS.forEach((u) => { profileCache[u.id] = u; });
 }
 
@@ -249,11 +249,11 @@ export async function hydratePublicData(): Promise<void> {
     const timeoutMs = 8000;
     const profileReq = supabase.from('profiles').select('*').then((r) => r);
     const listingsReq = supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }).then((r) => r);
-    const reviewsReq = supabase.from('reviews').select('*').order('created_at', { ascending: false }).then((r) => r);
-    const [{ data: profs }, { data: rows }, { data: reviewRows }] = await Promise.all([
+    const sellerReviewsReq = supabase.from('seller_reviews').select('*').eq('status', 'visible').order('created_at', { ascending: false }).then((r) => r);
+    const [{ data: profs }, { data: rows }, { data: sellerReviewRows }] = await Promise.all([
       withTimeout(profileReq, timeoutMs),
       withTimeout(listingsReq, timeoutMs),
-      withTimeout(reviewsReq, timeoutMs),
+      withTimeout(sellerReviewsReq, timeoutMs),
     ]);
     profileCache = {};
     (profs || []).forEach((p: DbRow) => {
@@ -262,8 +262,9 @@ export async function hydratePublicData(): Promise<void> {
       upsertById(USERS, mapped);
     });
     (rows || []).forEach((r: DbRow) => upsertById(LISTINGS, mapListing(r, profileCache)));
-    (reviewRows || []).forEach((r: DbRow) => upsertById(REVIEWS, mapReview(r)));
-    savePublicDataCache(USERS, LISTINGS, REVIEWS);
+    SELLER_REVIEWS.length = 0;
+    (sellerReviewRows || []).forEach((r: DbRow) => upsertById(SELLER_REVIEWS, mapSellerReview(r)));
+    savePublicDataCache(USERS, LISTINGS, SELLER_REVIEWS);
     await hydratePriceSnapshots();
     bumpListings();
   } catch (e) {
@@ -372,17 +373,26 @@ export async function hydrateUserOffers(): Promise<void> {
   }
 }
 
-function mapReview(r: DbRow): Review {
+function mapSellerReview(r: DbRow): SellerReview {
   return {
     id: r.id as string,
-    transaction_id: r.transaction_id as string,
-    listing_id: r.listing_id as string,
+    transaction_id: (r.transaction_id as string | undefined) || undefined,
     reviewer_id: r.reviewer_id as string,
     seller_id: r.seller_id as string,
     rating: r.rating as number,
-    comment: (r.comment as string) || '',
-    tags: (r.tags as string[]) || [],
+    comment: (r.comment as string | undefined) || undefined,
+    would_buy_again: (r.would_buy_again as boolean | undefined) ?? undefined,
+    packaging_rating: (r.packaging_rating as number | undefined) ?? undefined,
+    plant_condition_rating: (r.plant_condition_rating as number | undefined) ?? undefined,
+    communication_rating: (r.communication_rating as number | undefined) ?? undefined,
+    shipping_speed_rating: (r.shipping_speed_rating as number | undefined) ?? undefined,
+    listing_accuracy_rating: (r.listing_accuracy_rating as number | undefined) ?? undefined,
+    image_urls: (r.image_urls as string[] | undefined) || [],
+    verified_purchase: (r.verified_purchase as boolean | undefined) ?? true,
+    status: (r.status as SellerReview['status'] | undefined) || 'visible',
+    admin_notes: (r.admin_notes as string | undefined) || undefined,
     created_at: r.created_at as string,
+    updated_at: (r.updated_at as string | undefined) || (r.created_at as string),
     reviewer: USERS.find((u) => u.id === (r.reviewer_id as string)),
   };
 }
@@ -733,6 +743,7 @@ export async function fetchPlant(plantId: string): Promise<Plant | null> {
 }
 
 export async function fetchPlantTransfers(plantId: string): Promise<import('@/types').Transfer[]> {
+  if (!isValidUuid(plantId)) return [];
   try {
     const { data, error } = await supabase
       .from('transfers')
@@ -758,6 +769,7 @@ export async function fetchPlantTransfers(plantId: string): Promise<import('@/ty
 }
 
 export async function recordQRScan(plantId: string, source: QRScan['scan_source'], scannerUserId?: string): Promise<void> {
+  if (!isValidUuid(plantId)) return;
   try {
     await supabase.from('qr_scans').insert({
       plant_id: plantId,
@@ -771,6 +783,7 @@ export async function recordQRScan(plantId: string, source: QRScan['scan_source'
 }
 
 export async function fetchQRScans(plantId: string): Promise<QRScan[]> {
+  if (!isValidUuid(plantId)) return [];
   try {
     const { data, error } = await supabase
       .from('qr_scans')
@@ -795,7 +808,12 @@ export async function fetchQRScans(plantId: string): Promise<QRScan[]> {
   }
 }
 
+export function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function verifyQRSignature(plantId: string, signature: string): Promise<boolean> {
+  if (!isValidUuid(plantId) || !signature) return false;
   try {
     const { data, error } = await supabase.rpc('verify_qr_signature', {
       p_plant_id: plantId,
@@ -809,16 +827,25 @@ export async function verifyQRSignature(plantId: string, signature: string): Pro
   }
 }
 
-export async function fetchProvenance(plantId: string): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[]; plant: Plant | null; scans: QRScan[]; signatureValid: boolean | null }> {
+export async function fetchProvenance(
+  plantId: string,
+  signature?: string | null
+): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[]; plant: Plant | null; scans: QRScan[]; signatureValid: boolean | null }> {
+  const isUuid = isValidUuid(plantId);
   const listing = getListingByPlantId(plantId) || null;
-  const plant = await fetchPlant(plantId);
+  const plant = isUuid ? await fetchPlant(plantId) : null;
+
+  let signatureValid: boolean | null = null;
+  if (plant && signature) {
+    signatureValid = await verifyQRSignature(plantId, signature);
+  }
 
   if (plant) {
     const [transfers, scans] = await Promise.all([
       fetchPlantTransfers(plantId),
       fetchQRScans(plantId),
     ]);
-    return { listing, transfers, plant, scans, signatureValid: null };
+    return { listing, transfers, plant, scans, signatureValid };
   }
 
   // Legacy fallback: derive provenance from completed transactions when no
@@ -839,9 +866,9 @@ export async function fetchProvenance(plantId: string): Promise<{ listing: Listi
       sale_price_thb: r.sale_price_thb,
       transferred_at: r.completed_at || r.created_at,
     }));
-    return { listing, transfers, plant: null, scans: [], signatureValid: null };
+    return { listing, transfers, plant: null, scans: [], signatureValid };
   } catch {
-    return { listing, transfers: [], plant: null, scans: [], signatureValid: null };
+    return { listing, transfers: [], plant: null, scans: [], signatureValid };
   }
 }
 
@@ -1303,23 +1330,18 @@ export function subscribeToTransactions(userId: string): () => void {
   );
 }
 
-// ---------- reviews ----------
-export function getReviewsBySeller(sellerId: string): Review[] {
-  return REVIEWS.filter((r) => r.seller_id === sellerId).map((r) => ({
-    ...r,
-    reviewer: USERS.find((u) => u.id === r.reviewer_id),
-  }));
+// ---------- seller reviews ----------
+export function getSellerReviews(sellerId: string): SellerReview[] {
+  return SELLER_REVIEWS.filter((r) => r.seller_id === sellerId && r.status === 'visible')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .map((r) => ({
+      ...r,
+      reviewer: USERS.find((u) => u.id === r.reviewer_id),
+    }));
 }
 
-export function getReviewsByListing(listingId: string): Review[] {
-  return REVIEWS.filter((r) => r.listing_id === listingId).map((r) => ({
-    ...r,
-    reviewer: USERS.find((u) => u.id === r.reviewer_id),
-  }));
-}
-
-export function getReviewStats(sellerId: string): { average: number; count: number; distribution: Record<number, number> } {
-  const reviews = REVIEWS.filter((r) => r.seller_id === sellerId);
+export function getSellerReviewStats(sellerId: string): { average: number; count: number; distribution: Record<number, number> } {
+  const reviews = SELLER_REVIEWS.filter((r) => r.seller_id === sellerId && r.status === 'visible');
   const count = reviews.length;
   if (count === 0) {
     return { average: 0, count: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
@@ -1332,39 +1354,443 @@ export function getReviewStats(sellerId: string): { average: number; count: numb
   return { average: Math.round((sum / count) * 10) / 10, count, distribution };
 }
 
-export async function createReview(data: Omit<Review, 'id' | 'created_at'>): Promise<Review> {
+export function hasReviewedTransaction(transactionId: string, reviewerId: string): boolean {
+  return SELLER_REVIEWS.some((r) => r.transaction_id === transactionId && r.reviewer_id === reviewerId);
+}
+
+export function canReviewSeller(userId: string | undefined, sellerId: string): { ok: boolean; transactionId?: string } {
+  if (!userId) return { ok: false };
+  const completed = TRANSACTIONS.find(
+    (t) => t.buyer_id === userId && t.seller_id === sellerId && t.status === 'completed'
+  );
+  if (!completed) return { ok: false };
+  if (hasReviewedTransaction(completed.id, userId)) return { ok: false };
+  return { ok: true, transactionId: completed.id };
+}
+
+export async function createSellerReview(
+  data: Omit<SellerReview, 'id' | 'created_at' | 'updated_at'>
+): Promise<SellerReview> {
   const { data: row, error } = await supabase
-    .from('reviews')
+    .from('seller_reviews')
     .insert({
       transaction_id: data.transaction_id,
-      listing_id: data.listing_id,
       reviewer_id: data.reviewer_id,
       seller_id: data.seller_id,
       rating: data.rating,
-      comment: sanitizeText(data.comment, 2000),
-      tags: data.tags,
+      comment: data.comment ? sanitizeText(data.comment, 2000) : null,
+      would_buy_again: data.would_buy_again ?? null,
+      packaging_rating: data.packaging_rating ?? null,
+      plant_condition_rating: data.plant_condition_rating ?? null,
+      communication_rating: data.communication_rating ?? null,
+      shipping_speed_rating: data.shipping_speed_rating ?? null,
+      listing_accuracy_rating: data.listing_accuracy_rating ?? null,
+      image_urls: data.image_urls || [],
     })
     .select('*')
     .single();
   if (error) throw error;
-  const review: Review = {
-    id: row.id as string,
-    transaction_id: row.transaction_id as string,
-    listing_id: row.listing_id as string,
-    reviewer_id: row.reviewer_id as string,
-    seller_id: row.seller_id as string,
-    rating: row.rating as number,
-    comment: row.comment as string,
-    tags: (row.tags as string[]) || [],
-    created_at: row.created_at as string,
-    reviewer: USERS.find((u) => u.id === data.reviewer_id),
-  };
-  upsertById(REVIEWS, review);
+  const review = mapSellerReview(row);
+  upsertById(SELLER_REVIEWS, review);
+  // Update cached seller rating.
+  const seller = USERS.find((u) => u.id === review.seller_id);
+  if (seller) {
+    const stats = getSellerReviewStats(review.seller_id);
+    seller.rating = stats.average;
+  }
+  notifySellerReview(review.seller_id);
   return review;
 }
 
-export function hasReviewed(transactionId: string, reviewerId: string): boolean {
-  return REVIEWS.some((r) => r.transaction_id === transactionId && r.reviewer_id === reviewerId);
+export function notifySellerReview(sellerId: string) {
+  return createNotification({
+    user_id: sellerId,
+    type: 'review',
+    title: 'New seller review',
+    message: 'A buyer left a review on your profile.',
+    link: `/seller/${sellerId}`,
+    read: false,
+  });
+}
+
+// ---------- community comments ----------
+function mapComment(r: DbRow): Comment {
+  return {
+    id: r.id as string,
+    species_id: r.species_id as string,
+    listing_id: (r.listing_id as string | undefined) || undefined,
+    parent_comment_id: (r.parent_comment_id as string | undefined) || undefined,
+    author_id: r.author_id as string,
+    content: r.content as string,
+    content_type: (r.content_type as Comment['content_type'] | undefined) || 'text',
+    likes_count: (r.likes_count as number | undefined) ?? 0,
+    replies_count: (r.replies_count as number | undefined) ?? 0,
+    status: (r.status as Comment['status'] | undefined) || 'visible',
+    reported_count: (r.reported_count as number | undefined) ?? 0,
+    admin_notes: (r.admin_notes as string | undefined) || undefined,
+    edited_at: (r.edited_at as string | undefined) || undefined,
+    edited_by: (r.edited_by as string | undefined) || undefined,
+    deleted_at: (r.deleted_at as string | undefined) || undefined,
+    deleted_by: (r.deleted_by as string | undefined) || undefined,
+    created_at: r.created_at as string,
+    updated_at: (r.updated_at as string | undefined) || (r.created_at as string),
+    author: USERS.find((u) => u.id === (r.author_id as string)),
+  };
+}
+
+function mapCommentImage(r: DbRow): CommentImage {
+  return {
+    id: r.id as string,
+    comment_id: r.comment_id as string,
+    storage_bucket: r.storage_bucket as string,
+    storage_path: r.storage_path as string,
+    file_name: r.file_name as string,
+    mime_type: r.mime_type as string,
+    width: (r.width as number | undefined) ?? undefined,
+    height: (r.height as number | undefined) ?? undefined,
+    order_index: (r.order_index as number | undefined) ?? 0,
+    created_at: r.created_at as string,
+    url: supabase.storage.from(r.storage_bucket as string).getPublicUrl(r.storage_path as string).data.publicUrl,
+  };
+}
+
+function mapCommentReaction(r: DbRow): CommentReaction {
+  return {
+    id: r.id as string,
+    comment_id: r.comment_id as string,
+    user_id: r.user_id as string,
+    reaction: r.reaction as string,
+    created_at: r.created_at as string,
+    user: USERS.find((u) => u.id === (r.user_id as string)),
+  };
+}
+
+const COMMENT_PAGE_SIZE = 20;
+const REPLY_PAGE_SIZE = 10;
+
+export function getCommentsForSpecies(
+  speciesId: string,
+  { cursor, limit = COMMENT_PAGE_SIZE }: { cursor?: string; limit?: number } = {}
+): Comment[] {
+  let comments = COMMENTS.filter(
+    (c) => c.species_id === speciesId && !c.parent_comment_id && c.status === 'visible'
+  ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  if (cursor) {
+    const idx = comments.findIndex((c) => c.id === cursor);
+    if (idx >= 0) comments = comments.slice(idx + 1);
+  }
+  return comments.slice(0, limit).map((c) => hydrateCommentExtras(c));
+}
+
+export function getCommentReplies(
+  parentId: string,
+  { cursor, limit = REPLY_PAGE_SIZE }: { cursor?: string; limit?: number } = {}
+): Comment[] {
+  let replies = COMMENTS.filter(
+    (c) => c.parent_comment_id === parentId && c.status === 'visible'
+  ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  if (cursor) {
+    const idx = replies.findIndex((c) => c.id === cursor);
+    if (idx >= 0) replies = replies.slice(idx + 1);
+  }
+  return replies.slice(0, limit).map((c) => hydrateCommentExtras(c));
+}
+
+function hydrateCommentExtras(comment: Comment): Comment {
+  const images = COMMENT_IMAGES.filter((i) => i.comment_id === comment.id).sort((a, b) => a.order_index - b.order_index);
+  const reactions = COMMENT_REACTIONS.filter((r) => r.comment_id === comment.id);
+  return {
+    ...comment,
+    images,
+    reactions,
+  };
+}
+
+export async function hydrateCommentsForSpecies(speciesId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('species_id', speciesId)
+      .in('status', ['visible', 'under_review'])
+      .order('created_at', { ascending: false })
+      .limit(COMMENT_PAGE_SIZE * 2);
+    if (error) throw error;
+    COMMENTS.length = 0;
+    (data || []).forEach((r) => upsertById(COMMENTS, mapComment(r)));
+    await Promise.all([hydrateCommentImagesForSpecies(speciesId), hydrateCommentReactionsForSpecies(speciesId)]);
+  } catch (e) {
+    logger.warn('hydrateCommentsForSpecies failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function hydrateCommentImagesForSpecies(speciesId: string): Promise<void> {
+  try {
+    const commentIds = COMMENTS.filter((c) => c.species_id === speciesId).map((c) => c.id);
+    if (commentIds.length === 0) return;
+    const { data, error } = await supabase
+      .from('comment_images')
+      .select('*')
+      .in('comment_id', commentIds)
+      .order('order_index', { ascending: true });
+    if (error) throw error;
+    COMMENT_IMAGES.length = 0;
+    (data || []).forEach((r) => COMMENT_IMAGES.push(mapCommentImage(r)));
+  } catch (e) {
+    logger.warn('hydrateCommentImagesForSpecies failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function hydrateCommentReactionsForSpecies(speciesId: string): Promise<void> {
+  try {
+    const commentIds = COMMENTS.filter((c) => c.species_id === speciesId).map((c) => c.id);
+    if (commentIds.length === 0) return;
+    const { data, error } = await supabase
+      .from('comment_reactions')
+      .select('*')
+      .in('comment_id', commentIds);
+    if (error) throw error;
+    COMMENT_REACTIONS.length = 0;
+    (data || []).forEach((r) => COMMENT_REACTIONS.push(mapCommentReaction(r)));
+  } catch (e) {
+    logger.warn('hydrateCommentReactionsForSpecies failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+export function getCommentsForListing(
+  listingId: string,
+  { cursor, limit = COMMENT_PAGE_SIZE }: { cursor?: string; limit?: number } = {}
+): Comment[] {
+  let comments = COMMENTS.filter(
+    (c) => c.listing_id === listingId && !c.parent_comment_id && c.status === 'visible'
+  ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  if (cursor) {
+    const idx = comments.findIndex((c) => c.id === cursor);
+    if (idx >= 0) comments = comments.slice(idx + 1);
+  }
+  return comments.slice(0, limit).map((c) => hydrateCommentExtras(c));
+}
+
+export async function hydrateCommentsForListing(listingId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('listing_id', listingId)
+      .in('status', ['visible', 'under_review'])
+      .order('created_at', { ascending: false })
+      .limit(COMMENT_PAGE_SIZE * 2);
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(COMMENTS, mapComment(r)));
+    await Promise.all([hydrateCommentImagesForListing(listingId), hydrateCommentReactionsForListing(listingId)]);
+  } catch (e) {
+    logger.warn('hydrateCommentsForListing failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function hydrateCommentImagesForListing(listingId: string): Promise<void> {
+  try {
+    const commentIds = COMMENTS.filter((c) => c.listing_id === listingId).map((c) => c.id);
+    if (commentIds.length === 0) return;
+    const { data, error } = await supabase
+      .from('comment_images')
+      .select('*')
+      .in('comment_id', commentIds)
+      .order('order_index', { ascending: true });
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(COMMENT_IMAGES, mapCommentImage(r)));
+  } catch (e) {
+    logger.warn('hydrateCommentImagesForListing failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function hydrateCommentReactionsForListing(listingId: string): Promise<void> {
+  try {
+    const commentIds = COMMENTS.filter((c) => c.listing_id === listingId).map((c) => c.id);
+    if (commentIds.length === 0) return;
+    const { data, error } = await supabase
+      .from('comment_reactions')
+      .select('*')
+      .in('comment_id', commentIds);
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(COMMENT_REACTIONS, mapCommentReaction(r)));
+  } catch (e) {
+    logger.warn('hydrateCommentReactionsForListing failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+export interface CreateCommentInput {
+  species_id?: string;
+  listing_id?: string;
+  parent_comment_id?: string;
+  content: string;
+  images?: { storage_bucket: string; storage_path: string; file_name: string; mime_type: string; width?: number; height?: number }[];
+}
+
+export async function createComment(
+  input: CreateCommentInput,
+  authorId: string
+): Promise<Comment> {
+  if (!input.species_id && !input.listing_id) {
+    throw new Error('Comment must be attached to a species or a listing');
+  }
+  const content = sanitizeText(input.content, 5000);
+  const mentions = parseMentions(content);
+  const { data: row, error } = await supabase
+    .from('comments')
+    .insert({
+      species_id: input.species_id || null,
+      listing_id: input.listing_id || null,
+      parent_comment_id: input.parent_comment_id || null,
+      author_id: authorId,
+      content,
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  const comment = mapComment(row);
+
+  // Insert images.
+  if (input.images && input.images.length > 0) {
+    const imageRows = input.images.map((img, i) => ({
+      comment_id: comment.id,
+      storage_bucket: img.storage_bucket,
+      storage_path: img.storage_path,
+      file_name: img.file_name,
+      mime_type: img.mime_type,
+      width: img.width,
+      height: img.height,
+      order_index: i,
+    }));
+    const { data: imageData, error: imageError } = await supabase
+      .from('comment_images')
+      .insert(imageRows)
+      .select('*');
+    if (!imageError && imageData) {
+      imageData.forEach((r) => COMMENT_IMAGES.push(mapCommentImage(r)));
+    }
+  }
+
+  // Insert mentions.
+  if (mentions.length > 0) {
+    const mentionRows = mentions.map((m) => ({ comment_id: comment.id, mentioned_user_id: m.userId }));
+    await supabase.from('comment_mentions').insert(mentionRows).then(() => {});
+  }
+
+  upsertById(COMMENTS, comment);
+  return hydrateCommentExtras(comment);
+}
+
+export async function editComment(id: string, authorId: string, content: string): Promise<Comment> {
+  const sanitized = sanitizeText(content, 5000);
+  const { data: row, error } = await supabase
+    .from('comments')
+    .update({ content: sanitized, edited_at: new Date().toISOString(), edited_by: authorId })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  const comment = mapComment(row);
+  upsertById(COMMENTS, comment);
+  return hydrateCommentExtras(comment);
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('comments')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+  const local = COMMENTS.find((c) => c.id === id);
+  if (local) local.deleted_at = new Date().toISOString();
+}
+
+export async function toggleCommentReaction(
+  commentId: string,
+  userId: string,
+  reaction: string = 'like'
+): Promise<{ added: boolean }> {
+  const existing = COMMENT_REACTIONS.find(
+    (r) => r.comment_id === commentId && r.user_id === userId && r.reaction === reaction
+  );
+  if (existing) {
+    const { error } = await supabase.from('comment_reactions').delete().eq('id', existing.id);
+    if (error) throw error;
+    const idx = COMMENT_REACTIONS.findIndex((r) => r.id === existing.id);
+    if (idx >= 0) COMMENT_REACTIONS.splice(idx, 1);
+    return { added: false };
+  }
+  const { data: row, error } = await supabase
+    .from('comment_reactions')
+    .insert({ comment_id: commentId, user_id: userId, reaction })
+    .select('*')
+    .single();
+  if (error) throw error;
+  COMMENT_REACTIONS.push(mapCommentReaction(row));
+  return { added: true };
+}
+
+export async function reportComment(
+  commentId: string,
+  reportedBy: string,
+  reason: string,
+  details?: string
+): Promise<void> {
+  const { error } = await supabase.from('comment_reports').insert({
+    comment_id: commentId,
+    reported_by: reportedBy,
+    reason: sanitizeText(reason, 100),
+    details: details ? sanitizeText(details, 1000) : null,
+  });
+  if (error) throw error;
+  const comment = COMMENTS.find((c) => c.id === commentId);
+  if (comment) comment.reported_count += 1;
+}
+
+export async function ensureCommentImageBucket(): Promise<void> {
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some((b) => b.name === 'comment-images');
+    if (!exists) {
+      await supabase.storage.createBucket('comment-images', {
+        public: true,
+        fileSizeLimit: 5242880,
+      });
+    }
+  } catch (e) {
+    logger.warn('ensureCommentImageBucket failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+export async function uploadUserImage(file: File, userId: string): Promise<{ storage_path: string; width?: number; height?: number }> {
+  const validation = validateImageFile(file, 5);
+  if (!validation.ok) throw new Error(validation.error);
+  await ensureCommentImageBucket();
+  const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
+  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('comment-images').upload(path, file, { upsert: false });
+  if (error) throw error;
+  return { storage_path: path };
+}
+
+function parseMentions(content: string): { userId: string; displayName: string }[] {
+  const mentionRegex = /@([^\s@]+)/g;
+  const matches = content.matchAll(mentionRegex);
+  const result: { userId: string; displayName: string }[] = [];
+  const seen = new Set<string>();
+  for (const match of matches) {
+    const handle = match[1].toLowerCase();
+    const user = USERS.find(
+      (u) =>
+        u.display_name.toLowerCase().replace(/\s+/g, '') === handle ||
+        u.display_name.toLowerCase().replace(/\s+/g, '_') === handle
+    );
+    if (user && !seen.has(user.id)) {
+      seen.add(user.id);
+      result.push({ userId: user.id, displayName: user.display_name });
+    }
+  }
+  return result;
 }
 
 // ---------- offers ----------

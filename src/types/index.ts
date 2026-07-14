@@ -545,18 +545,94 @@ export interface DashboardStats {
   pending_payouts: number;
 }
 
-export interface Review {
+export interface SellerReview {
   id: string;
-  transaction_id: string;
-  listing_id: string;
+  transaction_id?: string;
   reviewer_id: string;
   seller_id: string;
   rating: number;
-  comment: string;
-  tags: string[];
+  comment?: string;
+  would_buy_again?: boolean;
+  packaging_rating?: number;
+  plant_condition_rating?: number;
+  communication_rating?: number;
+  shipping_speed_rating?: number;
+  listing_accuracy_rating?: number;
+  image_urls: string[];
+  verified_purchase: boolean;
+  status: 'visible' | 'hidden' | 'under_review';
+  admin_notes?: string;
   created_at: string;
+  updated_at: string;
   reviewer?: Profile;
-  listing?: Listing;
+}
+
+export interface Comment {
+  id: string;
+  species_id: string;
+  listing_id?: string;
+  parent_comment_id?: string;
+  author_id: string;
+  content: string;
+  content_type: 'text' | 'markdown';
+  likes_count: number;
+  replies_count: number;
+  status: 'visible' | 'hidden' | 'under_review';
+  reported_count: number;
+  admin_notes?: string;
+  edited_at?: string;
+  edited_by?: string;
+  deleted_at?: string;
+  deleted_by?: string;
+  created_at: string;
+  updated_at: string;
+  author?: Profile;
+  images?: CommentImage[];
+  reactions?: CommentReaction[];
+  user_reaction?: string;
+}
+
+export interface CommentImage {
+  id: string;
+  comment_id: string;
+  storage_bucket: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  width?: number;
+  height?: number;
+  order_index: number;
+  created_at: string;
+  url?: string;
+}
+
+export interface CommentReaction {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  reaction: string;
+  created_at: string;
+  user?: Profile;
+}
+
+export interface CommentMention {
+  id: string;
+  comment_id: string;
+  mentioned_user_id: string;
+  created_at: string;
+}
+
+export interface CommentReport {
+  id: string;
+  comment_id: string;
+  reported_by: string;
+  reason: string;
+  details?: string;
+  status: 'open' | 'reviewed' | 'resolved_dismissed' | 'resolved_hidden';
+  created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  resolution_notes?: string;
 }
 
 export interface Notification {

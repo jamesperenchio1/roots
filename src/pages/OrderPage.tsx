@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
-import { updateOrderStatus, uploadDisputeEvidence, hasReviewed } from '@/lib/api';
+import { updateOrderStatus, uploadDisputeEvidence, hasReviewedTransaction } from '@/lib/api';
+import { verifyQrFromFile } from '@/lib/qr-verify';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import ReviewForm from '@/components/ReviewForm';
+import { SellerReviewForm } from '@/components/SellerReviewForm';
 import type { Transaction } from '@/types';
 
 export default function OrderPage() {
@@ -108,6 +109,14 @@ export default function OrderPage() {
   const handleConfirmReceipt = async (file: File, method: 'qr' | 'photo') => {
     setConfirming(true);
     try {
+      if (method === 'qr') {
+        const expectedPlantId = tx.plant_id || tx.listing?.plant_id || tx.listing_id;
+        const result = await verifyQrFromFile(file, expectedPlantId);
+        if (!result.ok) {
+          toast.error(result.error || t('checkout:order.qrVerifyFailed'));
+          return;
+        }
+      }
       await uploadDisputeEvidence(file, tx.buyer_id || 'anonymous');
       await updateOrderStatus(tx.id, {
         status: 'completed',
@@ -320,18 +329,19 @@ export default function OrderPage() {
           </div>
         )}
 
-        {status === 'completed' && user && tx.buyer_id === user.id && !reviewSubmitted && !hasReviewed(tx.id, user.id) && tx.listing && (
+        {status === 'completed' && user && tx.buyer_id === user.id && !reviewSubmitted && !hasReviewedTransaction(tx.id, user.id) && (
           <div className="mb-6">
-            <ReviewForm
+            <h3 className="mb-2 text-sm font-medium text-zinc-200">{t('checkout:order.leaveSellerReview')}</h3>
+            <SellerReviewForm
               transactionId={tx.id}
-              listingId={tx.listing_id}
               sellerId={tx.seller_id}
+              reviewerId={user.id}
               onSubmitted={() => setReviewSubmitted(true)}
             />
           </div>
         )}
 
-        {status === 'completed' && (reviewSubmitted || (user && hasReviewed(tx.id, user.id))) && (
+        {status === 'completed' && (reviewSubmitted || (user && hasReviewedTransaction(tx.id, user.id))) && (
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
             <p className="text-sm text-emerald-400 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />

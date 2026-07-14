@@ -75,7 +75,7 @@ export default function MessageBubble({
         <div className="flex flex-col gap-1 min-w-0">
           {message.reply_to && (
             <div className={`text-xs px-3 py-1.5 rounded-lg border ${isMe ? 'border-emerald-500/20 bg-emerald-900/20' : 'border-white/10 bg-zinc-800/50'} text-zinc-400 truncate`}>
-              <span className="font-medium text-zinc-300">{message.reply_to.sender?.display_name || 'Unknown'}:</span>{' '}
+              <span className="font-medium text-zinc-300">{message.reply_to.sender?.display_name || t('common:unknownUser')}:</span>{' '}
               {message.reply_to.content}
             </div>
           )}
@@ -89,7 +89,7 @@ export default function MessageBubble({
                       ? 'bg-emerald-600 text-white rounded-br-md'
                       : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
                   } ${isDeleted ? 'italic opacity-70' : ''}`}
-                  aria-label={isDeleted ? 'Deleted message' : message.content}
+                  aria-label={isDeleted ? t('messages:deleted') : message.content}
                 >
                   {isDeleted ? (
                     <p className="text-sm">{t('messages:deleted')}</p>
@@ -105,7 +105,7 @@ export default function MessageBubble({
                         )}
                         <span className="text-[10px]">{formatTime(message.created_at)}</span>
                         {isMe && (
-                          <span className="flex items-center" aria-label={readByOthers ? 'Read' : 'Delivered'}>
+                          <span className="flex items-center" aria-label={readByOthers ? t('messages:read') : t('messages:delivered')}>
                             {readByOthers ? (
                               <CheckCheck className="w-3 h-3" />
                             ) : hasReads ? (
@@ -216,6 +216,7 @@ export default function MessageBubble({
 
 
 function MessageAttachments({ attachments }: { attachments: import('@/types').MessageAttachment[] }) {
+  const { t } = useTranslation(['messages']);
   const [urls, setUrls] = useState<Record<string, string | undefined>>({});
 
   useEffect(() => {
@@ -280,7 +281,7 @@ function MessageAttachments({ attachments }: { attachments: import('@/types').Me
                 />
               ) : (
                 <div className="w-32 h-24 bg-zinc-800 rounded-lg flex items-center justify-center border border-white/10 animate-pulse">
-                  <span className="text-xs text-zinc-500">Video</span>
+                  <span className="text-xs text-zinc-500">{t('messages:attachments.video')}</span>
                 </div>
               )}
             </div>
@@ -294,7 +295,7 @@ function MessageAttachments({ attachments }: { attachments: import('@/types').Me
                 <audio src={url} controls className="w-full max-w-xs" />
               ) : (
                 <div className="h-10 bg-zinc-800 rounded-lg flex items-center px-3 border border-white/10 animate-pulse">
-                  <span className="text-xs text-zinc-500">Audio</span>
+                  <span className="text-xs text-zinc-500">{t('messages:attachments.audio')}</span>
                 </div>
               )}
             </div>

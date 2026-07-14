@@ -86,6 +86,10 @@
     "escrowProtected": "Escrow protected — funds released after delivery confirmation",
     "qrTag": "Comes with QR provenance tag",
     "scanQrCta": "Scan to verify provenance",
+    "pendingReview": "Pending review",
+    "underReview": "Under review",
+    "notAvailable": "Not available",
+    "joinDiscussion": "Join the {{species}} discussion",
     "priceHistoryDescription": "Historical sales data for {{species}} — {{size}} size"
   },
   "seller": {
@@ -114,6 +118,43 @@
     "viewAll": "View all {{count}} reviews",
     "noTagMatch": "No reviews match this tag.",
     "anonymous": "Anonymous"
+  },
+  "sellerReviews": {
+    "verifiedBuyer": "Verified buyer",
+    "noReviewsYet": "No reviews yet",
+    "firstReviewPrompt": "Be the first to review your buying experience.",
+    "basedOnCount": "Based on {{count}} reviews",
+    "basedOnCount_one": "Based on {{count}} review",
+    "ratingOutOf": "{{rating}} out of 5 stars",
+    "wouldBuyAgainYes": "Would buy again",
+    "wouldBuyAgainNo": "Would not buy again",
+    "reviewImageAlt": "Review photo {{index}}",
+    "overallRating": "Overall rating",
+    "ratingRequired": "Please select an overall rating.",
+    "ratingLabels": {
+      "1": "Terrible",
+      "2": "Poor",
+      "3": "Average",
+      "4": "Good",
+      "5": "Excellent"
+    },
+    "tapToRate": "Tap to rate",
+    "writtenReview": "Written review",
+    "commentPlaceholder": "How was the packaging, plant condition, and communication?",
+    "wouldBuyAgain": "Would you buy from this seller again?",
+    "yes": "Yes",
+    "no": "No",
+    "rateStar": "Rate {{star}} stars",
+    "rateDimension": "Rate {{dimension}} {{star}} stars",
+    "submitReview": "Submit review",
+    "dimensions": {
+      "packaging": "Packaging",
+      "plant_condition": "Plant condition",
+      "communication": "Communication",
+      "shipping_speed": "Shipping speed",
+      "listing_accuracy": "Listing accuracy"
+    },
+    "unknownBuyer": "Anonymous buyer"
   },
   "market": {
     "title": "Market Prices",
@@ -192,6 +233,26 @@
     "successTitle": "Listing Created!",
     "successSubtitle": "Your {{name}} has been submitted for review.",
     "successDescription": "Once approved, buyers can find it, compare prices, and purchase with escrow protection.",
+    "loadingIdentification": "Loading identification result…",
+    "prefilledFromIdentification": "Prefilled from identification",
+    "commonNames": "Common names: {{names}}",
+    "suggestedPrice": "suggested price {{price}} {{currency}}",
+    "loadingSavedPlaces": "Loading saved places…",
+    "pickupFromSavedPlace": "Pickup from saved place",
+    "selectSavedPlace": "Select a saved place (optional)",
+    "tagSuggestions": {
+      "variegated": "variegated",
+      "rare": "rare",
+      "mature": "mature",
+      "seedling": "seedling",
+      "cutting": "cutting",
+      "rooted": "rooted",
+      "unrooted": "unrooted",
+      "flowering": "flowering",
+      "fragrant": "fragrant",
+      "pet-friendly": "pet-friendly",
+      "beginner-friendly": "beginner-friendly"
+    },
     "provenanceQrTitle": "Provenance QR Code",
     "provenanceQrAlt": "Provenance QR",
     "autoDownloaded": "Auto-downloaded to your device.",
@@ -226,6 +287,35 @@
     "saveFailed": "Could not save changes",
     "feeNotice": "When this sells, you will receive {{net}} {{currency}} after the 8% platform fee ({{fee}} {{currency}}).",
     "feeNote": "No listing fee. No monthly fee. You only pay when you sell."
+  },
+  "identify": {
+    "title": "Identify a plant",
+    "subtitle": "Upload evidence and get a free, market-aware identification.",
+    "sellThisPlant": "Sell this plant",
+    "processing": "Identifying your plant…",
+    "processingDescription": "Running free vision models and checking marketplace data.",
+    "contextTitle": "Growing context",
+    "country": "Country",
+    "growingConditions": "Growing conditions",
+    "growingConditionsPlaceholder": "e.g. bright indirect light, 70% humidity",
+    "notes": "Additional notes",
+    "notesPlaceholder": "Anything else that might help identification",
+    "identifyButton": "Identify",
+    "continueButton": "Continue",
+    "skipButton": "Skip",
+    "uploadEvidence": "Upload {{type}}",
+    "evidenceDescriptions": {
+      "overall": "Show the whole plant in one frame.",
+      "leaf": "A clear, well-lit leaf close-up is very helpful.",
+      "stem": "Stem texture and colour help distinguish species.",
+      "flower": "Flowers are often the most definitive feature.",
+      "default": "Optional but improves confidence."
+    },
+    "errors": {
+      "requestNotFound": "Identification request not found",
+      "pleaseUpload": "Please upload {{type}}.",
+      "failed": "Identification failed"
+    }
   },
   "species": {
     "notFound": "Species not found",

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Star, Store, MapPin, Calendar } from 'lucide-react';
 import { getUserById, getActiveListings, PLANT_IMAGES } from '@/data/mockData';
 import { getProvinceLabel } from '@/lib/provinces';
-import ReviewSection from '@/components/ReviewSection';
+import { SellerReviewsSection } from '@/components/SellerReviewsSection';
 
 export default function SellerPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
@@ -54,7 +54,8 @@ export default function SellerPage() {
 
         {/* Reviews */}
         <div className="mb-8">
-          <ReviewSection sellerId={seller.id} />
+          <h2 className="text-lg font-medium mb-4">{t('marketplace:seller.reviews')}</h2>
+          <SellerReviewsSection sellerId={seller.id} />
         </div>
 
         {/* Active Listings */}

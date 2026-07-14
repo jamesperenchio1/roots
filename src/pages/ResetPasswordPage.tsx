@@ -31,7 +31,7 @@ export default function ResetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setError(t('common:errors.passwordMismatch', { defaultValue: 'Passwords do not match' }));
+      setError(t('common:errors.passwordMismatch'));
       return;
     }
     const res = await updatePassword(password);
@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
             <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
             <h2 className="text-lg font-medium mb-1">{t('auth:resetPassword.success')}</h2>
             <p className="text-sm text-zinc-500">
-              {t('common:errors.redirecting', { defaultValue: 'Redirecting…' })}
+              {t('common:errors.redirecting')}
             </p>
           </div>
         ) : (
@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('auth:signup.passwordHint')}
+                  placeholder={t('auth:resetPassword.newPasswordPlaceholder')}
                   className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                   required
                 />
@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder={t('auth:resetPassword.confirmPassword')}
+                  placeholder={t('auth:resetPassword.confirmPasswordPlaceholder')}
                   className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
                   required
                 />

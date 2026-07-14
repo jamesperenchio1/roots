@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ interface MessageSearchProps {
 }
 
 export default function MessageSearch({ onSearch, onJump, onClose }: MessageSearchProps) {
+  const { t } = useTranslation(['messages']);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,12 +42,12 @@ export default function MessageSearch({ onSearch, onJump, onClose }: MessageSear
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSearch();
             }}
-            placeholder="Search messages…"
+            placeholder={t('messages:search')}
             className="pl-9 bg-zinc-800 border-white/10 text-white placeholder-zinc-600"
           />
         </div>
         <Button onClick={handleSearch} disabled={loading} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-          Search
+          {t('messages:searchButton')}
         </Button>
         <Button onClick={onClose} variant="ghost" size="icon" className="text-zinc-500 hover:text-white">
           <X className="w-4 h-4" />
@@ -69,7 +71,7 @@ export default function MessageSearch({ onSearch, onJump, onClose }: MessageSear
         </div>
       )}
       {query && !loading && results.length === 0 && (
-        <p className="text-xs text-zinc-500 px-1">No messages found.</p>
+        <p className="text-xs text-zinc-500 px-1">{t('messages:searchEmpty')}</p>
       )}
     </div>
   );

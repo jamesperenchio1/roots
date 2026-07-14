@@ -17,7 +17,9 @@
     "signup": "Sign up",
     "logout": "Log out",
     "scan": "Scan QR",
-    "search": "Search plants..."
+    "search": "Search plants...",
+    "fees": "Fees",
+    "qrProvenance": "QR Provenance"
   },
   "actions": {
     "save": "Save",
@@ -104,6 +106,7 @@
     "switch": "Switch language"
   },
   "unknown": "Unknown Plant",
+  "unknownUser": "Unknown user",
   "errorBoundary": {
     "title": "Something went wrong",
     "description": "We have encountered an unexpected error. Please try refreshing the page.",
@@ -144,15 +147,122 @@
     "light": "Light: {{level}} {{detail}}",
     "fallbackNote": "Showing locally-sourced care tips. Connect to Perenual for detailed guides."
   },
-  "reviews": {
-    "anonymous": "Anonymous",
-    "noneYet": "No reviews yet.",
-    "sellerReviews": "Seller Reviews",
-    "count_one": "{{count}} review",
-    "count_other": "{{count}} reviews",
-    "all": "All",
-    "viewAll": "View all {{count}} reviews",
-    "noTagMatch": "No reviews match this tag."
+  "comments": {
+    "title": "Community Discussion",
+    "sectionLabel": "Community discussion",
+    "placeholder": "Share a growth update, ask a question, or start a conversation…",
+    "replyPlaceholder": "Write a reply…",
+    "reply": "Reply",
+    "edited": "edited",
+    "deleted": "deleted",
+    "deletedMessage": "This comment has been deleted.",
+    "showReplies": "Show {{count}} replies",
+    "showReplies_one": "Show {{count}} reply",
+    "hideReplies": "Hide replies",
+    "viewThread": "View thread",
+    "emptyTitle": "No discussions yet",
+    "emptyDescription": "Be the first to share a photo, ask a question, or offer care advice.",
+    "loginToJoin": "Log in to join the discussion.",
+    "replyingTo": "Replying to {{author}}",
+    "viewImage": "View image {{index}}",
+    "imageAlt": "Comment image {{index}}",
+    "imageLightbox": "Image lightbox",
+    "reactions": {
+      "like": "Like",
+      "addReaction": "Add reaction",
+      "reactWith": "React with {{reaction}}"
+    },
+    "report": {
+      "label": "Report",
+      "title": "Report comment",
+      "description": "Help keep ROOTS a welcoming place. Reports are reviewed by our team.",
+      "reason": "Reason",
+      "selectReason": "Select a reason",
+      "details": "Details (optional)",
+      "detailsPlaceholder": "Tell us more about why you are reporting this…",
+      "reasons": {
+        "spam": "Spam",
+        "harassment": "Harassment",
+        "misinformation": "Misinformation",
+        "inappropriate": "Inappropriate content",
+        "off_topic": "Off topic",
+        "other": "Other"
+      },
+      "submit": "Submit report"
+    },
+    "deleteConfirm": "Delete this comment? This cannot be undone."
+  },
+  "sellerReviews": {
+    "title": "Seller Reviews",
+    "overallRating": "Overall rating",
+    "writtenReview": "Written review",
+    "tapToRate": "Tap to rate",
+    "rateStar": "Rate {{star}} stars",
+    "wouldBuyAgain": "Would buy again",
+    "yes": "Yes",
+    "no": "No",
+    "dimensions": {
+      "packaging": "Packaging",
+      "plant_condition": "Plant condition",
+      "communication": "Communication",
+      "shipping_speed": "Shipping speed",
+      "listing_accuracy": "Listing accuracy"
+    },
+    "rateDimension": "Rate {{dimension}} {{star}} stars",
+    "optionalPhotos": "Photos (optional)",
+    "submitReview": "Submit Review",
+    "noReviewsYet": "No reviews yet",
+    "firstReviewPrompt": "Be the first to share your experience after a purchase.",
+    "basedOnCount": "Based on {{count}} reviews",
+    "verifiedBuyer": "Verified buyer",
+    "ratingOutOf": "{{rating}} out of 5 stars",
+    "wouldBuyAgainYes": "Would buy again",
+    "wouldBuyAgainNo": "Would not buy again",
+    "reviewImageAlt": "Review image {{index}}",
+    "ratingLabels": {
+      "1": "Poor",
+      "2": "Fair",
+      "3": "Good",
+      "4": "Very good",
+      "5": "Excellent"
+    },
+    "ratingRequired": "Please select an overall star rating.",
+    "commentPlaceholder": "Share your experience with this seller... (min 20 characters)",
+    "commentMinLength": "Comment must be at least 20 characters."
+  },
+  "savedPlaces": {
+    "title": "Saved places",
+    "addPlace": "Add place",
+    "placeName": "Place name",
+    "placeNamePlaceholder": "Home, Shop, Greenhouse...",
+    "addressArea": "Address / area",
+    "addressPlaceholder": "e.g. Chatuchak Market, Bangkok",
+    "pinOnMap": "Pin on map",
+    "makeDefault": "Make this my default pickup place",
+    "update": "Update place",
+    "save": "Save place",
+    "loading": "Loading places…",
+    "noAddress": "No address",
+    "setDefault": "Set default",
+    "verifyGps": "Verify with current GPS location",
+    "confirmOnMap": "Confirm on map",
+    "empty": "No saved places yet.",
+    "saved": "Place saved",
+    "updated": "Place updated",
+    "removed": "Place removed",
+    "verifiedGps": "Location verified by GPS",
+    "confirmedMap": "Location confirmed on map",
+    "errors": {
+      "nameRequired": "Please give this place a name",
+      "pinRequired": "Please set a pin on the map",
+      "saveFailed": "Could not save place",
+      "removeFailed": "Could not remove place",
+      "setDefaultFailed": "Could not set default",
+      "tooFar": "You are {{distance}} m away. Must be within 500 m to verify.",
+      "gpsFailed": "Could not get your device location",
+      "verificationFailed": "Verification failed",
+      "confirmFailed": "Could not confirm"
+    }
   },
   "notifications": {
     "time": {
@@ -282,7 +392,7 @@
       "ruleBuyer": "Rule for Buyer",
       "ruleSeller": "Rule for Seller",
       "partialRefund": "Partial Refund",
-      "resolvedAt": "Resolved: {{date}} — {{amount}} THB",
+      "resolvedAt": "Resolved: {{date}} — {{amount}} {{currency}}",
       "resolutions": {
         "buyer": "buyer",
         "seller": "seller",
@@ -315,7 +425,41 @@
       },
       "dismissed": "Report dismissed",
       "deleted": "Message deleted"
+    },
+    "review": {
+      "loading": "Loading review queue…",
+      "emptyTitle": "Review queue is empty",
+      "emptyDescription": "No listings are waiting for approval.",
+      "pendingCount": "{{count}} pending",
+      "sellerLabel": "Seller",
+      "pickupLabel": "Pickup",
+      "qrVerified": "QR verified",
+      "qrVerifiedWithPhoto": "QR verified with photo",
+      "qrNotVerified": "QR not verified by seller yet",
+      "qrVerificationAlt": "Seller QR verification",
+      "reasonLabel": "Reason",
+      "selectReason": "Select a reason",
+      "notesLabel": "Notes (optional)",
+      "fail": "✗ Fail",
+      "pass": "✓ Pass",
+      "loadError": "Could not load listings",
+      "approved": "Listing approved",
+      "rejected": "Listing rejected",
+      "reviewFailed": "Review failed",
+      "reasons": {
+        "qrVerified": "QR verified",
+        "manualPass": "Manual pass",
+        "photoUnclear": "Photo unclear",
+        "wrongPlant": "Wrong plant",
+        "manualFail": "Manual fail"
+      }
     }
+  },
+  "footer": {
+    "company": "Company",
+    "copyright": "2025 ROOTS Plant Market Co., Ltd. Bangkok, Thailand.",
+    "termsShort": "Terms",
+    "privacyShort": "Privacy"
   },
   "contact": {
     "title": "Contact Us",

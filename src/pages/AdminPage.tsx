@@ -7,7 +7,7 @@ import { updateOrderStatus, hydrateUserDisputes, hydratePublicData, adminUpdateU
 import { fetchPendingListings, adminReviewListing } from '@/lib/listing-review';
 import { getMessageReports, resolveMessageReport, getMessageById } from '@/lib/messaging';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Listing } from '@/types';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -51,9 +51,9 @@ function Overview() {
   const { t } = useTranslation(['common']);
   const stats = getDashboardStats();
   const statItems = [
-    { labelKey: 'gmvToday', value: `${stats.gmv_today.toLocaleString()} THB`, color: 'text-emerald-400' },
-    { labelKey: 'gmvWeek', value: `${stats.gmv_week.toLocaleString()} THB`, color: 'text-white' },
-    { labelKey: 'gmvMonth', value: `${stats.gmv_month.toLocaleString()} THB`, color: 'text-white' },
+    { labelKey: 'gmvToday', value: `${stats.gmv_today.toLocaleString()} ${t('common:currency')}`, color: 'text-emerald-400' },
+    { labelKey: 'gmvWeek', value: `${stats.gmv_week.toLocaleString()} ${t('common:currency')}`, color: 'text-white' },
+    { labelKey: 'gmvMonth', value: `${stats.gmv_month.toLocaleString()} ${t('common:currency')}`, color: 'text-white' },
     { labelKey: 'activeListings', value: stats.active_listings.toString(), color: 'text-blue-400' },
     { labelKey: 'disputeRate', value: `${stats.dispute_rate}%`, color: 'text-red-400' },
     { labelKey: 'totalUsers', value: stats.user_count.toString(), color: 'text-purple-400' },
@@ -152,7 +152,7 @@ function Disputes() {
             </div>
           )}
           {d.status !== 'open' && d.resolved_at && (
-            <p className="text-xs text-zinc-600">{t('common:admin.disputes.resolvedAt', { date: d.resolved_at.slice(0, 10), amount: d.resolution_amount_thb?.toLocaleString() })}</p>
+            <p className="text-xs text-zinc-600">{t('common:admin.disputes.resolvedAt', { date: d.resolved_at.slice(0, 10), amount: d.resolution_amount_thb?.toLocaleString(), currency: t('common:currency') })}</p>
           )}
         </div>
       ))}
@@ -242,7 +242,7 @@ function Transactions() {
       {txs.map(tx => (
         <div key={tx.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div>
-            <p className="text-sm font-medium">{tx.sale_price_thb.toLocaleString()} THB</p>
+            <p className="text-sm font-medium">{tx.sale_price_thb.toLocaleString()} {t('common:currency')}</p>
             <p className="text-xs text-zinc-500">{tx.buyer?.display_name} &rarr; {tx.seller?.display_name}</p>
           </div>
           <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -339,21 +339,21 @@ function ReviewAdmin() {
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const rows = await fetchPendingListings();
       setListings(rows);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not load listings');
+      toast.error(err instanceof Error ? err.message : t('common:admin.review.loadError'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const current = listings[0];
 
@@ -363,25 +363,25 @@ function ReviewAdmin() {
     setProcessing(true);
     try {
       await adminReviewListing(current.id, decision, finalReason, notes.trim(), user.id);
-      toast.success(decision === 'active' ? 'Listing approved' : 'Listing rejected');
+      toast.success(decision === 'active' ? t('common:admin.review.approved') : t('common:admin.review.rejected'));
       setListings((prev) => prev.slice(1));
       setReason('');
       setNotes('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Review failed');
+      toast.error(err instanceof Error ? err.message : t('common:admin.review.reviewFailed'));
     } finally {
       setProcessing(false);
     }
   };
 
-  if (loading) return <p className="text-zinc-500">Loading review queue…</p>;
+  if (loading) return <p className="text-zinc-500">{t('common:admin.review.loading')}</p>;
 
   if (!current) {
     return (
       <div className="text-center py-16 bg-zinc-900/20 rounded-xl">
         <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-        <p className="text-zinc-300 font-medium">Review queue is empty</p>
-        <p className="text-sm text-zinc-500">No listings are waiting for approval.</p>
+        <p className="text-zinc-300 font-medium">{t('common:admin.review.emptyTitle')}</p>
+        <p className="text-sm text-zinc-500">{t('common:admin.review.emptyDescription')}</p>
       </div>
     );
   }
@@ -396,7 +396,7 @@ function ReviewAdmin() {
             className="w-full h-full object-cover"
           />
           <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs text-white">
-            {listings.length} pending
+            {t('common:admin.review.pendingCount', { count: listings.length })}
           </div>
         </div>
         <div className="p-4 space-y-3">
@@ -409,24 +409,24 @@ function ReviewAdmin() {
             <span className="text-zinc-500">{current.size_category} · {current.delivery_options?.join(' + ')}</span>
           </div>
           <p className="text-xs text-zinc-500">
-            Seller: {current.seller?.display_name || current.seller_id}
+            {t('common:admin.review.sellerLabel')}: {current.seller?.display_name || current.seller_id}
           </p>
           {current.pickup_province && (
             <p className="text-xs text-zinc-500">
-              Pickup: {current.pickup_province}{current.pickup_location ? ` · ${current.pickup_location}` : ''}
+              {t('common:admin.review.pickupLabel')}: {current.pickup_province}{current.pickup_location ? ` · ${current.pickup_location}` : ''}
             </p>
           )}
 
           <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${current.qr_verified_at ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-zinc-700 bg-zinc-900 text-zinc-400'}`}>
             {current.qr_verified_at ? <CheckCircle className="w-4 h-4" /> : <ScanSearch className="w-4 h-4" />}
             {current.qr_verified_at
-              ? `QR verified ${current.qr_verification_photo_url ? 'with photo' : ''}`
-              : 'QR not verified by seller yet'}
+              ? (current.qr_verification_photo_url ? t('common:admin.review.qrVerifiedWithPhoto') : t('common:admin.review.qrVerified'))
+              : t('common:admin.review.qrNotVerified')}
           </div>
 
           {current.qr_verification_photo_url && (
             <a href={current.qr_verification_photo_url} target="_blank" rel="noreferrer" className="block">
-              <img src={current.qr_verification_photo_url} alt="Seller QR verification" className="w-full h-32 object-cover rounded-lg border border-white/5" />
+              <img src={current.qr_verification_photo_url} alt={t('common:admin.review.qrVerificationAlt')} className="w-full h-32 object-cover rounded-lg border border-white/5" />
             </a>
           )}
         </div>
@@ -434,22 +434,22 @@ function ReviewAdmin() {
 
       <div className="space-y-3 mb-6">
         <div>
-          <label className="text-xs text-zinc-500 block mb-1">Reason</label>
+          <label className="text-xs text-zinc-500 block mb-1">{t('common:admin.review.reasonLabel')}</label>
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
           >
-            <option value="">Select a reason</option>
-            <option value="QR verified">QR verified</option>
-            <option value="Manual pass">Manual pass</option>
-            <option value="Photo unclear">Photo unclear</option>
-            <option value="Wrong plant">Wrong plant</option>
-            <option value="Manual fail">Manual fail</option>
+            <option value="">{t('common:admin.review.selectReason')}</option>
+            <option value="QR verified">{t('common:admin.review.reasons.qrVerified')}</option>
+            <option value="Manual pass">{t('common:admin.review.reasons.manualPass')}</option>
+            <option value="Photo unclear">{t('common:admin.review.reasons.photoUnclear')}</option>
+            <option value="Wrong plant">{t('common:admin.review.reasons.wrongPlant')}</option>
+            <option value="Manual fail">{t('common:admin.review.reasons.manualFail')}</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-zinc-500 block mb-1">Notes (optional)</label>
+          <label className="text-xs text-zinc-500 block mb-1">{t('common:admin.review.notesLabel')}</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -466,7 +466,7 @@ function ReviewAdmin() {
           onClick={() => handleDecision('rejected')}
           className="flex-1 py-4 rounded-xl bg-red-500/10 text-red-400 font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-50"
         >
-          ✗ Fail
+          {t('common:admin.review.fail')}
         </button>
         <button
           type="button"
@@ -474,7 +474,7 @@ function ReviewAdmin() {
           onClick={() => handleDecision('active')}
           className="flex-1 py-4 rounded-xl bg-emerald-500 text-black font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50"
         >
-          ✓ Pass
+          {t('common:admin.review.pass')}
         </button>
       </div>
     </div>

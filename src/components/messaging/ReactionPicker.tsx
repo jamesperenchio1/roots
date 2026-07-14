@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,6 +13,7 @@ interface ReactionPickerProps {
 }
 
 export default function ReactionPicker({ onSelect, existingReactions, align = 'center' }: ReactionPickerProps) {
+  const { t } = useTranslation(['messages']);
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,7 +37,7 @@ export default function ReactionPicker({ onSelect, existingReactions, align = 'c
           variant="ghost"
           size="icon"
           className="h-7 w-7 text-zinc-500 hover:text-white hover:bg-white/10"
-          aria-label="Add reaction"
+          aria-label={t('messages:actions.addReaction')}
         >
           {existingReactions && existingReactions.length > 0 ? (
             <Plus className="h-3.5 w-3.5" />
@@ -51,7 +53,7 @@ export default function ReactionPicker({ onSelect, existingReactions, align = 'c
               key={r}
               onClick={() => handleSelect(r)}
               className="text-xl p-1.5 rounded hover:bg-white/10 transition-colors"
-              aria-label={`React with ${r}`}
+              aria-label={t('messages:actions.reactWith', { reaction: r })}
             >
               {r}
             </button>
@@ -70,7 +72,7 @@ export default function ReactionPicker({ onSelect, existingReactions, align = 'c
                 handleSelect(match[0]);
               }
             }}
-            placeholder="Emoji…"
+            placeholder={t('messages:addEmoji')}
             className="w-24 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
           />
         </div>

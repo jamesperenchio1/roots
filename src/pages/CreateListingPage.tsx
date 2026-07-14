@@ -346,16 +346,16 @@ export default function CreateListingPage() {
 
         {prefillLoading && (
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 text-sm text-emerald-200">
-            Loading identification result…
+            {t('marketplace:create.loadingIdentification')}
           </div>
         )}
 
         {prefillResult && (
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 mb-6">
-            <p className="text-sm font-medium text-emerald-300 mb-1">Prefilled from identification</p>
+            <p className="text-sm font-medium text-emerald-300 mb-1">{t('marketplace:create.prefilledFromIdentification')}</p>
             <p className="text-sm text-zinc-400">
-              {prefillResult.scientific_name}{prefillResult.common_names.length ? ` · ${prefillResult.common_names.join(', ')}` : ''}
-              {prefillResult.market_estimate?.suggested_range_low ? ` · suggested price ${prefillResult.market_estimate.suggested_range_low.toLocaleString()} THB` : ''}
+              {prefillResult.scientific_name}{prefillResult.common_names.length ? ` · ${t('marketplace:create.commonNames', { names: prefillResult.common_names.join(', ') })}` : ''}
+              {prefillResult.market_estimate?.suggested_range_low ? ` · ${t('marketplace:create.suggestedPrice', { price: prefillResult.market_estimate.suggested_range_low.toLocaleString(), currency: t('common:currency') })}` : ''}
             </p>
           </div>
         )}
@@ -478,16 +478,16 @@ export default function CreateListingPage() {
           )}
 
           {placesLoading ? (
-            <p className="text-xs text-zinc-500">Loading saved places…</p>
+            <p className="text-xs text-zinc-500">{t('marketplace:create.loadingSavedPlaces')}</p>
           ) : savedPlaces.length > 0 ? (
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Pickup from saved place</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.pickupFromSavedPlace')}</label>
               <select
                 value={selectedPlaceId}
                 onChange={(e) => setSelectedPlaceId(e.target.value)}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50"
               >
-                <option value="">Select a saved place (optional)</option>
+                <option value="">{t('marketplace:create.selectSavedPlace')}</option>
                 {savedPlaces.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}{p.province ? ` · ${p.province}` : ''}</option>
                 ))}
@@ -617,7 +617,7 @@ export default function CreateListingPage() {
                   onClick={() => setTags(prev => prev.includes(tTag) ? prev.filter(x => x !== tTag) : [...prev, tTag])}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(tTag) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
                 >
-                  {tTag}
+                  {t(`marketplace:create.tagSuggestions.${tTag}`, { defaultValue: tTag })}
                 </button>
               ))}
             </div>
@@ -658,7 +658,7 @@ export default function CreateListingPage() {
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {tags.map(tTag => (
                   <span key={tTag} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
-                    {tTag}
+                    {t(`marketplace:create.tagSuggestions.${tTag}`, { defaultValue: tTag })}
                     <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== tTag))} className="text-zinc-500 hover:text-white">×</button>
                   </span>
                 ))}
