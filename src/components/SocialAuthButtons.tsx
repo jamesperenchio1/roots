@@ -49,7 +49,11 @@ export function SocialAuthButtons({ redirect }: SocialAuthButtonsProps) {
   const { signInWithOAuth, isLoading } = useAuth();
 
   async function handleProvider(provider: Provider) {
-    const res = await signInWithOAuth(provider, redirect);
+    // Google/Apple do not accept hash-router URLs as redirect URIs. Use the
+    // clean origin; Supabase appends the session tokens and the app's
+    // onAuthStateChange listener picks them up.
+    const cleanRedirect = redirect ? redirect.split('#')[0] : `${window.location.origin}/`;
+    const res = await signInWithOAuth(provider, cleanRedirect);
     if (!res.ok && res.error) {
       toast.error(res.error);
     }

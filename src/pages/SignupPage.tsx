@@ -157,7 +157,7 @@ export default function SignupPage() {
         </form>
 
         <div className="mt-6">
-          <SocialAuthButtons redirect={`${window.location.origin}/#${redirect}`} />
+          <SocialAuthButtons redirect={`${window.location.origin}/`} />
         </div>
 
         <div className="mt-6 text-center text-sm text-zinc-500">

@@ -254,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectTo || `${window.location.origin}/#/`,
+          redirectTo: redirectTo || `${window.location.origin}/`,
           queryParams: provider === 'apple'
             ? { response_mode: 'form_post' }
             : undefined,
