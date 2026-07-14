@@ -8,11 +8,12 @@ A free, market-aware plant identification flow built into the Roots marketplace.
 2. A `plant_identification_requests` row is created (anonymous or authenticated).
 3. The wizard walks the user through evidence types: overall, leaf, stem, node, flower, variegation, pot, etc.
 4. Files are uploaded to the `identification-media` Supabase Storage bucket and recorded in `identification_uploaded_media`.
-5. On the context step the user can add country and growing conditions, then clicks **Identify**.
-6. The frontend runs the registered provider ensemble and merges the results.
-7. If confidence is too low or critical evidence is missing, the request moves to `needs_evidence` and the wizard asks for the missing shot.
-8. Once confident enough, an `identification_results` row is saved together with per-provider details, a `market_estimates` row, and `processing_history` audit entries.
-9. Authenticated users can click **Sell this plant** to pre-fill `/seller-dashboard/listings/new?identificationId=<id>&speciesId=<id>`.
+5. On the context step the user can add country and growing conditions, then clicks **Identify**. A sticky checklist sidebar shows every evidence step and what is still needed.
+6. The growing-conditions value is persisted to `plant_identification_requests.growing_conditions` before the providers run.
+7. The frontend runs the registered provider ensemble and merges the results.
+8. If confidence is too low or critical evidence is missing, the request moves to `needs_evidence` and the wizard asks for the missing shot.
+9. Once confident enough, an `identification_results` row is saved together with per-provider details, a `market_estimates` row, and `processing_history` audit entries.
+10. Authenticated users can click **Sell this plant** to pre-fill `/seller-dashboard/listings/new?identificationId=<id>&speciesId=<id>`.
 
 ## Architecture
 

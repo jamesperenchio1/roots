@@ -112,3 +112,8 @@ When a message is sent, the client schedules an email-notification row in `email
 4. Marks rows as sent.
 
 Quiet hours (22:00–08:00 local time) are respected by delaying the `scheduled_at` timestamp until 08:30.
+
+## UX improvements
+
+- **Stable scroll:** the message list only auto-scrolls to the bottom when the user is already near the bottom; typing in the composer does not jump the list.
+- **Efficient typing indicators:** typing broadcasts are throttled to ~300 ms and reuse the active conversation realtime channel. The UI keeps a map of active typers keyed by `user_id` so the "..." indicator only appears for other participants.

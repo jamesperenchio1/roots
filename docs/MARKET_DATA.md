@@ -35,6 +35,9 @@ This avoids full-table recalculation as the marketplace grows.
 - `MarketPage` reads snapshots via `getPriceSnapshotsForSpecies` and renders `PriceChart`.
 - `getMarketSpecies()` returns a union of catalogue species, currently listed species, and recently traded species so the selector is always useful.
 - `CreateListingPage` and the plant identifier use `getSpeciesPriceStats` and catalogue ranges to suggest prices.
+- `getMarketOverview()` derives Trending up/down, Most traded, Hot Right Now, Cooling Off, and High-value sales from snapshots and completed transactions.
+- The market page supports species search, category filtering, and size-specific chart/stats.
+- High-value sales are populated from `hydratePublicTransactions()`, which loads completed transactions and joins their linked listing/species details.
 
 ## Hydration
 

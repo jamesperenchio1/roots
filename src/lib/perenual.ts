@@ -1,4 +1,5 @@
 const BASE_URL = 'https://perenual.com/api';
+const API_KEY = (import.meta.env.VITE_PERENUAL_API_KEY as string | undefined) || '';
 
 export interface PerenualPlant {
   id: number;
@@ -59,7 +60,7 @@ export async function searchPerenualPlants(query: string): Promise<PerenualPlant
   const cached = getCache<PerenualPlant[]>(cacheKey);
   if (cached) return cached;
 
-  const url = `${BASE_URL}/species-list?key=&q=${encodeURIComponent(query)}&page=1`;
+  const url = `${BASE_URL}/species-list?key=${API_KEY}&q=${encodeURIComponent(query)}&page=1`;
   const data = await fetchJson<{ data: PerenualPlant[] }>(url);
   const plants = data?.data ?? [];
   setCache(cacheKey, plants);
@@ -71,7 +72,7 @@ export async function getPerenualPlantDetails(id: number): Promise<PerenualPlant
   const cached = getCache<PerenualPlant>(cacheKey);
   if (cached) return cached;
 
-  const url = `${BASE_URL}/species/details/${id}?key=`;
+  const url = `${BASE_URL}/species/details/${id}?key=${API_KEY}`;
   const data = await fetchJson<PerenualPlant>(url);
   if (data) setCache(cacheKey, data);
   return data;
@@ -82,7 +83,7 @@ export async function getCareGuide(speciesId: number): Promise<PerenualCareGuide
   const cached = getCache<PerenualCareGuide>(cacheKey);
   if (cached) return cached;
 
-  const url = `${BASE_URL}/species-care-guide-list?key=&species_id=${speciesId}&page=1`;
+  const url = `${BASE_URL}/species-care-guide-list?key=${API_KEY}&species_id=${speciesId}&page=1`;
   const data = await fetchJson<{ data: PerenualCareGuide[] }>(url);
   const guide = data?.data?.[0] ?? null;
   if (guide) setCache(cacheKey, guide);

@@ -27,6 +27,9 @@ This document tracks the security hardening work applied to ROOTS and any remain
 - Removed arbitrary anonymous write access to plant identification requests and dependent rows.
 - Removed the hardcoded PromptPay fallback in checkout; checkout is blocked if the seller has no PromptPay ID.
 - Strengthened Supabase password policy to 8+ chars with uppercase, lowercase, number, and symbol.
+- Added `listings` RLS policies (select public active/own/admin, insert/update/delete own/admin).
+- Made `create_plant_for_listing()` `SECURITY DEFINER` so authenticated sellers can create listings while `plants` remains service-write-only.
+- Added `watchlist` table with owner-only RLS policies.
 
 ### Phase 4 — Build & deploy hardening
 - `npm audit` reports 0 vulnerabilities.

@@ -110,9 +110,10 @@ table (+RLS) → add a `map*` + `hydrate*` in `api.ts` → call `hydrate*` from
 when its tab opens.** The `transfers` array (provenance chain) is the only
 remaining in-memory-only structure and is derived, not user-written.
 
-> Migrations are applied via the Supabase MCP `apply_migration` tool against
-> project `daacilgagkphafpjdcte`. There is no local `supabase/migrations/`
-> directory — schema changes are made directly on the remote project.
+> Schema changes live in `supabase/migrations/` and are applied to project
+> `daacilgagkphafpjdcte` with `supabase db push` (or by running the SQL in the
+> Supabase Dashboard SQL Editor). The latest migrations add listings RLS policies,
+> the watchlist table + RLS, and the `SECURITY DEFINER` plant-creation trigger.
 
 ---
 
@@ -187,16 +188,29 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
   returns `manual` and the seller-confirm path is used. A DB trigger
   (`guard_payment_confirmed`) ensures only the seller or the edge function — not
   the buyer — can set `payment_confirmed`.
+- ✅ **Real marketplace data everywhere** — market charts, trending panels
+  (Hot/High-value/Cooling Off), species pages, and browse listings are now
+  populated from live Supabase data instead of empty/mock state.
+- ✅ **Species wiki** — species detail pages enrich the local catalogue with
+  GBIF, iNaturalist, Wikipedia, and Perenual care data.
+- ✅ **Listings RLS + plant trigger** — sellers can insert listings (new migration
+  adds RLS and runs the plant-creation trigger as `SECURITY DEFINER`).
+- ✅ **Working watchlist & dashboard** — watchlist and messages are hydrated and
+  subscribe to realtime updates; offers have richer actions and color-coded
+  statuses.
+- ✅ **Chat polish** — stable scroll (no teleport on typing), throttled typing
+  indicators, and efficient realtime channel reuse.
+- ✅ **Thai i18n actually switches** — Thai resources are loaded on demand; all
+  hard-coded UI strings are now translated.
 
 **Next up (suggestions):**
 
-1. Tighten the production checklist items below (email verification, admin
+1. Apply the latest `supabase/migrations/` files to the live DB if not already
+   done (`supabase db push` or run them in the Supabase SQL Editor).
+2. Tighten the production checklist items below (email verification, admin
    bypass, storage-bucket listing policy, PromptPay slip verification).
-2. Perf: the largest remaining chunk is `recharts` (~415KB) — consider a lighter
+3. Perf: the largest remaining chunk is `recharts` (~415KB) — consider a lighter
    charting lib or lazy-mounting charts below the fold.
-3. Optional realtime: `notifications`/`offers` could use Supabase realtime
-   subscriptions (like the seller-transactions channel) for live updates without
-   a reload.
 
 **Workflow note:** development happens on `claude/exciting-allen-2j8tm2`, and
 finished features are pushed **directly to `main`** (the owner opted out of PR
@@ -207,7 +221,8 @@ review for this cluster). Each Vercel preview/prod deploy is automatic.
 ## Production checklist
 
 - [ ] Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars
-- [ ] Create the **missing tables** above with proper RLS + hydration
+- [x] Create the referenced tables with proper RLS + hydration
+- [ ] Apply the latest `supabase/migrations/` files to the live DB (`supabase db push` or SQL Editor)
 - [ ] Storage buckets exist/public with a 5MB limit (`listing-photos`)
 - [ ] Tighten RLS policies (esp. `updateProfile`); add RLS policy tests
 - [x] **PromptPay trust model:** buyer uploads a required payment slip; it is
