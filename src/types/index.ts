@@ -168,6 +168,18 @@ export interface Transaction {
   plant?: Plant;
 }
 
+export interface TransactionEvent {
+  id: string;
+  transaction_id: string;
+  actor_id?: string;
+  event_type: 'created' | 'status_change' | 'payment_confirmed' | 'shipped' | 'delivered' | 'completed' | 'disputed' | 'refunded' | 'cancelled' | 'note';
+  status_from?: TransactionStatus;
+  status_to?: TransactionStatus;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  actor?: Profile;
+}
+
 export interface Transfer {
   id: string;
   plant_id: string;

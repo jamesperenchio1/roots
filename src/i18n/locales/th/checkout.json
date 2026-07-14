@@ -35,6 +35,7 @@
     "shipmentPhoto": "รูปภาพการจัดส่ง",
     "confirmReceipt": "ยืนยันการได้รับ",
     "markShipped": "ทำเครื่องหมายส่งแล้ว",
+    "markDelivered": "ทำเครื่องหมายถึงแล้ว",
     "markPacked": "ทำเครื่องหมายแพ็คแล้ว",
     "confirmPayment": "ยืนยันการชำระเงิน",
     "viewSlip": "ดูสลิป",
@@ -76,7 +77,21 @@
       "completed": "คำสั่งซื้อเสร็จสิ้น — ปล่อยเงินเอสโครวให้ผู้ขายแล้ว ขอให้สนุกกับต้นไม้!"
     },
     "thanksReview": "ขอบคุณสำหรับรีวิวของคุณ!",
-    "reportProblem": "แจ้งปัญหา"
+    "reportProblem": "แจ้งปัญหา",
+    "activity": "กิจกรรมคำสั่งซื้อ",
+    "eventStatusChange": "สถานะเปลี่ยนจาก {{from}} เป็น {{to}}",
+    "event": {
+      "created": "สร้างคำสั่งซื้อแล้ว",
+      "status_change": "อัปเดตสถานะ",
+      "payment_confirmed": "ยืนยันการชำระเงินแล้ว",
+      "shipped": "จัดส่งแล้ว",
+      "delivered": "ส่งถึงแล้ว",
+      "completed": "คำสั่งซื้อเสร็จสิ้น",
+      "disputed": "เปิดข้อพิพาท",
+      "refunded": "คืนเงินแล้ว",
+      "cancelled": "ยกเลิกคำสั่งซื้อ",
+      "note": "เพิ่มบันทึก"
+    }
   },
   "listingNotFound": "ไม่พบรายการขาย",
   "backToBrowse": "กลับไปหน้ารายการ",

@@ -5,13 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
-import { updateOrderStatus, uploadDisputeEvidence, hasReviewedTransaction } from '@/lib/api';
+import { updateOrderStatus, uploadDisputeEvidence, hasReviewedTransaction, getTransactionEvents } from '@/lib/api';
 import { verifyQrFromFile } from '@/lib/qr-verify';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { SellerReviewForm } from '@/components/SellerReviewForm';
-import type { Transaction } from '@/types';
+import type { Transaction, TransactionEvent } from '@/types';
 
 export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
@@ -19,6 +19,8 @@ export default function OrderPage() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation(['checkout', 'common', 'marketplace']);
   const [tx, setTx] = useState<Transaction | undefined>(getTransactionById(transactionId || ''));
+  const [events, setEvents] = useState<TransactionEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
@@ -44,6 +46,17 @@ export default function OrderPage() {
   useEffect(() => {
     refreshTx();
   }, [refreshTx]);
+
+  useEffect(() => {
+    if (!transactionId) return;
+    let cancelled = false;
+    setEventsLoading(true);
+    getTransactionEvents(transactionId)
+      .then((data) => { if (!cancelled) setEvents(data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setEventsLoading(false); });
+    return () => { cancelled = true; };
+  }, [transactionId]);
 
   useEffect(() => {
     if (!transactionId) return;
@@ -347,6 +360,37 @@ export default function OrderPage() {
               <CheckCircle className="w-4 h-4" />
               {t('checkout:order.thanksReview')}
             </p>
+          </div>
+        )}
+
+        {/* Event history */}
+        {events.length > 0 && (
+          <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-medium mb-3">{t('checkout:order.activity')}</h3>
+            <div className="space-y-3">
+              {eventsLoading ? (
+                <p className="text-xs text-zinc-500">{t('common:actions.loading')}</p>
+              ) : (
+                events.map((event) => (
+                  <div key={event.id} className="flex items-start gap-3 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-zinc-300">
+                        {event.event_type === 'status_change'
+                          ? t('checkout:order.eventStatusChange', {
+                              from: event.status_from ? t(`common:status.${event.status_from}`) : '-',
+                              to: event.status_to ? t(`common:status.${event.status_to}`) : '-',
+                            })
+                          : t(`checkout:order.event.${event.event_type}`)}
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        {event.actor?.display_name || t('common:unknownUser')} · {new Date(event.created_at).toLocaleString(dateLocale)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 

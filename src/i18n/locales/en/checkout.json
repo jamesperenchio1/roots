@@ -35,6 +35,7 @@
     "shipmentPhoto": "Shipment photo",
     "confirmReceipt": "Confirm receipt",
     "markShipped": "Mark as shipped",
+    "markDelivered": "Mark as delivered",
     "markPacked": "Mark as packed",
     "confirmPayment": "Confirm payment",
     "viewSlip": "View payment slip",
@@ -76,7 +77,21 @@
       "completed": "Order completed — escrow released to seller. Enjoy your plant!"
     },
     "thanksReview": "Thanks for your review!",
-    "reportProblem": "Report a Problem"
+    "reportProblem": "Report a Problem",
+    "activity": "Order activity",
+    "eventStatusChange": "Status changed from {{from}} to {{to}}",
+    "event": {
+      "created": "Order created",
+      "status_change": "Status updated",
+      "payment_confirmed": "Payment confirmed",
+      "shipped": "Order shipped",
+      "delivered": "Order delivered",
+      "completed": "Order completed",
+      "disputed": "Dispute opened",
+      "refunded": "Order refunded",
+      "cancelled": "Order cancelled",
+      "note": "Note added"
+    }
   },
   "listingNotFound": "Listing not found",
   "backToBrowse": "Back to browse",

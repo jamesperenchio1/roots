@@ -4,7 +4,7 @@
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
 import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan } from '@/types';
+import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './messaging';
@@ -703,6 +703,39 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
     const courier = (patch.courier as string | undefined) || tx.courier || 'courier';
     notifyOrderShipped(tx.buyer_id, id, courier);
   }
+}
+
+export async function markOrderDelivered(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('transactions')
+    .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+  const tx = TRANSACTIONS.find((t) => t.id === id);
+  if (tx) {
+    tx.status = 'delivered';
+    tx.delivered_at = new Date().toISOString();
+  }
+}
+
+export async function getTransactionEvents(transactionId: string): Promise<TransactionEvent[]> {
+  const { data, error } = await supabase
+    .from('transaction_events')
+    .select('*')
+    .eq('transaction_id', transactionId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    id: r.id as string,
+    transaction_id: r.transaction_id as string,
+    actor_id: (r.actor_id as string | undefined) || undefined,
+    event_type: r.event_type as TransactionEvent['event_type'],
+    status_from: (r.status_from as TransactionStatus | undefined) || undefined,
+    status_to: (r.status_to as TransactionStatus | undefined) || undefined,
+    metadata: (r.metadata as Record<string, unknown>) || {},
+    created_at: r.created_at as string,
+    actor: USERS.find((u) => u.id === (r.actor_id as string | undefined)),
+  }));
 }
 
 export async function updateListing(id: string, patch: Partial<NewListingInput>): Promise<Listing> {

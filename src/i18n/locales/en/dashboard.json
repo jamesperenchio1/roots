@@ -69,6 +69,7 @@
     "markAsSold": "Mark as sold",
     "markAsSoldConfirm": "Mark this listing as sold? It will no longer be visible to buyers.",
     "markedSold": "Listing marked as sold",
+    "markedDelivered": "Order marked as delivered",
     "soldTo": "Sold to {{name}}",
     "duplicateComingSoon": "Duplicate feature coming soon",
     "boostComingSoon": "Boost feature coming soon",

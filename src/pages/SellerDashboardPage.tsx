@@ -14,7 +14,7 @@ import {
 } from '@/data/mockData';
 import {
   getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived,
-  getSignedSlipUrl, withdrawListing, markListingSold, updateProfile,
+  getSignedSlipUrl, withdrawListing, markListingSold, markOrderDelivered, updateProfile,
   hydrateUserTransactions, hydrateUserOffers, subscribeOffers, getOffersVersion
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -146,6 +146,16 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handleMarkDelivered = async (orderId: string) => {
+    try {
+      await markOrderDelivered(orderId);
+      toast.success(t('dashboard:seller.markedDelivered'));
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
+    }
+  };
+
   const handleDuplicate = useCallback(async () => {
     toast.info(t('dashboard:seller.duplicateComingSoon'));
   }, [t]);
@@ -236,7 +246,7 @@ export default function SellerDashboardPage() {
           <ListingsTab listings={listings} sales={allSales} onWithdraw={setWithdrawConfirm} onMarkSold={setMarkSoldConfirm} onDuplicate={handleDuplicate} t={t} />
         )}
         {activeTab === 'orders' && (
-          <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onViewSlip={handleViewSlip} onConfirmPayment={handleConfirmPayment} onShip={setShipModalOrder} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
+          <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onViewSlip={handleViewSlip} onConfirmPayment={handleConfirmPayment} onShip={setShipModalOrder} onDeliver={handleMarkDelivered} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
         )}
         {activeTab === 'offers' && <OffersTab currentUserId={user?.id || ''} refresh={refresh} t={t} />}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} expandedPayout={expandedPayout} setExpandedPayout={setExpandedPayout} totalRevenue={totalRevenue} completedSales={completedSales} pendingRevenue={pendingRevenue} pendingSales={pendingSales} t={t} />}
@@ -408,7 +418,7 @@ function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t }: { l
   );
 }
 
-function OrdersTab({ orders, orderFilter, setOrderFilter, onViewSlip, onConfirmPayment, onShip, pendingRevenue, totalRevenue, pendingSales, completedSales, t }: { orders: Transaction[]; orderFilter: string; setOrderFilter: (v: string) => void; onViewSlip: (path?: string) => void; onConfirmPayment: (id: string) => void; onShip: (id: string) => void; pendingRevenue: number; totalRevenue: number; pendingSales: Transaction[]; completedSales: Transaction[]; t: TFunction }) {
+function OrdersTab({ orders, orderFilter, setOrderFilter, onViewSlip, onConfirmPayment, onShip, onDeliver, pendingRevenue, totalRevenue, pendingSales, completedSales, t }: { orders: Transaction[]; orderFilter: string; setOrderFilter: (v: string) => void; onViewSlip: (path?: string) => void; onConfirmPayment: (id: string) => void; onShip: (id: string) => void; onDeliver: (id: string) => void; pendingRevenue: number; totalRevenue: number; pendingSales: Transaction[]; completedSales: Transaction[]; t: TFunction }) {
   const statusOptions = ['pending_payment', 'paid_in_escrow', 'shipped', 'delivered', 'completed', 'refunded', 'cancelled'];
 
   return (
@@ -437,7 +447,7 @@ function OrdersTab({ orders, orderFilter, setOrderFilter, onViewSlip, onConfirmP
 
       <div className="space-y-3">
         {orders.length > 0 ? orders.map((o: Transaction) => (
-          <OrderCard key={o.id} order={o} onViewSlip={onViewSlip} onConfirmPayment={onConfirmPayment} onShip={onShip} t={t} />
+          <OrderCard key={o.id} order={o} onViewSlip={onViewSlip} onConfirmPayment={onConfirmPayment} onShip={onShip} onDeliver={onDeliver} t={t} />
         )) : (
           <div className="text-center py-12 bg-zinc-900/20 rounded-xl">
             <Truck className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
@@ -449,7 +459,7 @@ function OrdersTab({ orders, orderFilter, setOrderFilter, onViewSlip, onConfirmP
   );
 }
 
-function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, t }: { order: Transaction; onViewSlip: (path?: string) => void; onConfirmPayment: (id: string) => void; onShip: (id: string) => void; t: TFunction }) {
+function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, onDeliver, t }: { order: Transaction; onViewSlip: (path?: string) => void; onConfirmPayment: (id: string) => void; onShip: (id: string) => void; onDeliver: (id: string) => void; t: TFunction }) {
   const timeline = ['pending_payment', 'paid_in_escrow', 'shipped', 'delivered', 'completed'];
   const step = timeline.indexOf(order.status);
 
@@ -490,6 +500,9 @@ function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, t }: { order: 
         )}
         {order.status === 'paid_in_escrow' && order.payment_confirmed && (
           <button onClick={() => onShip(order.id)} className="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-medium hover:bg-emerald-600">{t('checkout:order.markShipped')}</button>
+        )}
+        {order.status === 'shipped' && (
+          <button onClick={() => onDeliver(order.id)} className="px-3 py-1.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600">{t('checkout:order.markDelivered')}</button>
         )}
         {order.status === 'shipped' && order.tracking_number && (
           <span className="text-zinc-500">{t('checkout:order.tracking')}: {order.tracking_number}</span>
