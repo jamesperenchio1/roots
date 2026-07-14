@@ -85,11 +85,15 @@ export default function MessagesPage() {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Array<{ user_id: string; display_name: string }>>([]);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const [pendingMessageId, setPendingMessageId] = useState<string>(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
   const [pendingAttachments, setPendingAttachments] = useState<import('@/types').MessageAttachment[]>([]);
   const [presenceMap, setPresenceMap] = useState<Record<string, UserPresence | undefined>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const searchResultsRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const initialScrollDoneRef = useRef(false);
+  const prevMessageCountRef = useRef(0);
+  const lastConversationIdRef = useRef<string | undefined>(undefined);
 
   const dateLocale = i18n.language === 'th' ? 'th-TH' : 'en-GB';
 
@@ -164,12 +168,47 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId, user?.id]);
 
-  // Auto-scroll to bottom on new messages unless user is searching
+  const checkIsAtBottom = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }, []);
+
+  const handleMessagesScroll = useCallback(() => {
+    setIsAtBottom(checkIsAtBottom());
+  }, [checkIsAtBottom]);
+
   useEffect(() => {
-    if (!searchOpen) {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handleMessagesScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleMessagesScroll);
+  }, [handleMessagesScroll]);
+
+  // Scroll to bottom once when a conversation is opened, and only auto-scroll
+  // on new messages when the user is already near the bottom.
+  useEffect(() => {
+    if (activeConversationId !== lastConversationIdRef.current) {
+      initialScrollDoneRef.current = false;
+      prevMessageCountRef.current = 0;
+      lastConversationIdRef.current = activeConversationId;
+    }
+    if (!activeConversationId) return;
+    if (messages.length === 0) return;
+
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      setIsAtBottom(true);
+      prevMessageCountRef.current = messages.length;
+      return;
+    }
+
+    if (messages.length > prevMessageCountRef.current && !searchOpen && isAtBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, searchOpen]);
+    prevMessageCountRef.current = messages.length;
+  }, [activeConversationId, messages, isAtBottom, searchOpen]);
 
   const activeConversation = conversations.find((c) => c.conversation.id === activeConversationId);
   const otherUser = activeConversation?.otherUser;
@@ -510,7 +549,7 @@ export default function MessagesPage() {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={searchResultsRef}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesContainerRef}>
               {hasContactFlag && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2 text-amber-400 text-xs">
                   <Flag className="w-4 h-4 flex-shrink-0 mt-0.5" />

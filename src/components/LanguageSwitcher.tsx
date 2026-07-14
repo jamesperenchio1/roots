@@ -9,13 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { SupportedLanguage } from '@/i18n/config';
+import { loadThaiResources, type SupportedLanguage } from '@/i18n/config';
 
 export default function LanguageSwitcher() {
   const { i18n, t } = useTranslation('common');
   const { user } = useAuth();
 
   const changeLanguage = async (lang: SupportedLanguage) => {
+    if (lang === 'th' && !i18n.hasResourceBundle('th', 'common')) {
+      await loadThaiResources();
+    }
     await i18n.changeLanguage(lang);
     localStorage.setItem('roots-language', lang);
     if (user && !user.is_admin) {

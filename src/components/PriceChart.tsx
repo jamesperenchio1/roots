@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar
 } from 'recharts';
-import { getSpeciesPriceStats, getPriceSnapshotsForSpecies } from '@/data/mockData';
+import { getPriceSnapshotsForSpecies, getActiveListings } from '@/data/mockData';
 
 interface PricePoint {
   date: string;
@@ -72,39 +72,45 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
           </button>
         ))}
       </div>
-      <ResponsiveContainer width="100%" height={height}>
-        {showVolume ? (
-          <ComposedChart data={filteredData}>
-            <defs>
-              <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => v.slice(5)} />
-            <YAxis yAxisId="price" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-            <YAxis yAxisId="vol" orientation="right" tick={{ fontSize: 11, fill: '#666' }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Area yAxisId="price" type="monotone" dataKey="price" stroke={color} fill="url(#priceGradient)" strokeWidth={2} dot={false} />
-            <Bar yAxisId="vol" dataKey="volume" fill="rgba(255,255,255,0.08)" />
-          </ComposedChart>
-        ) : (
-          <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="priceGradient2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => v.slice(5)} />
-            <YAxis tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="price" stroke={color} fill={showArea ? 'url(#priceGradient2)' : 'transparent'} strokeWidth={2} dot={false} />
-          </AreaChart>
-        )}
-      </ResponsiveContainer>
+      {filteredData.length === 0 ? (
+        <div className="flex items-center justify-center text-zinc-500 text-sm border border-white/5 rounded-lg" style={{ height }}>
+          {t('marketplace:species.insufficientData')}
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={height}>
+          {showVolume ? (
+            <ComposedChart data={filteredData}>
+              <defs>
+                <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => v.slice(5)} />
+              <YAxis yAxisId="price" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <YAxis yAxisId="vol" orientation="right" tick={{ fontSize: 11, fill: '#666' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area yAxisId="price" type="monotone" dataKey="price" stroke={color} fill="url(#priceGradient)" strokeWidth={2} dot={false} />
+              <Bar yAxisId="vol" dataKey="volume" fill="rgba(255,255,255,0.08)" />
+            </ComposedChart>
+          ) : (
+            <AreaChart data={filteredData}>
+              <defs>
+                <linearGradient id="priceGradient2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => v.slice(5)} />
+              <YAxis tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="price" stroke={color} fill={showArea ? 'url(#priceGradient2)' : 'transparent'} strokeWidth={2} dot={false} />
+            </AreaChart>
+          )}
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
@@ -139,17 +145,40 @@ export function Sparkline({ data, width = 80, height = 24, color = '#4ade80' }: 
 
 interface StatsPanelProps {
   speciesId: string;
+  sizeCategory?: string;
   fallbackPrice?: number;
 }
 
-export function StatsPanel({ speciesId, fallbackPrice }: StatsPanelProps) {
+function calculateStats(speciesId: string, sizeCategory: string | undefined, days: number) {
+  const data = getPriceSnapshotsForSpecies(speciesId, sizeCategory, days);
+  if (data.length === 0) {
+    const live = getActiveListings({ speciesId, size: sizeCategory });
+    if (live.length === 0) return null;
+    const prices = live.map(l => l.price_thb).sort((a, b) => a - b);
+    const mid = Math.floor(prices.length / 2);
+    const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
+    const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
+    return { median, mean, min: prices[0], max: prices[prices.length - 1], totalSales: 0 };
+  }
+  const prices = data.map(d => d.median_price_thb);
+  const sorted = [...prices].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const totalSales = data.reduce((s, d) => s + d.sale_count, 0);
+  return { median, mean, min, max, totalSales };
+}
+
+export function StatsPanel({ speciesId, sizeCategory, fallbackPrice }: StatsPanelProps) {
   const { t } = useTranslation(['marketplace', 'common']);
-  const stats30 = getSpeciesPriceStats(speciesId, 30);
-  const stats90 = getSpeciesPriceStats(speciesId, 90);
+  const stats30 = calculateStats(speciesId, sizeCategory, 30);
+  const stats90 = calculateStats(speciesId, sizeCategory, 90);
   const trendPct = stats30 && stats90
     ? ((stats30.median - stats90.median) / stats90.median * 100)
     : 0;
-  const allTimeData = getPriceSnapshotsForSpecies(speciesId, undefined, 180);
+  const allTimeData = getPriceSnapshotsForSpecies(speciesId, sizeCategory, 180);
   const allPrices = allTimeData.map(d => d.median_price_thb);
   const lowest = allPrices.length > 0 ? Math.min(...allPrices) : (fallbackPrice ?? 0);
   const highest = allPrices.length > 0 ? Math.max(...allPrices) : (fallbackPrice ?? 0);

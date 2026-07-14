@@ -41,6 +41,28 @@ export async function getIdentificationRequest(id: string): Promise<Identificati
   return mapRequest(data as DbRow);
 }
 
+export async function updateIdentificationRequest(
+  id: string,
+  input: {
+    country?: string;
+    growingConditions?: string;
+    notes?: string;
+  }
+): Promise<IdentificationRequest> {
+  const updates: Record<string, unknown> = {};
+  if (input.country !== undefined) updates.country = input.country || null;
+  if (input.growingConditions !== undefined) updates.growing_conditions = input.growingConditions || null;
+  if (input.notes !== undefined) updates.notes = input.notes || null;
+  const { data, error } = await supabase
+    .from('plant_identification_requests')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return mapRequest(data as DbRow);
+}
+
 export async function updateRequestStatus(
   id: string,
   status: IdentificationRequest['status'],

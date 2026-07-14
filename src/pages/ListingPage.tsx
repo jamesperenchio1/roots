@@ -80,7 +80,7 @@ export default function ListingPage() {
     );
   }
 
-  const speciesId = listing.plant_id?.replace('p-', 'sp-') || '';
+  const speciesId = listing.species?.id || listing.plant_id?.replace('p-', 'sp-') || '';
   const plantPhotos = listing.photos && listing.photos.length
     ? [...new Set(listing.photos.map(p => p.storage_path))]
     : [PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'];

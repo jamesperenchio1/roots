@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { X, Tag, TrendingUp, Clock, Eye, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +34,9 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
   }));
   const stats = getSpeciesPriceStats(speciesId, 30);
   const provenance = getProvenanceChain(listing.plant_id);
-  const listedDate = listing.created_at ? new Date(listing.created_at).toLocaleDateString() : null;
+  const listedDate = listing.created_at
+    ? format(new Date(listing.created_at), 'dd/MM/yyyy')
+    : null;
 
   const priceNum = parseInt(price, 10);
   const isValid = !isNaN(priceNum) && priceNum >= 10;

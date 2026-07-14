@@ -1,11 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
-import { getMarketOverview, getPriceSnapshotsForSpecies, getMarketSpecies } from '@/data/mockData';
+import {
+  getMarketOverview,
+  getPriceSnapshotsForSpecies,
+  getMarketSpecies,
+  getActiveListings,
+  getSpeciesById,
+} from '@/data/mockData';
 import { PriceChart, Sparkline } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
+import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
+import { subscribePublicDataHydration } from '@/lib/api';
 import type { LucideIcon } from 'lucide-react';
+import type { Species, Category, SizeCategory } from '@/types';
 
 function SectionHeader({ icon: Icon, titleKey, color }: { icon: LucideIcon; titleKey: string; color: string }) {
   const { t } = useTranslation('marketplace');
@@ -13,6 +22,32 @@ function SectionHeader({ icon: Icon, titleKey, color }: { icon: LucideIcon; titl
     <div className="flex items-center gap-2 mb-4">
       <Icon className={`w-5 h-5 ${color}`} />
       <h2 className="text-lg font-medium">{t(titleKey)}</h2>
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="shrink-0 w-56 bg-zinc-900/50 border border-white/5 rounded-xl p-4 animate-pulse">
+      <div className="w-10 h-10 rounded-lg bg-zinc-800 mb-3" />
+      <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2" />
+      <div className="h-3 bg-zinc-800 rounded w-1/2 mb-4" />
+      <div className="h-10 bg-zinc-800/50 rounded mb-2" />
+      <div className="flex justify-between mt-2">
+        <div className="h-4 bg-zinc-800 rounded w-16" />
+        <div className="h-4 bg-zinc-800 rounded w-12" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonTableRow() {
+  return (
+    <div className="grid grid-cols-4 gap-4 px-6 py-3 border-b border-white/5 animate-pulse">
+      <div className="h-4 bg-zinc-800 rounded" />
+      <div className="h-4 bg-zinc-800 rounded" />
+      <div className="h-4 bg-zinc-800 rounded ml-auto w-16" />
+      <div className="h-4 bg-zinc-800 rounded ml-auto w-20" />
     </div>
   );
 }
@@ -29,7 +64,11 @@ function SpeciesCard({ item }: { item: ReturnType<typeof getMarketOverview>['tre
       </div>
       <p className="text-sm font-medium truncate mb-1">{item.species.scientific_name.split(' ').slice(0, 2).join(' ')}</p>
       <p className="text-xs text-zinc-500 mb-3">{t('marketplace:market.salesCount', { count: item.sales_count })}</p>
-      <Sparkline data={item.sparkline_data} width={200} height={40} />
+      {item.sparkline_data.length > 1 ? (
+        <Sparkline data={item.sparkline_data} width={200} height={40} />
+      ) : (
+        <div className="h-10" />
+      )}
       <div className="flex items-center justify-between mt-2">
         <span className="text-sm">{Math.round(item.current_median).toLocaleString()} {t('common:currency')}</span>
         <span className={`text-xs font-medium ${item.percent_change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -40,16 +79,111 @@ function SpeciesCard({ item }: { item: ReturnType<typeof getMarketOverview>['tre
   );
 }
 
+function SpeciesSection({
+  titleKey,
+  icon,
+  color,
+  items,
+}: {
+  titleKey: string;
+  icon: LucideIcon;
+  color: string;
+  items: ReturnType<typeof getMarketOverview>['trending_up'];
+}) {
+  return (
+    <section>
+      <SectionHeader icon={icon} titleKey={titleKey} color={color} />
+      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+        {items.length > 0 ? (
+          items.map(item => <SpeciesCard key={item.species.id} item={item} />)
+        ) : (
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const CATEGORIES: (Category | '')[] = ['', 'aroid', 'hoya', 'cactus', 'succulent', 'fern', 'orchid', 'other'];
+const SIZES: (SizeCategory | '')[] = ['', 'S', 'M', 'L', 'XL'];
+
+function findDefaultSpecies(): Species {
+  const all = getMarketSpecies();
+  const withData = all.filter(
+    s => getPriceSnapshotsForSpecies(s.id, undefined, 180).length > 0 || getActiveListings({ speciesId: s.id }).length > 0
+  );
+  return withData[0] || all[0];
+}
+
 export default function MarketPage() {
   const { t } = useTranslation(['marketplace', 'common']);
-  const marketSpecies = getMarketSpecies();
-  const [selectedSpecies, setSelectedSpecies] = useState(marketSpecies[0]);
+  const [hydratedTick, setHydratedTick] = useState(0);
+  const [selectedSpecies, setSelectedSpecies] = useState<Species>(findDefaultSpecies);
+  const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
+  const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
+
+  useEffect(() => {
+    const unsubscribe = subscribePublicDataHydration(() => {
+      setHydratedTick(t => t + 1);
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (hydratedTick === 0) return;
+    const hasData =
+      getPriceSnapshotsForSpecies(selectedSpecies.id, undefined, 180).length > 0 ||
+      getActiveListings({ speciesId: selectedSpecies.id }).length > 0;
+    if (!hasData) {
+      const fallback = findDefaultSpecies();
+      if (fallback) setSelectedSpecies(fallback);
+    }
+  }, [hydratedTick, selectedSpecies.id]);
+
   const market = getMarketOverview();
-  const priceData = getPriceSnapshotsForSpecies(selectedSpecies.id, undefined, 90).map(ps => ({
-    date: ps.snapshot_date,
-    price: ps.median_price_thb,
-    volume: ps.sale_count
-  }));
+
+  const filteredMarket = useMemo(
+    () => ({
+      trending_up: categoryFilter
+        ? market.trending_up.filter(i => i.species.category === categoryFilter)
+        : market.trending_up,
+      trending_down: categoryFilter
+        ? market.trending_down.filter(i => i.species.category === categoryFilter)
+        : market.trending_down,
+      most_traded: categoryFilter
+        ? market.most_traded.filter(i => i.species.category === categoryFilter)
+        : market.most_traded,
+      hot_right_now: categoryFilter
+        ? market.hot_right_now.filter(i => i.species.category === categoryFilter)
+        : market.hot_right_now,
+      cold: categoryFilter ? market.cold.filter(i => i.species.category === categoryFilter) : market.cold,
+      high_value_sales: categoryFilter
+        ? market.high_value_sales.filter(t => t.listing?.species?.category === categoryFilter)
+        : market.high_value_sales,
+    }),
+    [market, categoryFilter]
+  );
+
+  const priceData = useMemo(
+    () =>
+      getPriceSnapshotsForSpecies(selectedSpecies.id, sizeFilter || undefined, 90).map(ps => ({
+        date: ps.snapshot_date,
+        price: ps.median_price_thb,
+        volume: ps.sale_count,
+      })),
+    [selectedSpecies.id, sizeFilter]
+  );
+
+  const handleSpeciesChange = (_value: string, entry?: { id: string }) => {
+    if (!entry) return;
+    const species = getSpeciesById(entry.id);
+    if (species) setSelectedSpecies(species);
+  };
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -61,63 +195,93 @@ export default function MarketPage() {
 
         {/* Featured Price Chart */}
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-10">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-4 gap-4">
             <div>
               <h2 className="text-lg font-medium mb-1">{selectedSpecies.scientific_name}</h2>
               <p className="text-sm text-zinc-500">{t('marketplace:market.priceHistoryVolume')}</p>
             </div>
-            <select
-              value={selectedSpecies.id}
-              onChange={(e) => setSelectedSpecies(marketSpecies.find(s => s.id === e.target.value) || marketSpecies[0])}
-              className="bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-            >
-              {marketSpecies.map(s => (
-                <option key={s.id} value={s.id}>{s.scientific_name}</option>
-              ))}
-            </select>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
+              <SpeciesAutocomplete
+                value={selectedSpecies.scientific_name}
+                onChange={handleSpeciesChange}
+                placeholder={t('marketplace:create.speciesPlaceholder') as string}
+                label={t('marketplace:create.speciesLabel') as string}
+              />
+              <div>
+                <label className="text-sm text-zinc-400 mb-1.5 block">{t('marketplace:browse.category')}</label>
+                <select
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value as Category | '')}
+                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  <option value="">{t('marketplace:browse.categoryAll')}</option>
+                  {CATEGORIES.filter(c => c).map(c => (
+                    <option key={c} value={c}>{t(`marketplace:categories.${c}`)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-zinc-400 mb-1.5 block">{t('marketplace:browse.size')}</label>
+                <select
+                  value={sizeFilter}
+                  onChange={e => setSizeFilter(e.target.value as SizeCategory | '')}
+                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  <option value="">{t('marketplace:browse.sizeAll')}</option>
+                  {SIZES.filter(s => s).map(s => (
+                    <option key={s} value={s}>{t(`marketplace:create.sizeLabels.${s}`)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-          <PriceChart data={priceData} height={300} showVolume={true} />
+          <PriceChart
+            key={`${selectedSpecies.id}-${sizeFilter}`}
+            data={priceData}
+            height={300}
+            showVolume={true}
+          />
           <div className="mt-6">
-            <StatsPanel speciesId={selectedSpecies.id} />
+            <StatsPanel speciesId={selectedSpecies.id} sizeCategory={sizeFilter || undefined} />
           </div>
         </div>
 
         {/* Trending Sections */}
         <div className="space-y-10">
-          <section>
-            <SectionHeader icon={TrendingUp} titleKey="marketplace:market.trendingUp" color="text-emerald-400" />
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {market.trending_up.map(item => <SpeciesCard key={item.species.id} item={item} />)}
-            </div>
-          </section>
+          <SpeciesSection
+            titleKey="marketplace:market.trendingUp"
+            icon={TrendingUp}
+            color="text-emerald-400"
+            items={filteredMarket.trending_up}
+          />
 
-          <section>
-            <SectionHeader icon={TrendingDown} titleKey="marketplace:market.trendingDown" color="text-red-400" />
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {market.trending_down.map(item => <SpeciesCard key={item.species.id} item={item} />)}
-            </div>
-          </section>
+          <SpeciesSection
+            titleKey="marketplace:market.trendingDown"
+            icon={TrendingDown}
+            color="text-red-400"
+            items={filteredMarket.trending_down}
+          />
 
-          <section>
-            <SectionHeader icon={Activity} titleKey="marketplace:market.mostTraded" color="text-blue-400" />
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {market.most_traded.map(item => <SpeciesCard key={item.species.id} item={item} />)}
-            </div>
-          </section>
+          <SpeciesSection
+            titleKey="marketplace:market.mostTraded"
+            icon={Activity}
+            color="text-blue-400"
+            items={filteredMarket.most_traded}
+          />
 
-          <section>
-            <SectionHeader icon={Flame} titleKey="marketplace:market.hotRightNow" color="text-orange-400" />
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {market.hot_right_now.map(item => <SpeciesCard key={item.species.id} item={item} />)}
-            </div>
-          </section>
+          <SpeciesSection
+            titleKey="marketplace:market.hotRightNow"
+            icon={Flame}
+            color="text-orange-400"
+            items={filteredMarket.hot_right_now}
+          />
 
-          <section>
-            <SectionHeader icon={Snowflake} titleKey="marketplace:market.coolingOff" color="text-cyan-400" />
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {market.cold.map(item => <SpeciesCard key={item.species.id} item={item} />)}
-            </div>
-          </section>
+          <SpeciesSection
+            titleKey="marketplace:market.coolingOff"
+            icon={Snowflake}
+            color="text-cyan-400"
+            items={filteredMarket.cold}
+          />
 
           {/* High Value Sales */}
           <section>
@@ -129,18 +293,26 @@ export default function MarketPage() {
                 <span className="text-right">{t('marketplace:market.tablePrice')}</span>
                 <span className="text-right">{t('marketplace:market.tableStatus')}</span>
               </div>
-              {market.high_value_sales.map(tx => (
-                <div key={tx.id} className="grid grid-cols-4 gap-4 px-6 py-3 text-sm border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                  <span className="truncate">{tx.plant_id}</span>
-                  <span className="text-zinc-400 truncate">{tx.seller?.display_name}</span>
-                  <span className="text-right font-medium">{tx.sale_price_thb.toLocaleString()} {t('common:currency')}</span>
-                  <span className="text-right">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                      {t(`common:status.${tx.status}`)}
+              {filteredMarket.high_value_sales.length > 0 ? (
+                filteredMarket.high_value_sales.map(tx => (
+                  <div key={tx.id} className="grid grid-cols-4 gap-4 px-6 py-3 text-sm border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                    <span className="truncate">{tx.listing?.species?.scientific_name ?? tx.plant_id}</span>
+                    <span className="text-zinc-400 truncate">{tx.seller?.display_name}</span>
+                    <span className="text-right font-medium">{tx.sale_price_thb.toLocaleString()} {t('common:currency')}</span>
+                    <span className="text-right">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                        {t(`common:status.${tx.status}`)}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              ))}
+                  </div>
+                ))
+              ) : (
+                <>
+                  <SkeletonTableRow />
+                  <SkeletonTableRow />
+                  <SkeletonTableRow />
+                </>
+              )}
             </div>
           </section>
         </div>

@@ -53,6 +53,7 @@ export default function BrowsePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const q = (searchParams.get('q') || '').toLowerCase().trim();
+  const showAll = searchParams.get('all') === '1';
 
   // Re-render when realtime listings change.
   useSyncExternalStore(subscribeListings, getListingsVersion);
@@ -94,7 +95,8 @@ export default function BrowsePage() {
     return result;
   }, [category, size, province, minPrice, maxPrice, sortBy, q]);
 
-  const { visibleItems, hasMore, loadMore, total } = usePagination(listings, { pageSize: PAGE_SIZE });
+  const { visibleItems, hasMore, loadMore, total } = usePagination(listings, { pageSize: showAll ? listings.length : PAGE_SIZE });
+  const itemsToRender = showAll ? listings : visibleItems;
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -197,14 +199,14 @@ export default function BrowsePage() {
               <ListingCardSkeleton key={i} />
             ))
           ) : (
-            visibleItems.map(listing => (
+            itemsToRender.map(listing => (
               <Link
                 to={`/listing/${listing.id}`}
                 key={listing.id}
                 className="group block break-inside-avoid bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all duration-300"
               >
                 <LazyImage
-                  src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
+                  src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.species?.id || ''] || '/images/plants/monstera-thai.jpg'}
                   srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
                   sizes={CARD_SIZES}
                   alt={listing.species?.scientific_name || t('marketplace:browse.listingAlt')}
@@ -244,7 +246,7 @@ export default function BrowsePage() {
           )}
         </div>
 
-        {!isLoading && hasMore && (
+        {!isLoading && hasMore && !showAll && (
           <div className="text-center mt-8">
             <button
               onClick={loadMore}

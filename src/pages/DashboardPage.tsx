@@ -3,11 +3,17 @@ import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getTransactionsWithDetails, WATCHLIST, DISPUTES, getSpeciesById } from '@/data/mockData';
-import { updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers, hydrateUserDisputes, hydrateUserMessages, subscribeOffers, getOffersVersion } from '@/lib/api';
+import { getTransactionsWithDetails, WATCHLIST, DISPUTES, getSpeciesById, getListingById } from '@/data/mockData';
+import {
+  updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, respondToOffer,
+  getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers,
+  hydrateUserDisputes, hydrateUserMessages, subscribeOffers, getOffersVersion,
+  subscribeWatchlist, getWatchlistVersion
+} from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
+import { subscribeConversations, getConversationsVersion } from '@/lib/messaging';
 import SavedPlacesManager from '@/components/SavedPlacesManager';
 
 const getTabs = (t: (key: string) => string) => [
@@ -35,8 +41,10 @@ export default function DashboardPage() {
   const [offersRefreshKey, setOffersRefreshKey] = useState(0);
   const [priceAlerts, setPriceAlerts] = useState(() => getUserPriceAlerts(user?.id || ''));
 
-  // Re-render when realtime offers change.
+  // Re-render when realtime offers / watchlist / conversations change.
   useSyncExternalStore(subscribeOffers, getOffersVersion);
+  useSyncExternalStore(subscribeWatchlist, getWatchlistVersion);
+  useSyncExternalStore(subscribeConversations, getConversationsVersion);
 
   useEffect(() => {
     if (tab && tabs.some(ta => ta.id === tab)) {
@@ -54,6 +62,8 @@ export default function DashboardPage() {
       });
       setLocalWatchlist(WATCHLIST.filter(w => w.user_id === user.id));
       setPriceAlerts(getUserPriceAlerts(user.id));
+      // Make sure watchlist is hydrated in case we landed here directly.
+      import('@/lib/api').then(({ hydrateUserWatchlist }) => hydrateUserWatchlist(user.id));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, offersRefreshKey]);
@@ -138,6 +148,15 @@ export default function DashboardPage() {
                         setOffersRefreshKey(k => k + 1);
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : t('dashboard:buyer.offerWithdrawFailed'));
+                      }
+                    }}
+                    onRespond={async (status) => {
+                      try {
+                        await respondToOffer(o.id, status);
+                        toast.success(t('dashboard:seller.offerResponded'));
+                        setOffersRefreshKey(k => k + 1);
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
                       }
                     }}
                   />
@@ -244,12 +263,19 @@ export default function DashboardPage() {
               <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.watchlist')} ({localWatchlist.length})</h2>
               <div className="space-y-3">
                 {localWatchlist.length > 0 ? localWatchlist.map(w => {
-                  const species = w.watch_type === 'species' ? getSpeciesById(w.target_id) : null;
+                  const species = w.watch_type === 'species' ? (w.species || getSpeciesById(w.target_id)) : null;
+                  const listing = w.watch_type === 'listing' ? (w.listing || getListingById(w.target_id)) : null;
+                  const label = species?.common_name_en || species?.scientific_name || listing?.species?.common_name_en || listing?.species?.scientific_name || w.target_id;
                   return (
                     <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
-                      <div>
-                        <p className="text-sm font-medium">{w.watch_type === 'species' ? t('dashboard:buyer.speciesWatch') : t('dashboard:buyer.listingWatch')}</p>
-                        <p className="text-xs text-zinc-500">{t('dashboard:buyer.watchTarget', { name: species?.common_name_en || w.target_id })}</p>
+                      <div className="flex items-center gap-3">
+                        {listing?.photos?.[0] && (
+                          <img src={listing.photos[0].storage_path} alt="" className="w-12 h-12 rounded-lg object-cover bg-zinc-800" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium">{w.watch_type === 'species' ? t('dashboard:buyer.speciesWatch') : t('dashboard:buyer.listingWatch')}</p>
+                          <p className="text-xs text-zinc-500">{t('dashboard:buyer.watchTarget', { name: label })}</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {w.watch_type === 'species' && (
@@ -258,6 +284,14 @@ export default function DashboardPage() {
                             className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
                           >
                             <Bell className="w-3 h-3" /> {t('marketplace:species.setPriceAlert')}
+                          </Link>
+                        )}
+                        {listing && (
+                          <Link
+                            to={`/listing/${listing.id}`}
+                            className="text-xs text-emerald-400 hover:underline"
+                          >
+                            {t('common:actions.view')}
                           </Link>
                         )}
                         <button

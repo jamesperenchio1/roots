@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Search, Check, Leaf } from 'lucide-react';
 import { searchSpecies, normalizeSpeciesName, type SpeciesEntry } from '@/data/speciesDatabase';
+import { searchGbifSpecies } from '@/lib/species/gbifSearch';
 
 interface SpeciesAutocompleteProps {
   value: string;
@@ -12,10 +13,13 @@ interface SpeciesAutocompleteProps {
 }
 
 export default function SpeciesAutocomplete({ value, onChange, placeholder, label }: SpeciesAutocompleteProps) {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t } = useTranslation(['common', 'marketplace']);
   const [query, setQuery] = useState(value);
   const debouncedQuery = useDebounce(query, 150);
-  const [results, setResults] = useState<SpeciesEntry[]>([]);
+  const gbifQuery = useDebounce(query, 400);
+  const [localResults, setLocalResults] = useState<SpeciesEntry[]>([]);
+  const [gbifResults, setGbifResults] = useState<SpeciesEntry[]>([]);
+  const [isLoadingGbif, setIsLoadingGbif] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isNewSpecies, setIsNewSpecies] = useState(false);
@@ -37,7 +41,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Perform search on debounced query
+  // Local catalog search
   useEffect(() => {
     if (justSelected.current) {
       justSelected.current = false;
@@ -45,10 +49,11 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
     }
     setIsOpen(true);
     setSelectedIndex(-1);
+    setGbifResults([]);
 
     if (debouncedQuery.length >= 2) {
       const matches = searchSpecies(debouncedQuery, 8);
-      setResults(matches);
+      setLocalResults(matches);
       const norm = normalizeSpeciesName(debouncedQuery);
       const exactMatch = matches.some(m =>
         normalizeSpeciesName(m.scientific_name) === norm ||
@@ -57,10 +62,34 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
       );
       setIsNewSpecies(!exactMatch && debouncedQuery.length > 3);
     } else {
-      setResults([]);
+      setLocalResults([]);
       setIsNewSpecies(false);
     }
   }, [debouncedQuery]);
+
+  // GBIF fallback when local catalog has no matches
+  useEffect(() => {
+    if (gbifQuery.length < 3 || localResults.length > 0) {
+      setGbifResults([]);
+      setIsLoadingGbif(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingGbif(true);
+    searchGbifSpecies(gbifQuery)
+      .then(results => {
+        if (!cancelled) setGbifResults(results);
+      })
+      .catch(() => {
+        if (!cancelled) setGbifResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingGbif(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [gbifQuery, localResults.length]);
 
   const handleInputChange = useCallback((val: string) => {
     setQuery(val);
@@ -69,23 +98,28 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
 
   const handleSelect = (species: SpeciesEntry) => {
     justSelected.current = true;
-    setQuery(`${species.scientific_name} (${species.common_name_en})`);
+    const displayName = species.common_name_en
+      ? `${species.scientific_name} (${species.common_name_en})`
+      : species.scientific_name;
+    setQuery(displayName);
     setIsOpen(false);
     setIsNewSpecies(false);
+    setGbifResults([]);
     onChange(species.scientific_name, species);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    const items = displayResults;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex(prev => Math.min(prev + 1, results.length - 1));
+      setSelectedIndex(prev => Math.min(prev + 1, items.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex(prev => Math.max(prev - 1, -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedIndex >= 0 && results[selectedIndex]) {
-        handleSelect(results[selectedIndex]);
+      if (selectedIndex >= 0 && items[selectedIndex]) {
+        handleSelect(items[selectedIndex]);
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
@@ -122,6 +156,8 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
   };
 
   const queryTerms = query.split(' ').filter(t => t.length >= 2).map(t => t.toLowerCase());
+  const displayResults = localResults.length > 0 ? localResults : gbifResults;
+  const isGbifResult = (species: SpeciesEntry) => species.id.startsWith('gbif-');
 
   return (
     <div ref={containerRef} className="relative">
@@ -140,7 +176,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
         />
         {query && (
           <button
-            onClick={() => { setQuery(''); setResults([]); setIsOpen(false); onChange(''); }}
+            onClick={() => { setQuery(''); setLocalResults([]); setGbifResults([]); setIsOpen(false); onChange(''); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
           >
             ×
@@ -148,9 +184,9 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
         )}
       </div>
 
-      {isOpen && (results.length > 0 || isNewSpecies) && (
+      {isOpen && (displayResults.length > 0 || isNewSpecies) && (
         <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl max-h-72 overflow-y-auto">
-          {results.map((species, i) => (
+          {displayResults.map((species, i) => (
             <button
               key={species.id}
               onClick={() => handleSelect(species)}
@@ -174,11 +210,15 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
                   })()}
                 </p>
                 <p className="text-xs text-zinc-500 truncate">
-                  {species.common_name_en} {species.common_name_th && `· ${species.common_name_th}`}
+                  {isGbifResult(species) ? 'from GBIF' : species.common_name_en} {species.common_name_th && !isGbifResult(species) && `· ${species.common_name_th}`}
                 </p>
               </div>
               <div className="ml-auto text-xs text-zinc-600 shrink-0">
-                <span className="capitalize">{species.category}</span>
+                {isGbifResult(species) ? (
+                  <span className="text-emerald-500">from GBIF</span>
+                ) : (
+                  <span className="capitalize">{species.category}</span>
+                )}
               </div>
             </button>
           ))}
@@ -195,17 +235,19 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
                 <Check className="w-4 h-4 text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-emerald-400">{t('speciesAutocomplete.useCustom', { query })}</p>
-                <p className="text-xs text-zinc-500">{t('speciesAutocomplete.customHint')}</p>
+                <p className="text-sm font-medium text-emerald-400">{t('common:speciesAutocomplete.useCustom', { query })}</p>
+                <p className="text-xs text-zinc-500">{t('common:speciesAutocomplete.customHint')}</p>
               </div>
             </button>
           )}
         </div>
       )}
 
-      {isOpen && query.length >= 2 && results.length === 0 && !isNewSpecies && (
+      {isOpen && query.length >= 2 && displayResults.length === 0 && !isNewSpecies && (
         <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl p-4 text-center">
-          <p className="text-sm text-zinc-500">{t('speciesAutocomplete.noMatches')}</p>
+          <p className="text-sm text-zinc-500">
+            {isLoadingGbif ? t('common:actions.loading') : t('common:speciesAutocomplete.noMatches')}
+          </p>
         </div>
       )}
     </div>

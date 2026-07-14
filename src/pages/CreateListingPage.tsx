@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
+import MapLocationPicker from '@/components/MapLocationPicker';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { getSpeciesPriceStats } from '@/data/mockData';
 import { searchSpecies, type SpeciesEntry as SpeciesDbEntry } from '@/data/speciesDatabase';
@@ -58,7 +59,6 @@ export default function CreateListingPage() {
   const [province, setProvince] = useState('');
   const [pickupLocation, setPickupLocation] = useState('');
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const tagSuggestions = (() => {
@@ -170,22 +170,6 @@ export default function CreateListingPage() {
 
   const toggleDelivery = (opt: string) => {
     setDelivery(prev => prev.includes(opt) ? prev.filter(d => d !== opt) : [...prev, opt]);
-  };
-
-  const captureLocation = () => {
-    if (!('geolocation' in navigator)) { setGeoStatus('error'); return; }
-    setGeoStatus('loading');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPickupCoords({
-          lat: Math.round(pos.coords.latitude * 1e6) / 1e6,
-          lng: Math.round(pos.coords.longitude * 1e6) / 1e6,
-        });
-        setGeoStatus('idle');
-      },
-      () => setGeoStatus('error'),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const validate = () => {
@@ -542,34 +526,30 @@ export default function CreateListingPage() {
 
           {/* Precise pickup location */}
           {delivery.includes('pickup') && (
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.pickupAreaLabel')}</label>
-              <input
-                type="text"
-                value={pickupLocation}
-                onChange={(e) => setPickupLocation(e.target.value)}
-                maxLength={120}
-                placeholder={t('marketplace:create.pickupAreaPlaceholder')}
-                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
-              />
-              <div className="flex items-center gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={captureLocation}
-                  disabled={geoStatus === 'loading'}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-white/10 hover:border-emerald-500/50 text-zinc-300 disabled:opacity-50"
-                >
-                  {geoStatus === 'loading' ? t('common:actions.loading') : pickupCoords ? t('marketplace:create.updatePin') : t('marketplace:create.useLocation')}
-                </button>
-                {pickupCoords && (
-                  <span className="text-xs text-emerald-400">
-                    {t('marketplace:create.pinned')} {pickupCoords.lat.toFixed(4)}, {pickupCoords.lng.toFixed(4)}
-                    <button type="button" onClick={() => setPickupCoords(null)} className="ml-2 text-zinc-500 hover:text-red-400">{t('common:actions.clear')}</button>
-                  </span>
-                )}
-                {geoStatus === 'error' && <span className="text-xs text-red-400">{t('marketplace:create.locationError')}</span>}
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Exact pickup pin</label>
+                <MapLocationPicker
+                  value={pickupCoords ?? null}
+                  onChange={(value) => {
+                    setPickupCoords({ lat: value.lat, lng: value.lng });
+                    if (value.address && !pickupLocation) setPickupLocation(value.address);
+                  }}
+                  height="240px"
+                />
               </div>
-              <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.pickupNote')}</p>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.pickupAreaLabel')}</label>
+                <input
+                  type="text"
+                  value={pickupLocation}
+                  onChange={(e) => setPickupLocation(e.target.value)}
+                  maxLength={120}
+                  placeholder={t('marketplace:create.pickupAreaPlaceholder')}
+                  className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+                />
+                <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.pickupNote')}</p>
+              </div>
             </div>
           )}
 
@@ -587,6 +567,7 @@ export default function CreateListingPage() {
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
               <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.freeShippingNote')}</p>
+              <p className="text-xs text-emerald-400/80 mt-1">This can be changed later</p>
             </div>
           )}
 

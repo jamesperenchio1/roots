@@ -3,6 +3,7 @@ import { Check, X, RotateCcw, ArrowLeft, Tag, Clock, MessageSquare } from 'lucid
 import { useTranslation } from 'react-i18next';
 import type { Offer } from '@/types';
 import { PLANT_IMAGES } from '@/data/mockData';
+import StatusBadge from '@/components/StatusBadge';
 
 interface OfferCardProps {
   offer: Offer;
@@ -10,14 +11,6 @@ interface OfferCardProps {
   onRespond?: (status: 'accepted' | 'rejected' | 'countered', counterPrice?: number) => void;
   onWithdraw?: () => void;
 }
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-500/10 text-amber-400',
-  accepted: 'bg-emerald-500/10 text-emerald-400',
-  rejected: 'bg-red-500/10 text-red-400',
-  countered: 'bg-blue-500/10 text-blue-400',
-  withdrawn: 'bg-zinc-500/10 text-zinc-400',
-};
 
 export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferCardProps) {
   const { t } = useTranslation(['marketplace', 'common']);
@@ -41,6 +34,8 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
     }
   };
 
+  const statusLabel = t(`marketplace:offer.status.${offer.status}`);
+
   return (
     <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
       <div className="flex items-center gap-4">
@@ -50,9 +45,7 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <p className="font-medium truncate">{plantName}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${STATUS_STYLES[offer.status] || 'bg-zinc-500/10 text-zinc-400'}`}>
-              {t(`marketplace:offer.status.${offer.status}`)}
-            </span>
+            <StatusBadge status={offer.status} label={statusLabel} />
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-500 mb-1">
             <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {offer.offer_price_thb.toLocaleString()} {t('common:currency')}</span>
@@ -136,6 +129,25 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
           >
             <X className="w-3 h-3" /> {t('marketplace:offer.withdrawOffer')}
           </button>
+        </div>
+      )}
+
+      {mode === 'buyer' && offer.status === 'countered' && (
+        <div className="mt-3 pt-3 border-t border-white/5">
+          <div className="flex gap-2">
+            <button
+              onClick={() => onRespond?.('accepted')}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            >
+              <Check className="w-3 h-3" /> {t('common:actions.accept')}
+            </button>
+            <button
+              onClick={() => onRespond?.('rejected')}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              <X className="w-3 h-3" /> {t('common:actions.reject')}
+            </button>
+          </div>
         </div>
       )}
     </div>

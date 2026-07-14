@@ -1004,9 +1004,13 @@ export function getUserPresence(userId: string): UserPresence | undefined {
 
 // ---------- typing ----------
 const typingTimers: Record<string, NodeJS.Timeout> = {};
+const lastTypingAt: Record<string, number> = {};
+const TYPING_BROADCAST_THROTTLE_MS = 300;
 
 export function broadcastTyping(conversationId: string, userId: string, displayName: string, isTyping: boolean): void {
-  const channel = supabase.channel(`conversation:${conversationId}`);
+  // Reuse the active realtime channel for this conversation instead of creating a throwaway one.
+  const channel = realtimeChannels[`conversation-${conversationId}`];
+  if (!channel) return;
   if (isTyping) {
     channel.send({
       type: 'broadcast',
@@ -1035,11 +1039,19 @@ export function setTypingWithDebounce(
     delete typingTimers[key];
   }
   if (isTyping) {
-    broadcastTyping(conversationId, userId, displayName, true);
+    const now = Date.now();
+    if (!lastTypingAt[key] || now - lastTypingAt[key] > TYPING_BROADCAST_THROTTLE_MS) {
+      broadcastTyping(conversationId, userId, displayName, true);
+      lastTypingAt[key] = now;
+    }
     typingTimers[key] = setTimeout(() => {
       broadcastTyping(conversationId, userId, displayName, false);
       delete typingTimers[key];
+      delete lastTypingAt[key];
     }, stopDelayMs);
+  } else {
+    broadcastTyping(conversationId, userId, displayName, false);
+    delete lastTypingAt[key];
   }
 }
 
@@ -1101,6 +1113,9 @@ export function subscribeToConversation(
   conversationId: string,
   onTypingUpdate?: TypingListener
 ): () => void {
+  // Maintain a map of active typers keyed by user_id so multiple concurrent typers are handled.
+  const activeTypers: Record<string, { user_id: string; display_name: string; started_at: string }> = {};
+  const notify = () => onTypingUpdate?.(Object.values(activeTypers));
   return ensureRealtimeChannel(`conversation-${conversationId}`, () =>
     supabase
       .channel(`conversation-${conversationId}`)
@@ -1167,14 +1182,17 @@ export function subscribeToConversation(
         { event: 'TypingStarted' },
         (payload) => {
           const data = payload.payload as { user_id: string; display_name: string; started_at: string };
-          onTypingUpdate?.([data]);
+          activeTypers[data.user_id] = data;
+          notify();
         }
       )
       .on(
         'broadcast',
         { event: 'TypingStopped' },
-        () => {
-          onTypingUpdate?.([]);
+        (payload) => {
+          const data = payload.payload as { user_id: string };
+          delete activeTypers[data.user_id];
+          notify();
         }
       )
       .subscribe()

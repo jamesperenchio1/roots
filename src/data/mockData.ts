@@ -117,7 +117,7 @@ export function getPriceSnapshotsForSpecies(speciesId: string, sizeCategory?: st
   cutoff.setDate(cutoff.getDate() - days);
   return PRICE_SNAPSHOTS.filter(ps =>
     ps.species_id === speciesId &&
-    (sizeCategory === undefined ? ps.size_category === undefined : ps.size_category === sizeCategory) &&
+    (sizeCategory ? ps.size_category === sizeCategory : true) &&
     new Date(ps.snapshot_date) >= cutoff
   ).sort((a, b) => new Date(a.snapshot_date).getTime() - new Date(b.snapshot_date).getTime());
 }
@@ -258,9 +258,9 @@ export function getProvenanceChain(plantId: string): ProvenanceChain | null {
 export function getListingsWithDetails(): Listing[] {
   return LISTINGS.map(l => ({
     ...l,
-    species: l.species || SPECIES.find(s => s.id === l.plant_id?.replace('p-', 'sp-') || ''),
+    species: l.species,
     seller: l.seller || USERS.find(u => u.id === l.seller_id),
-    photos: l.photos && l.photos.length ? l.photos : [{ id: `lp-${l.id}`, listing_id: l.id, storage_path: PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg', order_index: 0, created_at: l.created_at }]
+    photos: l.photos && l.photos.length ? l.photos : [{ id: `lp-${l.id}`, listing_id: l.id, storage_path: PLANT_IMAGES[l.species?.id || ''] || '/images/plants/monstera-thai.jpg', order_index: 0, created_at: l.created_at }]
   }));
 }
 
@@ -307,7 +307,7 @@ export function getListingByPlantId(plantId: string): Listing | undefined {
 
 export function getActiveListings(filters?: { speciesId?: string; category?: string; minPrice?: number; maxPrice?: number; size?: string; province?: string }): Listing[] {
   let listings = getListingsWithDetails().filter(l => l.status === 'active');
-  if (filters?.speciesId) listings = listings.filter(l => (l.species?.id || l.plant_id?.replace('p-', 'sp-')) === filters.speciesId);
+  if (filters?.speciesId) listings = listings.filter(l => l.species?.id === filters.speciesId);
   if (filters?.category) listings = listings.filter(l => l.species?.category === filters.category);
   if (filters?.minPrice) listings = listings.filter(l => l.price_thb >= filters.minPrice!);
   if (filters?.maxPrice) listings = listings.filter(l => l.price_thb <= filters.maxPrice!);

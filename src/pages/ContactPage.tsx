@@ -1,9 +1,15 @@
-import { Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
+import { Mail, Clock, Send, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { logger } from '@/lib/logger';
 import { useTranslation } from 'react-i18next';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 const TOPICS = [
   { value: 'General Question', key: 'general' },
@@ -16,10 +22,16 @@ const TOPICS = [
 
 const FAQS = [
   { qKey: 'startSelling', aKey: 'startSellingAnswer' },
-  { qKey: 'damaged', aKey: 'damagedAnswer' },
-  { qKey: 'qr', aKey: 'qrAnswer' },
-  { qKey: 'commonPlants', aKey: 'commonPlantsAnswer' },
   { qKey: 'paid', aKey: 'paidAnswer' },
+  { qKey: 'qr', aKey: 'qrAnswer' },
+  { qKey: 'refunds', aKey: 'refundsAnswer' },
+  { qKey: 'disputes', aKey: 'disputesAnswer' },
+  { qKey: 'pickupSafety', aKey: 'pickupSafetyAnswer' },
+  { qKey: 'plantCondition', aKey: 'plantConditionAnswer' },
+  { qKey: 'shippingDamage', aKey: 'shippingDamageAnswer' },
+  { qKey: 'accountDeletion', aKey: 'accountDeletionAnswer' },
+  { qKey: 'reportScam', aKey: 'reportScamAnswer' },
+  { qKey: 'commonPlants', aKey: 'commonPlantsAnswer' },
 ];
 
 export default function ContactPage() {
@@ -59,7 +71,7 @@ export default function ContactPage() {
           <p className="text-zinc-500">{t('common:contact.subtitle')}</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
           <a
             href="mailto:rootsthailand1@gmail.com"
             className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center block hover:border-white/15 transition-colors"
@@ -69,12 +81,6 @@ export default function ContactPage() {
             <p className="text-sm text-zinc-500">rootsthailand1@gmail.com</p>
             <p className="text-xs text-zinc-600 mt-1">{t('common:contact.channels.responseTime')}</p>
           </a>
-          <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center">
-            <MapPin className="w-6 h-6 text-emerald-400 mx-auto mb-3" />
-            <p className="font-medium mb-1">{t('common:contact.channels.office')}</p>
-            <p className="text-sm text-zinc-500">88/19 Soi Sukhumvit 24</p>
-            <p className="text-xs text-zinc-600 mt-1">Klongtoey, Bangkok 10110</p>
-          </div>
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center">
             <Clock className="w-6 h-6 text-emerald-400 mx-auto mb-3" />
             <p className="font-medium mb-1">{t('common:contact.channels.hours')}</p>
@@ -149,14 +155,22 @@ export default function ContactPage() {
 
           <div>
             <h2 className="text-lg font-medium mb-4">{t('common:contact.faq.title')}</h2>
-            <div className="space-y-4">
+            <Accordion type="single" collapsible className="space-y-3">
               {FAQS.map((faq, i) => (
-                <div key={i} className="bg-zinc-900/30 border border-white/5 rounded-lg p-4">
-                  <p className="font-medium text-sm mb-1">{t(`common:contact.faq.${faq.qKey}`)}</p>
-                  <p className="text-sm text-zinc-500">{t(`common:contact.faq.${faq.aKey}`)}</p>
-                </div>
+                <AccordionItem
+                  key={i}
+                  value={`faq-${i}`}
+                  className="bg-zinc-900/30 border border-white/5 rounded-lg px-4 data-[state=open]:border-white/10"
+                >
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline py-4">
+                    {t(`common:contact.faq.${faq.qKey}`)}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm text-zinc-500 pb-4">
+                    {t(`common:contact.faq.${faq.aKey}`)}
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           </div>
         </div>
       </div>

@@ -264,6 +264,29 @@
       "confirmFailed": "Could not confirm"
     }
   },
+  "mapLocationPicker": {
+    "searchPlaceholder": "Search address or landmark",
+    "searchButton": "Search",
+    "hint": "Click the map or search to set a pin",
+    "confirm": "Confirm pin"
+  },
+  "identification": {
+    "confidence": "confidence",
+    "nativeRegion": "Native region",
+    "growthHabit": "Growth habit",
+    "matureSize": "Mature size",
+    "difficulty": "Difficulty",
+    "reasoning": "Reasoning",
+    "marketEstimate": "Market estimate",
+    "average": "Average",
+    "median": "Median",
+    "range": "Range",
+    "suggested": "Suggested",
+    "insufficientData": "Not enough marketplace data for this species yet. {{catalogueRange}}",
+    "catalogueRange": "Catalogue range: {{low}} – {{high}} THB.",
+    "knownAliases": "Known aliases",
+    "processedBy": "Processed by {{provider}} in {{time}}ms"
+  },
   "notifications": {
     "time": {
       "justNow": "Just now",
@@ -495,7 +518,21 @@
       "commonPlants": "Can I sell common plants?",
       "commonPlantsAnswer": "Absolutely. Root is for every plant, common or rare.",
       "paid": "When do I get paid as a seller?",
-      "paidAnswer": "Funds are released 48 hours after delivery confirmation (or auto-confirmed). Payouts process within 1-2 business days."
+      "paidAnswer": "Funds are released 48 hours after delivery confirmation (or auto-confirmed). Payouts process within 1-2 business days.",
+      "refunds": "Can I get a refund?",
+      "refundsAnswer": "Refunds are handled through our dispute process. Open a dispute within 48 hours of delivery with photos and details. Our team will review and may issue a full or partial refund.",
+      "disputes": "How do disputes work?",
+      "disputesAnswer": "Open a dispute from your order page within 48 hours of delivery. Upload clear photos and a description. We review evidence from both sides and aim to resolve within 24 hours.",
+      "pickupSafety": "Is pickup safe?",
+      "pickupSafetyAnswer": "Meet in a public, well-lit place and confirm the plant matches the listing before handing over payment. Use ROOTS escrow whenever possible for extra protection.",
+      "plantCondition": "What condition should the plant arrive in?",
+      "plantConditionAnswer": "Plants should match the listing photos and description. Minor shipping stress is normal for living plants, but significant damage or misrepresentation can be disputed.",
+      "shippingDamage": "What if my plant is damaged in shipping?",
+      "shippingDamageAnswer": "Take photos of the packaging and plant immediately, then open a dispute within 48 hours. Sellers are responsible for safe packing; couriers are responsible for transit care.",
+      "accountDeletion": "How do I delete my account?",
+      "accountDeletionAnswer": "Email us from your registered address requesting account deletion. We will anonymise your data in provenance chains and remove personal information within 30 days, per Thai PDPA rules.",
+      "reportScam": "How do I report a scam?",
+      "reportScamAnswer": "Use the report button on any listing, message, or user profile, or email us with screenshots and details. We investigate quickly and may ban accounts that violate our terms."
     },
     "topics": {
       "general": "General Question",

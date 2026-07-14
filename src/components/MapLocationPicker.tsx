@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, Check } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useTranslation } from 'react-i18next';
 import { searchNominatim, reverseGeocode, type NominatimResult } from '@/lib/locations';
 
 export interface MapLocationValue {
@@ -24,6 +25,7 @@ const pinIcon = L.divIcon({
 });
 
 export default function MapLocationPicker({ value, onChange, height = '240px' }: MapLocationPickerProps) {
+  const { t } = useTranslation('common');
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -112,7 +114,7 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder="Search address or landmark"
+          placeholder={t('mapLocationPicker.searchPlaceholder')}
           className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-20 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
         />
         <button
@@ -121,7 +123,7 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
           disabled={searching}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-2 py-1 rounded disabled:opacity-50"
         >
-          {searching ? '…' : 'Search'}
+          {searching ? '…' : t('mapLocationPicker.searchButton')}
         </button>
       </div>
 
@@ -148,7 +150,7 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
           {picked ? (
             <span>{picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}</span>
           ) : (
-            <span>Click the map or search to set a pin</span>
+            <span>{t('mapLocationPicker.hint')}</span>
           )}
         </div>
         <button
@@ -157,7 +159,7 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
           disabled={!picked}
           className="inline-flex items-center gap-1 text-xs bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black font-medium px-3 py-1.5 rounded-lg"
         >
-          <Check className="w-3.5 h-3.5" /> Confirm pin
+          <Check className="w-3.5 h-3.5" /> {t('mapLocationPicker.confirm')}
         </button>
       </div>
 

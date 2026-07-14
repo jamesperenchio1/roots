@@ -2,13 +2,6 @@ import { Link } from 'react-router-dom';
 import { Shield, TrendingUp, Truck, QrCode, Zap, Heart } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const STATS = [
-  { value: '2,100+', labelKey: 'plantsListed' },
-  { value: '640+', labelKey: 'happyBuyers' },
-  { value: '220+', labelKey: 'sellersActive' },
-  { value: '฿1.2M', labelKey: 'gmvToDate' },
-];
-
 const VALUES = [
   { icon: Shield, key: 'transparency' },
   { icon: QrCode, key: 'provenance' },
@@ -30,16 +23,6 @@ export default function AboutPage() {
           <p className="text-zinc-500 max-w-2xl mx-auto text-lg leading-relaxed">
             {t('common:about.intro')}
           </p>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-16">
-          {STATS.map((s, i) => (
-            <div key={i} className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center">
-              <p className="text-2xl font-semibold text-emerald-400">{s.value}</p>
-              <p className="text-xs text-zinc-500 mt-1">{t(`common:about.stats.${s.labelKey}`)}</p>
-            </div>
-          ))}
         </div>
 
         {/* Values */}

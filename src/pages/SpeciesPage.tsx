@@ -1,17 +1,12 @@
-import { useParams, Link } from 'react-router-dom';
-
-function seededRandom(seed: string, index: number): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
-  return Math.abs(Math.sin(hash + index) * 10000 % 1);
-}
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Leaf, Bell, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Leaf, Bell, X, Trash2, Search } from 'lucide-react';
 import { getSpeciesById, getActiveListings, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
+import { normalizeSpeciesName } from '@/data/speciesDatabase';
 import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import { Sparkline } from '@/components/PriceChart';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { SizeCategory } from '@/types';
 import PlantCareCard from '@/components/PlantCareCard';
 import { CommentSection } from '@/components/comments/CommentSection';
@@ -19,6 +14,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { getProvinceLabel } from '@/lib/provinces';
 import { createPriceAlert, getUserPriceAlerts, deletePriceAlert } from '@/lib/api';
 import { toast } from 'sonner';
+import { fetchGbifSpecies, fetchINaturalistTaxon, fetchWikipediaSummary } from '@/lib/plantWiki';
+import type { GbifSpecies, INaturalistTaxon, WikipediaSummary } from '@/lib/plantWiki';
+
+function seededRandom(seed: string, index: number): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  return Math.abs(Math.sin(hash + index) * 10000 % 1);
+}
 
 const SIZE_OPTIONS: Array<{ value: SizeCategory | undefined; labelKey: string }> = [
   { value: undefined, labelKey: 'marketplace:species.sizeAll' },
@@ -28,16 +31,33 @@ const SIZE_OPTIONS: Array<{ value: SizeCategory | undefined; labelKey: string }>
   { value: 'XL', labelKey: 'marketplace:species.sizeExtraLarge' },
 ];
 
+interface WikiData {
+  gbif: GbifSpecies | null;
+  inat: INaturalistTaxon | null;
+  wiki: WikipediaSummary | null;
+}
+
 export default function SpeciesPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
-  const species = getSpeciesById(id || '');
+  const navigate = useNavigate();
   const { user } = useAuth();
+
+  const rawId = decodeURIComponent(id || '').trim();
+  const localSpecies = useMemo(() => getSpeciesById(rawId) || null, [rawId]);
+
+  const [wiki, setWiki] = useState<WikiData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | undefined>(undefined);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertThreshold, setAlertThreshold] = useState('');
   const [alertDirection, setAlertDirection] = useState<'above' | 'below'>('below');
-  const [userAlerts, setUserAlerts] = useState(() => user ? getUserPriceAlerts(user.id).filter(a => a.species_id === id) : []);
+  const [userAlerts, setUserAlerts] = useState(() =>
+    user && id ? getUserPriceAlerts(user.id).filter(a => a.species_id === id) : []
+  );
 
   useEffect(() => {
     if (user && id) {
@@ -45,49 +65,241 @@ export default function SpeciesPage() {
     }
   }, [user, id, alertModalOpen]);
 
-  if (!species) {
+  useEffect(() => {
+    let cancelled = false;
+    setWiki(null);
+    setLoading(true);
+    setSelectedImage(0);
+
+    const externalName = localSpecies?.scientific_name || rawId.replace(/-/g, ' ');
+
+    Promise.all([
+      fetchGbifSpecies(externalName),
+      fetchINaturalistTaxon(externalName),
+      fetchWikipediaSummary(externalName),
+    ]).then(([gbif, inat, wikiSummary]) => {
+      if (cancelled) return;
+      setWiki({ gbif, inat, wiki: wikiSummary });
+      setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [localSpecies, rawId]);
+
+  const display = useMemo(() => {
+    const gbif = wiki?.gbif;
+    const inat = wiki?.inat;
+    const summary = wiki?.wiki;
+
+    const scientificName = localSpecies?.scientific_name || gbif?.scientificName || inat?.name || rawId;
+    const commonNameEn = localSpecies?.common_name_en || inat?.preferred_common_name || summary?.title || '';
+    const commonNameTh = localSpecies?.common_name_th || '';
+    const description = localSpecies?.description || summary?.extract || inat?.wikipedia_summary || '';
+    const family = gbif?.family || inat?.ancestors?.find(a => a.rank === 'family')?.name || '';
+    const genus = gbif?.genus || inat?.ancestors?.find(a => a.rank === 'genus')?.name || '';
+    const category = localSpecies?.category || 'other';
+
+    const images: string[] = [];
+    if (localSpecies && rawId && PLANT_IMAGES[rawId]) {
+      images.push(PLANT_IMAGES[rawId]);
+    }
+    if (inat?.taxon_photos) {
+      inat.taxon_photos.slice(0, 8).forEach(tp => {
+        const url = tp.photo?.medium_url || tp.photo?.url;
+        if (url && !images.includes(url)) images.push(url);
+      });
+    }
+    if (inat?.default_photo?.url && !images.includes(inat.default_photo.url)) {
+      images.push(inat.default_photo.url);
+    }
+    if (summary?.thumbnail?.source && !images.includes(summary.thumbnail.source)) {
+      images.push(summary.thumbnail.source);
+    }
+    if (images.length === 0) {
+      images.push('/images/plants/monstera-thai.jpg');
+    }
+
+    return {
+      scientificName,
+      commonNameEn,
+      commonNameTh,
+      description,
+      family,
+      genus,
+      category,
+      images,
+      careLevel: localSpecies?.care_level,
+      light: localSpecies?.light_requirement,
+      synonyms: localSpecies?.synonyms || [],
+    };
+  }, [localSpecies, rawId, wiki]);
+
+  const chartId = localSpecies?.id || rawId;
+
+  const speciesListings = useMemo(() => {
+    const base = localSpecies
+      ? getActiveListings({ speciesId: localSpecies.id })
+      : getActiveListings().filter(l => {
+          const name = l.species?.scientific_name;
+          return name ? normalizeSpeciesName(name) === normalizeSpeciesName(display.scientificName) : false;
+        });
+    return base.filter(l => !sizeFilter || l.size_category === sizeFilter);
+  }, [localSpecies, display.scientificName, sizeFilter]);
+
+  const priceData = useMemo(
+    () =>
+      getPriceSnapshotsForSpecies(chartId, sizeFilter, 180).map(ps => ({
+        date: ps.snapshot_date,
+        price: ps.median_price_thb,
+        volume: ps.sale_count,
+      })),
+    [chartId, sizeFilter]
+  );
+
+  const fallbackPrice = useMemo(() => {
+    if (localSpecies || speciesListings.length === 0) return undefined;
+    const prices = speciesListings.map(l => l.price_thb).sort((a, b) => a - b);
+    const mid = Math.floor(prices.length / 2);
+    return prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
+  }, [localSpecies, speciesListings]);
+
+  if (loading) {
     return (
-      <div className="pt-24 pb-16 px-4 text-center">
-        <h1 className="text-2xl mb-4">{t('marketplace:species.notFound')}</h1>
-        <Link to="/browse" className="text-emerald-400 hover:underline">{t('marketplace:species.backToBrowse')}</Link>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 pt-24 pb-16">
+        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
+        <p className="text-sm text-zinc-500">{t('common:loading')}</p>
       </div>
     );
   }
 
-  const priceData = getPriceSnapshotsForSpecies(id || '', sizeFilter, 180).map(ps => ({
-    date: ps.snapshot_date,
-    price: ps.median_price_thb,
-    volume: ps.sale_count
-  }));
-
-  const listings = getActiveListings({ speciesId: id }).filter(l => !sizeFilter || l.size_category === sizeFilter);
+  const missing = !localSpecies && !wiki?.gbif && !wiki?.inat && !wiki?.wiki;
+  if (missing) {
+    return (
+      <div className="pt-24 pb-16 px-4 text-center max-w-xl mx-auto">
+        <h1 className="text-2xl mb-4">{t('marketplace:species.notFound')}</h1>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = searchQuery.trim();
+            if (q) navigate(`/species/${encodeURIComponent(q)}`);
+          }}
+          className="flex items-center justify-center gap-2 mb-6"
+        >
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search species..."
+              className="w-full bg-black border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors"
+          >
+            Search
+          </button>
+        </form>
+        <Link to="/browse" className="text-emerald-400 hover:underline">
+          {t('marketplace:species.backToBrowse')}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <Link to="/browse" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> {t('common:actions.back')}
-        </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <Link to="/browse" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white transition-colors">
+            <ArrowLeft className="w-4 h-4" /> {t('common:actions.back')}
+          </Link>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = searchQuery.trim();
+              if (q) navigate(`/species/${encodeURIComponent(q)}`);
+            }}
+            className="flex items-center gap-2"
+          >
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search species..."
+                className="w-full sm:w-64 bg-black border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors"
+            >
+              Search
+            </button>
+          </form>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-8 mb-10">
-          <div className="lg:col-span-1">
-            <div className="aspect-square rounded-2xl overflow-hidden bg-zinc-900 mb-4">
-              <img src={PLANT_IMAGES[id || ''] || '/images/plants/monstera-thai.jpg'} alt={species.scientific_name} className="w-full h-full object-cover" />
+          <div className="lg:col-span-1 space-y-3">
+            <div className="aspect-square rounded-2xl overflow-hidden bg-zinc-900">
+              <img
+                src={display.images[selectedImage]}
+                alt={display.scientificName}
+                className="w-full h-full object-cover"
+              />
             </div>
+            {display.images.length > 1 && (
+              <div className="grid grid-cols-4 gap-2">
+                {display.images.slice(0, 4).map((src, i) => (
+                  <button
+                    key={`${src}-${i}`}
+                    onClick={() => setSelectedImage(i)}
+                    className={`aspect-square rounded-lg overflow-hidden transition-opacity ${
+                      selectedImage === i ? 'ring-2 ring-emerald-400 opacity-100' : 'opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Leaf className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-zinc-500 capitalize">{t(`marketplace:categories.${species.category}` as const)}</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{species.scientific_name}</h1>
-            <p className="text-lg text-zinc-400 mb-1">{species.common_name_en}</p>
-            <p className="text-sm text-zinc-500 mb-4">{species.common_name_th}</p>
-            <p className="text-zinc-400 leading-relaxed mb-4">{species.description}</p>
+            {localSpecies && (
+              <div className="flex items-center gap-2 mb-2">
+                <Leaf className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-zinc-500 capitalize">
+                  {t(`marketplace:categories.${display.category}` as const)}
+                </span>
+              </div>
+            )}
+            <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{display.scientificName}</h1>
+            {display.commonNameEn && <p className="text-lg text-zinc-400 mb-1">{display.commonNameEn}</p>}
+            {display.commonNameTh && <p className="text-sm text-zinc-500 mb-4">{display.commonNameTh}</p>}
+            {display.description && <p className="text-zinc-400 leading-relaxed mb-4">{display.description}</p>}
             <div className="flex flex-wrap gap-2 mb-6">
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:species.careLevel', { level: species.care_level })}</span>
-              <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:species.lightRequirement', { light: species.light_requirement })}</span>
-              {species.synonyms?.map(s => (
+              {display.family && (
+                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">Family: {display.family}</span>
+              )}
+              {display.genus && (
+                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">Genus: {display.genus}</span>
+              )}
+              {display.careLevel && (
+                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">
+                  {t('marketplace:species.careLevel', { level: display.careLevel })}
+                </span>
+              )}
+              {display.light && (
+                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">
+                  {t('marketplace:species.lightRequirement', { light: display.light })}
+                </span>
+              )}
+              {display.synonyms.map(s => (
                 <span key={s} className="bg-zinc-800/30 px-3 py-1 rounded-full text-xs text-zinc-500">{s}</span>
               ))}
             </div>
@@ -115,7 +327,9 @@ export default function SpeciesPage() {
                   <button
                     key={s.value || 'all'}
                     onClick={() => setSizeFilter(s.value)}
-                    className={`px-3 py-1 text-xs rounded-md transition-colors ${sizeFilter === s.value ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      sizeFilter === s.value ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
                   >
                     {t(s.labelKey)}
                   </button>
@@ -129,7 +343,11 @@ export default function SpeciesPage() {
                 <div key={a.id} className="flex items-center justify-between bg-zinc-800/30 border border-white/5 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-zinc-400">
                     <Bell className="w-3 h-3 text-emerald-400" />
-                    {t('marketplace:species.alertDescription', { direction: t(`marketplace:species.alert${a.direction === 'above' ? 'Above' : 'Below'}`), threshold: a.threshold_thb.toLocaleString(), currency: t('common:currency') })}
+                    {t('marketplace:species.alertDescription', {
+                      direction: t(`marketplace:species.alert${a.direction === 'above' ? 'Above' : 'Below'}`),
+                      threshold: a.threshold_thb.toLocaleString(),
+                      currency: t('common:currency'),
+                    })}
                   </div>
                   <button
                     onClick={async () => {
@@ -150,22 +368,20 @@ export default function SpeciesPage() {
             </div>
           )}
           {priceData.length >= 3 ? (
-            <>
-              <PriceChart data={priceData} height={350} showVolume={true} />
-              <div className="mt-6">
-                <StatsPanel speciesId={id || ''} />
-              </div>
-            </>
+            <PriceChart data={priceData} height={350} showVolume={true} />
           ) : (
             <div className="py-12 text-center">
               <p className="text-zinc-500">{t('marketplace:species.insufficientData')}</p>
             </div>
           )}
+          <div className="mt-6">
+            <StatsPanel speciesId={chartId} fallbackPrice={fallbackPrice} />
+          </div>
         </div>
 
         {/* Plant Care Guide */}
         <div className="mb-10">
-          <PlantCareCard speciesName={species.scientific_name} />
+          <PlantCareCard speciesName={display.scientificName} />
         </div>
 
         {/* Price Alert Modal */}
@@ -187,13 +403,21 @@ export default function SpeciesPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setAlertDirection('below')}
-                      className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${alertDirection === 'below' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'border-white/10 hover:bg-white/5'}`}
+                      className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${
+                        alertDirection === 'below'
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                          : 'border-white/10 hover:bg-white/5'
+                      }`}
                     >
                       {t('marketplace:species.alertBelow')}
                     </button>
                     <button
                       onClick={() => setAlertDirection('above')}
-                      className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${alertDirection === 'above' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'border-white/10 hover:bg-white/5'}`}
+                      className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${
+                        alertDirection === 'above'
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                          : 'border-white/10 hover:bg-white/5'
+                      }`}
                     >
                       {t('marketplace:species.alertAbove')}
                     </button>
@@ -249,10 +473,12 @@ export default function SpeciesPage() {
 
         {/* Active Listings */}
         <div className="mb-10">
-          <h2 className="text-lg font-medium mb-4">{t('marketplace:species.activeListingsCount', { count: listings.length })}</h2>
-          {listings.length > 0 ? (
+          <h2 className="text-lg font-medium mb-4">
+            {t('marketplace:species.activeListingsCount', { count: speciesListings.length })}
+          </h2>
+          {speciesListings.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {listings.map(l => (
+              {speciesListings.map(l => (
                 <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all group">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>

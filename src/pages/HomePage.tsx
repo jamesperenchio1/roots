@@ -128,7 +128,7 @@ export default function HomePage() {
               <h2 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">{t('home:sections.freshListings')}</h2>
               <p className="text-zinc-500">{t('home:sections.freshListingsSubtitle')}</p>
             </div>
-            <Link to="/browse" className="hidden sm:flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+            <Link to="/browse?all=1" className="hidden sm:flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
               {t('common:actions.seeAll')} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

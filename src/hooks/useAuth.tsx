@@ -13,11 +13,13 @@ import {
   hydrateUserPriceAlerts,
   hydrateUserDisputes,
   hydrateUserMessages,
+  hydrateUserWatchlist,
   subscribeToNotifications,
   subscribeToOffers,
   subscribeToListings,
   subscribeToTransactions,
   subscribeToPriceSnapshots,
+  subscribeToWatchlist,
 } from '@/lib/api';
 import { subscribeToConversations } from '@/lib/messaging';
 
@@ -117,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscribeToTransactions(uid),
       subscribeToPriceSnapshots(),
       subscribeToConversations(uid),
+      subscribeToWatchlist(uid),
     ];
     unsubscribeRef.current = () => unsubs.forEach((u) => u());
   }, []);
@@ -146,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             hydrateUserPriceAlerts();
             hydrateUserDisputes();
             hydrateUserMessages(uid);
+            hydrateUserWatchlist(uid);
             startSubscriptions(uid);
           }
         }
@@ -209,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await hydrateUserPriceAlerts();
         await hydrateUserDisputes();
         await hydrateUserMessages(p.id);
+        await hydrateUserWatchlist(p.id);
         startSubscriptions(p.id);
         return { ok: true };
       }

@@ -3,12 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Leaf, Camera, Upload, MapPin, ChevronRight, ChevronLeft, Loader2, RotateCcw,
-  Store, ScanSearch
+  Store, ScanSearch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { MediaUploader } from '@/components/identification/MediaUploader';
 import { IdentificationResultCard } from '@/components/identification/IdentificationResultCard';
+import { IdentificationChecklist } from '@/components/identification/IdentificationChecklist';
 import type { EvidenceType, UploadedMedia, IdentificationResult } from '@/types';
 import type { IdentificationEvidence, EvidenceNeed } from '@/lib/identification/types';
 import { evidenceTypeLabel } from '@/lib/identification';
@@ -17,6 +18,7 @@ import {
   getIdentificationRequest,
   getRequestMedia,
   runIdentification,
+  updateIdentificationRequest,
   saveIdentificationResult,
   updateRequestStatus,
   getLatestResult,
@@ -100,6 +102,7 @@ export default function IdentifyPage() {
     if (!requestId) return;
     setLoading(true);
     try {
+      await updateIdentificationRequest(requestId, { country, growingConditions, notes });
       const { result: combined, needsMore: need } = await runIdentification(requestId, evidence);
       setNeedsMore(need);
       if (!need || combined.confidence >= 0.85) {
@@ -151,16 +154,17 @@ export default function IdentifyPage() {
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6 min-h-screen">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-light tracking-tight mb-2 flex items-center gap-3">
-            <ScanSearch className="w-8 h-8 text-emerald-400" />
-            {t('marketplace:identify.title')}
-          </h1>
-          <p className="text-zinc-500">{t('marketplace:identify.subtitle')}</p>
-        </div>
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <div className="mb-8">
+            <h1 className="text-3xl font-light tracking-tight mb-2 flex items-center gap-3">
+              <ScanSearch className="w-8 h-8 text-emerald-400" />
+              {t('marketplace:identify.title')}
+            </h1>
+            <p className="text-zinc-500">{t('marketplace:identify.subtitle')}</p>
+          </div>
 
-        {!isResultStep && (
+          {!isResultStep && (
           <div className="mb-8">
             <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
               <div
@@ -283,6 +287,16 @@ export default function IdentifyPage() {
             </div>
           </div>
         )}
+        </div>
+
+        <div className="hidden lg:block lg:col-span-1">
+          <div className="sticky top-24">
+            <IdentificationChecklist
+              steps={EVIDENCE_FLOW}
+              currentStepIndex={isResultStep || isProcessingStep ? EVIDENCE_FLOW.length : Math.min(currentStepIndex, EVIDENCE_FLOW.length)}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

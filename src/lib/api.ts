@@ -3,8 +3,8 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, getListingByPlantId, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
-import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, WATCHLIST, getListingByPlantId, getListingById, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
+import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './messaging';
@@ -99,7 +99,7 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     last_photo_update_at: (r.last_photo_update_at as string | undefined) || (r.created_at as string),
     view_count: (r.view_count as number | undefined) ?? 0,
     tags: (r.tags as string[] | undefined) || [],
-    watch_count: (r.watch_count as number | undefined) ?? 0,
+    watch_count: (r.watch_count as number | undefined) ?? WATCHLIST.filter(w => w.watch_type === 'listing' && w.target_id === r.id).length,
     species: speciesFromRow(r),
     seller: profiles[sellerId],
     photos: photos.map((url, i) => ({
@@ -117,12 +117,46 @@ function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transactio
   const sellerId = r.seller_id as string;
   const listingId = r.listing_id as string;
   const id = r.id as string;
+
+  // If the query joined the linked listing, build a real Listing object from it.
+  const linkedListing = r.listings as DbRow | undefined;
+  let listing: Listing;
+  if (linkedListing && linkedListing.id) {
+    listing = mapListing(linkedListing, profiles);
+    listing.status = 'sold';
+    listing.price_thb = r.sale_price_thb as number;
+  } else {
+    listing = {
+      id: listingId || id,
+      plant_id: listingId || id,
+      seller_id: sellerId,
+      price_thb: r.sale_price_thb as number,
+      size_category: 'M',
+      description: '',
+      delivery_options: [(r.delivery_method as DeliveryOption | undefined) || 'ship'],
+      status: 'sold',
+      created_at: r.created_at as string,
+      last_photo_update_at: r.created_at as string,
+      species: {
+        id: (r.species_label as string | undefined) || 'live',
+        scientific_name: (r.species_label as string | undefined) || 'Plant',
+        common_name_en: (r.species_label as string | undefined) || 'Plant',
+        synonyms: [],
+        category: 'other',
+        created_at: r.created_at as string,
+      },
+      photos: r.image_url
+        ? [{ id: `t-${id}`, listing_id: listingId || id, storage_path: r.image_url as string, order_index: 0, created_at: r.created_at as string }]
+        : [],
+    } as Listing;
+  }
+
   return {
     id,
     listing_id: listingId,
     buyer_id: buyerId,
     seller_id: sellerId,
-    plant_id: listingId,
+    plant_id: listing.plant_id || listingId || id,
     sale_price_thb: r.sale_price_thb as number,
     platform_fee_thb: (r.platform_fee_thb as number | undefined) ?? 0,
     seller_payout_thb: (r.seller_payout_thb as number | undefined) ?? 0,
@@ -140,29 +174,7 @@ function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transactio
     completed_at: (r.completed_at as string | undefined) || undefined,
     buyer: profiles[buyerId],
     seller: profiles[sellerId],
-    listing: {
-      id: listingId || id,
-      plant_id: listingId || id,
-      seller_id: sellerId,
-      price_thb: r.sale_price_thb as number,
-      size_category: 'M',
-      description: '',
-      delivery_options: [(r.delivery_method as DeliveryOption | undefined) || 'ship'],
-      status: 'sold',
-      created_at: r.created_at as string,
-      last_photo_update_at: r.created_at as string,
-      species: {
-        id: 'live',
-        scientific_name: (r.species_label as string | undefined) || 'Plant',
-        common_name_en: (r.species_label as string | undefined) || 'Plant',
-        synonyms: [],
-        category: 'other',
-        created_at: r.created_at as string,
-      },
-      photos: r.image_url
-        ? [{ id: `t-${id}`, listing_id: listingId || id, storage_path: r.image_url as string, order_index: 0, created_at: r.created_at as string }]
-        : [],
-    } as Listing,
+    listing,
   };
 }
 
@@ -266,6 +278,7 @@ export async function hydratePublicData(): Promise<void> {
     (sellerReviewRows || []).forEach((r: DbRow) => upsertById(SELLER_REVIEWS, mapSellerReview(r)));
     savePublicDataCache(USERS, LISTINGS, SELLER_REVIEWS);
     await hydratePriceSnapshots();
+    await hydratePublicTransactions();
     bumpListings();
   } catch (e) {
     // Offline / not configured — keep any cached data or fall back to seed-only catalog.
@@ -291,11 +304,13 @@ export function mapPriceSnapshot(r: DbRow): PriceSnapshot {
 
 export async function hydratePriceSnapshots(): Promise<void> {
   try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 365);
     const { data, error } = await supabase
       .from('price_snapshots')
       .select('*')
-      .order('snapshot_date', { ascending: false })
-      .limit(2000);
+      .gte('snapshot_date', cutoff.toISOString().split('T')[0])
+      .order('snapshot_date', { ascending: false });
     if (error) throw error;
     PRICE_SNAPSHOTS.length = 0;
     (data || []).forEach((r) => PRICE_SNAPSHOTS.push(mapPriceSnapshot(r)));
@@ -304,11 +319,26 @@ export async function hydratePriceSnapshots(): Promise<void> {
   }
 }
 
+export async function hydratePublicTransactions(): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, listings(*)')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    (data || []).forEach((r) => upsertById(TRANSACTIONS, mapTransaction(r, profileCache)));
+  } catch (e) {
+    logger.warn('hydratePublicTransactions failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 export async function hydrateUserTransactions(): Promise<void> {
   try {
     const { data } = await supabase
       .from('transactions')
-      .select('*')
+      .select('*, listings(*)')
       .order('created_at', { ascending: false });
     (data || []).forEach((r) => upsertById(TRANSACTIONS, mapTransaction(r, profileCache)));
   } catch (e) {
@@ -1045,6 +1075,64 @@ export async function ensureProfile(
   return null;
 }
 
+function mapWatchlistItem(r: DbRow): WatchlistItem {
+  const type = r.watch_type as WatchType;
+  const targetId = r.target_id as string;
+  return {
+    id: r.id as string,
+    user_id: r.user_id as string,
+    watch_type: type,
+    target_id: targetId,
+    created_at: r.created_at as string,
+    species: type === 'species' ? getSpeciesById(targetId) : undefined,
+    listing: type === 'listing' ? getListingById(targetId) : undefined,
+  };
+}
+
+export async function hydrateUserWatchlist(userId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('watchlist')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    WATCHLIST.length = 0;
+    (data || []).forEach((r) => WATCHLIST.push(mapWatchlistItem(r)));
+    bumpWatchlist();
+  } catch (e) {
+    logger.warn('hydrateUserWatchlist failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+// External store for watchlist so the dashboard/listing heart reacts immediately.
+let watchlistVersion = 0;
+const watchlistListeners = new Set<() => void>();
+function bumpWatchlist() {
+  watchlistVersion++;
+  watchlistListeners.forEach((l) => l());
+}
+export function subscribeWatchlist(cb: () => void): () => void {
+  watchlistListeners.add(cb);
+  return () => { watchlistListeners.delete(cb); };
+}
+export function getWatchlistVersion(): number {
+  return watchlistVersion;
+}
+
+export function subscribeToWatchlist(userId: string): () => void {
+  return ensureRealtimeChannel(`watchlist-${userId}`, () =>
+    supabase
+      .channel(`watchlist-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'watchlist', filter: `user_id=eq.${userId}` },
+        () => { hydrateUserWatchlist(userId); }
+      )
+      .subscribe()
+  );
+}
+
 export async function toggleWatch(
   userId: string,
   watchType: 'species' | 'listing',
@@ -1062,6 +1150,24 @@ export async function toggleWatch(
       .delete()
       .match({ user_id: userId, watch_type: watchType, target_id: targetId });
   }
+  // Optimistically keep the local store in sync while realtime catches up.
+  if (on) {
+    if (!WATCHLIST.some(w => w.user_id === userId && w.watch_type === watchType && w.target_id === targetId)) {
+      WATCHLIST.push({
+        id: `opt-${userId}-${watchType}-${targetId}`,
+        user_id: userId,
+        watch_type: watchType,
+        target_id: targetId,
+        created_at: new Date().toISOString(),
+        species: watchType === 'species' ? getSpeciesById(targetId) : undefined,
+        listing: watchType === 'listing' ? getListingById(targetId) : undefined,
+      });
+    }
+  } else {
+    const idx = WATCHLIST.findIndex(w => w.user_id === userId && w.watch_type === watchType && w.target_id === targetId);
+    if (idx >= 0) WATCHLIST.splice(idx, 1);
+  }
+  bumpWatchlist();
 }
 
 // ---------- notifications ----------
