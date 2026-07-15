@@ -384,7 +384,15 @@
   "chart": {
     "volume": "Vol: {{value}}",
     "price": "{{value}} THB",
-    "all": "All"
+    "all": "All",
+    "compare": {
+      "title": "Compare",
+      "start": "Start",
+      "end": "End",
+      "difference": "Difference",
+      "change": "Change",
+      "reset": "Reset"
+    }
   },
   "stats": {
     "median30d": "30d Median",
