@@ -397,6 +397,20 @@
     "volatility": "Volatility",
     "na": "N/A"
   },
+  "provenance": {
+    "generateQrTag": "Generate QR provenance tag",
+    "generateQrTagHelp": "Creates a unique QR tag buyers can scan to verify this plant's history and ownership. Recommended for rare or high-value plants.",
+    "generateQrTagSellerNote": "You can still sell without it — the listing will simply appear without a verified provenance badge.",
+    "noQrTag": "No QR provenance tag",
+    "noQrTagDescription": "This listing does not include a QR provenance tag. The plant is still for sale, but its ownership history is not tracked on Root.",
+    "noQrTitle": "This listing does not have a QR provenance tag",
+    "noQrSubtitle": "QR provenance helps buyers verify authenticity and track ownership history.",
+    "backToListing": "Back to listing",
+    "browsePlants": "Browse plants",
+    "listingSubmittedTitle": "Listing Submitted",
+    "listingSubmittedDescription": "Your listing has been submitted for review. Once approved, buyers can find it in the marketplace.",
+    "qrTagBadge": "QR tag"
+  },
   "weather": {
     "title": "Weather — {{city}}",
     "humidity": "humidity",

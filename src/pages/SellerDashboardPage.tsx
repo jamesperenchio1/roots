@@ -253,7 +253,7 @@ export default function SellerDashboardPage() {
         {activeTab === 'analytics' && <AnalyticsTab listings={listings} allSales={allSales} t={t} />}
         {activeTab === 'performance' && <PerformanceTab allSales={allSales} t={t} />}
         {activeTab === 'inventory' && <InventoryTab listings={listings} t={t} />}
-        {activeTab === 'qr' && <QrManagementTab listings={listings} t={t} />}
+        {activeTab === 'qr' && <QrManagementTab listings={listings.filter(l => l.has_qr_provenance !== false && l.plant_id)} t={t} />}
         {activeTab === 'account' && <AccountTab me={me} t={t} />}
       </div>
     </div>
@@ -325,6 +325,11 @@ function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplicate, t }
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {l.watch_count || 0}</span>
                     <span>{l.delivery_options?.join(' + ')}</span>
                     <span className={parseFloat(vsMarket) > 20 ? 'text-amber-400' : parseFloat(vsMarket) < -20 ? 'text-emerald-400' : 'text-zinc-500'}>{parseFloat(vsMarket) > 0 ? '+' : ''}{vsMarket}%</span>
+                    {l.has_qr_provenance !== false && l.plant_id && (
+                      <span className="inline-flex items-center gap-1 text-emerald-400" title={t('marketplace:provenance.qrTagBadge')}>
+                        <QrCode className="w-3 h-3" /> {t('marketplace:provenance.qrTagBadge')}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="shrink-0">

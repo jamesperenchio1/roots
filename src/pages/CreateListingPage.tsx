@@ -45,7 +45,7 @@ export default function CreateListingPage() {
   const [prefillResult, setPrefillResult] = useState<IdentificationResult | null>(null);
   const [prefillLoading, setPrefillLoading] = useState(false);
   const [placesLoading, setPlacesLoading] = useState(false);
-  const [step, setStep] = useState<'form' | 'qr'>('form');
+  const [step, setStep] = useState<'form' | 'qr' | 'submitted'>('form');
   const [savedPlaces, setSavedPlaces] = useState<UserLocation[]>([]);
   const [selectedPlaceId, setSelectedPlaceId] = useState('');
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
@@ -61,6 +61,7 @@ export default function CreateListingPage() {
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [hasQrProvenance, setHasQrProvenance] = useState(true);
   const tagSuggestions = (() => {
     const q = tagInput.trim().toLowerCase();
     if (!q) return [];
@@ -218,12 +219,18 @@ export default function CreateListingPage() {
         pickup_lng: delivery.includes('pickup') ? pickupCoords?.lng : undefined,
         photos: urls,
         tags: tags.length > 0 ? tags : undefined,
+        has_qr_provenance: hasQrProvenance,
       }, user);
+      setCreated(listing);
+      if (!hasQrProvenance || !listing.plant_id) {
+        setStep('submitted');
+        toast.success(t('marketplace:create.published'));
+        return;
+      }
       const plant = await fetchPlant(listing.plant_id);
       const signature = plant?.qr_signature || '';
       const qrUrl = `${window.location.origin}/#/p/${listing.plant_id}${signature ? `?s=${signature}` : ''}`;
       const qr = await generateQR(qrUrl, 220);
-      setCreated(listing);
       setProvenanceQR(qr);
       setStep('qr');
       toast.success(t('marketplace:create.published'));
@@ -235,6 +242,28 @@ export default function CreateListingPage() {
   };
 
   const currency = t('common:currency');
+
+  if (step === 'submitted') {
+    return (
+      <div className="pt-24 pb-16 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-light mb-2">{t('marketplace:provenance.listingSubmittedTitle')}</h1>
+          <p className="text-zinc-500 mb-6">
+            {t('marketplace:provenance.listingSubmittedDescription')}
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Link to="/seller-dashboard" className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
+              {t('marketplace:create.goToDashboard')}
+            </Link>
+            <Link to={created ? `/listing/${created.id}` : '/browse'} className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
+              {t('marketplace:create.viewListing')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'qr') {
     return (
@@ -645,6 +674,26 @@ export default function CreateListingPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* QR Provenance Toggle */}
+          <div className="bg-zinc-900/30 border border-white/5 rounded-lg p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasQrProvenance}
+                onChange={(e) => setHasQrProvenance(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-6 bg-zinc-700 peer-checked:bg-emerald-500 rounded-full relative shrink-0 transition-colors">
+                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-zinc-200">{t('marketplace:provenance.generateQrTag')}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">{t('marketplace:provenance.generateQrTagHelp')}</p>
+                <p className="text-xs text-zinc-600 mt-1">{t('marketplace:provenance.generateQrTagSellerNote')}</p>
+              </div>
+            </label>
           </div>
 
           {/* Fee Notice */}

@@ -38,14 +38,17 @@ export default function ListingPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
     if (listing) {
-      const plantId = listing.plant_id || listing.id;
-      fetchPlant(plantId).then((plant) => {
-        const signature = plant?.qr_signature || '';
-        const url = `${window.location.origin}/#/p/${plantId}${signature ? `?s=${signature}` : ''}`;
-        generateQR(url, 400).then(setQrUrl).catch(() => setQrUrl(''));
-      }).catch(() => {
-        generateQR(`${window.location.origin}/#/p/${plantId}`, 400).then(setQrUrl).catch(() => setQrUrl(''));
-      });
+      if (listing.plant_id) {
+        fetchPlant(listing.plant_id).then((plant) => {
+          const signature = plant?.qr_signature || '';
+          const url = `${window.location.origin}/#/p/${listing.plant_id}${signature ? `?s=${signature}` : ''}`;
+          generateQR(url, 400).then(setQrUrl).catch(() => setQrUrl(''));
+        }).catch(() => {
+          generateQR(`${window.location.origin}/#/p/${listing.plant_id}`, 400).then(setQrUrl).catch(() => setQrUrl(''));
+        });
+      } else {
+        setQrUrl('');
+      }
       recordView(listing.id);
     }
   }, [listing, id, recordView]);
@@ -281,16 +284,18 @@ export default function ListingPage() {
                 <Shield className="w-4 h-4" />
                 <span>{t('marketplace:listing.escrowProtected')}</span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-zinc-400">
-                <QrCode className="w-4 h-4" />
-                <span>{t('marketplace:listing.qrTag')}</span>
-                <ProvenanceInfo />
-              </div>
+              {listing.plant_id && (
+                <div className="flex items-center gap-3 text-sm text-zinc-400">
+                  <QrCode className="w-4 h-4" />
+                  <span>{t('marketplace:listing.qrTag')}</span>
+                  <ProvenanceInfo />
+                </div>
+              )}
             </div>
 
-            {qrUrl && (
+            {listing.plant_id && qrUrl && (
               <Link
-                to={`/p/${listing.plant_id || listing.id}`}
+                to={`/p/${listing.plant_id}`}
                 className="flex items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-xl p-3 hover:border-white/15 transition-colors"
               >
                 <div className="w-16 h-16 bg-white rounded-lg p-1.5 shrink-0">
@@ -307,6 +312,18 @@ export default function ListingPage() {
                   <p className="text-xs text-zinc-500">{t('marketplace:listing.scanQrCta')}</p>
                 </div>
               </Link>
+            )}
+
+            {!listing.plant_id && (
+              <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-300">{t('marketplace:provenance.noQrTag')}</p>
+                    <p className="text-xs text-zinc-500 mt-1">{t('marketplace:provenance.noQrTagDescription')}</p>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="flex gap-3 pt-4">

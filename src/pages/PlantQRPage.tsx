@@ -152,6 +152,28 @@ export default function PlantQRPage() {
     );
   }
 
+  if (!plant) {
+    return (
+      <div className="pt-24 pb-16 px-4 sm:px-6">
+        <div className="max-w-md mx-auto text-center">
+          <QrCode className="w-14 h-14 text-zinc-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-light mb-2">{t('marketplace:provenance.noQrTitle')}</h1>
+          <p className="text-zinc-500 mb-6">{t('marketplace:provenance.noQrSubtitle')}</p>
+          <div className="flex gap-3 justify-center">
+            {listing?.id && (
+              <Link to={`/listing/${listing.id}`} className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
+                {t('marketplace:provenance.backToListing')}
+              </Link>
+            )}
+            <Link to="/browse" className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors">
+              {t('marketplace:provenance.browsePlants')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
