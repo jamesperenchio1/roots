@@ -480,6 +480,15 @@ export default function SpeciesPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {speciesListings.map(l => (
                 <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all group">
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-zinc-800 mb-3">
+                    <img
+                      src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'}
+                      alt={l.species?.common_name_en || 'Plant listing'}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  </div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
                     <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{l.size_category}</span>

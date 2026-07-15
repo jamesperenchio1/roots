@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, MapPin, Check } from 'lucide-react';
+import { Search, MapPin, Check, LocateFixed } from 'lucide-react';
+import { toast } from 'sonner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTranslation } from 'react-i18next';
 import { searchNominatim, reverseGeocode, type NominatimResult } from '@/lib/locations';
+import { THAI_PROVINCES, THAI_PROVINCE_LABELS } from '@/lib/provinces';
 
 export interface MapLocationValue {
   lat: number;
@@ -14,6 +16,7 @@ export interface MapLocationValue {
 interface MapLocationPickerProps {
   value?: MapLocationValue | null;
   onChange: (value: MapLocationValue) => void;
+  onGeocodedAddress?: (address: string, province?: string) => void;
   height?: string;
 }
 
@@ -24,7 +27,7 @@ const pinIcon = L.divIcon({
   iconAnchor: [9, 9],
 });
 
-export default function MapLocationPicker({ value, onChange, height = '240px' }: MapLocationPickerProps) {
+export default function MapLocationPicker({ value, onChange, onGeocodedAddress, height = '240px' }: MapLocationPickerProps) {
   const { t } = useTranslation('common');
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -32,6 +35,7 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [picked, setPicked] = useState<MapLocationValue | null>(value || null);
 
   const centerMap = (lat: number, lng: number) => {
@@ -105,6 +109,49 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
     onChange(picked);
   };
 
+  const extractProvince = (address: string): string | undefined => {
+    const normalized = address.toLowerCase();
+    for (const province of THAI_PROVINCES) {
+      if (normalized.includes(province.toLowerCase())) return province;
+      const thai = THAI_PROVINCE_LABELS[province];
+      if (thai && normalized.includes(thai)) return province;
+    }
+    return undefined;
+  };
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      toast.error(t('savedPlaces.errors.gpsUnavailable'));
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        centerMap(lat, lng);
+        const address = await reverseGeocode(lat, lng);
+        const next = { lat, lng, address: address || undefined };
+        setPicked(next);
+        if (address) {
+          const province = extractProvince(address);
+          onGeocodedAddress?.(address, province);
+        }
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === GeolocationPositionError.PERMISSION_DENIED) {
+          toast.error(t('savedPlaces.errors.gpsPermissionDenied'));
+        } else if (err.code === GeolocationPositionError.TIMEOUT) {
+          toast.error(t('savedPlaces.errors.gpsTimeout'));
+        } else {
+          toast.error(t('savedPlaces.errors.gpsUnavailable'));
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -115,8 +162,17 @@ export default function MapLocationPicker({ value, onChange, height = '240px' }:
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder={t('mapLocationPicker.searchPlaceholder')}
-          className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-20 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+          className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-28 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
         />
+        <button
+          type="button"
+          onClick={handleLocateMe}
+          disabled={locating}
+          title={t('mapLocationPicker.locateMe')}
+          className="absolute right-14 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-emerald-400 hover:bg-white/5 rounded disabled:opacity-50"
+        >
+          <LocateFixed className={`w-3.5 h-3.5 ${locating ? 'animate-pulse' : ''}`} />
+        </button>
         <button
           type="button"
           onClick={handleSearch}

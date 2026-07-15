@@ -211,7 +211,14 @@ export default function SavedPlacesManager() {
           </div>
           <div>
             <label className="text-xs text-zinc-400 block mb-1">{t('common:savedPlaces.pinOnMap')}</label>
-            <MapLocationPicker value={pin} onChange={setPin} />
+            <MapLocationPicker
+              value={pin}
+              onChange={setPin}
+              onGeocodedAddress={(addr, prov) => {
+                if (addr && !addressLine) setAddressLine(addr);
+                if (prov && !province) setProvince(prov);
+              }}
+            />
           </div>
           <label className="flex items-center gap-2 text-sm text-zinc-300">
             <input

@@ -3,7 +3,7 @@
 // getters in mockData.ts transparently include them. The rich seed catalog and
 // market price history remain as demo content.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, WATCHLIST, getListingByPlantId, getListingById, PRICE_SNAPSHOTS, getSpeciesById } from '@/data/mockData';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, WATCHLIST, getListingByPlantId, getListingById, PRICE_SNAPSHOTS, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
 import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
@@ -53,6 +53,18 @@ export function mapProfile(r: DbRow): Profile {
   };
 }
 
+export async function fetchProfile(id: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
+    if (error) throw error;
+    if (!data) return null;
+    return mapProfile(data);
+  } catch (e) {
+    logger.warn('fetchProfile failed', { error: e instanceof Error ? e.message : String(e) });
+    return null;
+  }
+}
+
 function speciesFromRow(r: DbRow): Species {
   return {
     id: (r.species_id as string | undefined) || `live-${r.id as string}`,
@@ -65,13 +77,21 @@ function speciesFromRow(r: DbRow): Species {
   };
 }
 
-export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing {
+export async function mapListing(r: DbRow, profiles: Record<string, Profile>): Promise<Listing> {
   const photosArr = r.photos as string[] | undefined;
   const imageUrl = r.image_url as string | undefined;
   const photos = (photosArr && photosArr.length ? photosArr : [imageUrl].filter(Boolean)) as string[];
   const speciesId = r.species_id as string | undefined;
   const cover = photos[0] || (speciesId ? PLANT_IMAGES[speciesId] : '') || FALLBACK_IMG;
   const sellerId = r.seller_id as string;
+  let seller = profiles[sellerId];
+  if (!seller && sellerId) {
+    const fetched = await fetchProfile(sellerId);
+    if (fetched) {
+      profileCache[sellerId] = fetched;
+      seller = fetched;
+    }
+  }
   return {
     id: r.id as string,
     plant_id: (r.plant_id as string | undefined) || undefined,
@@ -103,7 +123,7 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
     tags: (r.tags as string[] | undefined) || [],
     watch_count: (r.watch_count as number | undefined) ?? WATCHLIST.filter(w => w.watch_type === 'listing' && w.target_id === r.id).length,
     species: speciesFromRow(r),
-    seller: profiles[sellerId],
+    seller,
     photos: photos.map((url, i) => ({
       id: `lp-${r.id as string}-${i}`,
       listing_id: r.id as string,
@@ -114,7 +134,7 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
   };
 }
 
-function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transaction {
+async function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Promise<Transaction> {
   const buyerId = r.buyer_id as string;
   const sellerId = r.seller_id as string;
   const listingId = r.listing_id as string;
@@ -124,7 +144,7 @@ function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Transactio
   const linkedListing = r.listings as DbRow | undefined;
   let listing: Listing;
   if (linkedListing && linkedListing.id) {
-    listing = mapListing(linkedListing, profiles);
+    listing = await mapListing(linkedListing, profiles);
     listing.status = 'sold';
     listing.price_thb = r.sale_price_thb as number;
   } else {
@@ -275,7 +295,7 @@ export async function hydratePublicData(): Promise<void> {
       profileCache[mapped.id] = mapped;
       upsertById(USERS, mapped);
     });
-    (rows || []).forEach((r: DbRow) => upsertById(LISTINGS, mapListing(r, profileCache)));
+    await Promise.all((rows || []).map(async (r: DbRow) => upsertById(LISTINGS, await mapListing(r, profileCache))));
     SELLER_REVIEWS.length = 0;
     (sellerReviewRows || []).forEach((r: DbRow) => upsertById(SELLER_REVIEWS, mapSellerReview(r)));
     savePublicDataCache(USERS, LISTINGS, SELLER_REVIEWS);
@@ -330,7 +350,7 @@ export async function hydratePublicTransactions(): Promise<void> {
       .order('completed_at', { ascending: false })
       .limit(100);
     if (error) throw error;
-    (data || []).forEach((r) => upsertById(TRANSACTIONS, mapTransaction(r, profileCache)));
+    await Promise.all((data || []).map(async (r) => upsertById(TRANSACTIONS, await mapTransaction(r, profileCache))));
   } catch (e) {
     logger.warn('hydratePublicTransactions failed', { error: e instanceof Error ? e.message : String(e) });
   }
@@ -342,7 +362,7 @@ export async function hydrateUserTransactions(): Promise<void> {
       .from('transactions')
       .select('*, listings(*)')
       .order('created_at', { ascending: false });
-    (data || []).forEach((r) => upsertById(TRANSACTIONS, mapTransaction(r, profileCache)));
+    await Promise.all((data || []).map(async (r) => upsertById(TRANSACTIONS, await mapTransaction(r, profileCache))));
   } catch (e) {
     logger.warn('hydrateUserTransactions failed', { error: e instanceof Error ? e.message : String(e) });
   }
@@ -537,7 +557,7 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
     .single();
   if (error) throw error;
   if (!profileCache[seller.id]) profileCache[seller.id] = seller;
-  const listing = mapListing(data, profileCache);
+  const listing = await mapListing(data, profileCache);
   upsertById(LISTINGS, listing);
   return listing;
 }
@@ -721,7 +741,7 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const localListing = LISTINGS.find(l => l.id === input.listing.id);
   if (localListing) localListing.status = 'sold';
 
-  const tx = mapTransaction(txData, { ...profileCache, [input.buyer.id]: input.buyer });
+  const tx = await mapTransaction(txData, { ...profileCache, [input.buyer.id]: input.buyer });
   upsertById(TRANSACTIONS, tx);
   // Always notify the seller a sale came in — wired here so no call site can forget.
   notifyNewOrder(sellerId, tx.id, input.listing.species?.common_name_en || 'plant', total);
@@ -775,7 +795,7 @@ export async function getTransactionEvents(transactionId: string): Promise<Trans
 export async function updateListing(id: string, patch: Partial<NewListingInput>): Promise<Listing> {
   const { data, error } = await supabase.from('listings').update(patch).eq('id', id).select('*').single();
   if (error) throw error;
-  const updated = mapListing(data, profileCache);
+  const updated = await mapListing(data, profileCache);
   upsertById(LISTINGS, updated);
   return updated;
 }
@@ -1045,7 +1065,26 @@ export async function ensureProfile(
 ): Promise<Profile | null> {
   try {
     const { data: existing } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (existing) return mapProfile(existing);
+    if (existing) {
+      const patch: Record<string, unknown> = {};
+      const displayName = String((metadata.display_name as string | undefined) ?? '').trim();
+      if (displayName && !existing.display_name) patch.display_name = displayName;
+      const promptpayId = String((metadata.promptpay_id as string | null | undefined) ?? '').trim();
+      if (promptpayId && !existing.promptpay_id) patch.promptpay_id = promptpayId;
+      const location = String((metadata.location as string | null | undefined) ?? '').trim();
+      if (location && !existing.location) patch.location = location;
+      if (Object.keys(patch).length > 0) {
+        patch.updated_at = new Date().toISOString();
+        const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').single();
+        if (!error && data) {
+          const merged = mapProfile(data);
+          upsertById(USERS, merged);
+          profileCache[merged.id] = merged;
+          return merged;
+        }
+      }
+      return mapProfile(existing);
+    }
   } catch {
     // Table missing or RLS denied — fall through and try an insert.
   }
@@ -1436,10 +1475,11 @@ export function subscribeToListings(): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'listings' },
-        (payload) => {
+        async (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const row = payload.new as Record<string, unknown>;
-            upsertById(LISTINGS, mapListing(row, profileCache));
+            const mapped = await mapListing(row, profileCache);
+            upsertById(LISTINGS, mapped);
           } else if (payload.eventType === 'DELETE') {
             const id = (payload.old as Record<string, unknown>).id as string;
             const idx = LISTINGS.findIndex(l => l.id === id);
@@ -1450,21 +1490,6 @@ export function subscribeToListings(): () => void {
       )
       .subscribe()
   );
-}
-
-// External store for price snapshots so market charts update live.
-let priceSnapshotsVersion = 0;
-const priceSnapshotListeners = new Set<() => void>();
-function bumpPriceSnapshots() {
-  priceSnapshotsVersion++;
-  priceSnapshotListeners.forEach((l) => l());
-}
-export function subscribePriceSnapshots(cb: () => void): () => void {
-  priceSnapshotListeners.add(cb);
-  return () => { priceSnapshotListeners.delete(cb); };
-}
-export function getPriceSnapshotsVersion(): number {
-  return priceSnapshotsVersion;
 }
 
 export function subscribeToPriceSnapshots(): () => void {

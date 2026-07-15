@@ -112,21 +112,21 @@ describe('mapListing', () => {
     photos: ['https://example.com/photo.jpg'],
   };
 
-  test('maps required fields', () => {
-    const listing = mapListing(baseRow, {});
+  test('maps required fields', async () => {
+    const listing = await mapListing(baseRow, {});
     expect(listing.id).toBe('listing-1');
     expect(listing.price_thb).toBe(500);
     expect(listing.size_category).toBe('M');
     expect(listing.seller_id).toBe('user-1');
   });
 
-  test('defaults size_category to M when missing', () => {
-    const listing = mapListing({ ...baseRow, size_category: undefined }, {});
+  test('defaults size_category to M when missing', async () => {
+    const listing = await mapListing({ ...baseRow, size_category: undefined }, {});
     expect(listing.size_category).toBe('M');
   });
 
-  test('uses FALLBACK_IMG when no photos provided', () => {
-    const listing = mapListing({ ...baseRow, photos: [], image_url: undefined }, {});
+  test('uses FALLBACK_IMG when no photos provided', async () => {
+    const listing = await mapListing({ ...baseRow, photos: [], image_url: undefined }, {});
     expect(listing.photos).toBeDefined();
   });
 });

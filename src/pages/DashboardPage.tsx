@@ -11,7 +11,7 @@ import {
   subscribeWatchlist, getWatchlistVersion
 } from '@/lib/api';
 import { toast } from 'sonner';
-import { sanitizeText } from '@/lib/validation';
+import { sanitizeText, isValidPromptPayId } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
 import { subscribeConversations, getConversationsVersion } from '@/lib/messaging';
 import SavedPlacesManager from '@/components/SavedPlacesManager';
@@ -99,11 +99,16 @@ export default function DashboardPage() {
 
   const handleSaveSettings = async () => {
     if (!user) return;
+    const trimmedPromptPay = settingsForm.promptpay_id.trim();
+    if (trimmedPromptPay && !isValidPromptPayId(trimmedPromptPay)) {
+      toast.error(t('common:errors.invalidPromptPay'));
+      return;
+    }
     setSaving(true);
     try {
       await updateProfile(user.id, {
         display_name: sanitizeText(settingsForm.display_name, 50),
-        promptpay_id: settingsForm.promptpay_id ? sanitizeText(settingsForm.promptpay_id, 20) : null,
+        promptpay_id: trimmedPromptPay ? sanitizeText(trimmedPromptPay, 20) : null,
         language_preference: settingsForm.language_preference as 'th' | 'en',
         updated_at: new Date().toISOString(),
       });

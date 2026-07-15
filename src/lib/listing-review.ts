@@ -55,5 +55,5 @@ export async function fetchPendingListings(): Promise<Listing[]> {
     .order('created_at', { ascending: false });
   if (error) throw error;
   const profiles: Record<string, Profile> = Object.fromEntries(USERS.map((u) => [u.id, u]));
-  return (data || []).map((r: Record<string, unknown>) => mapListing(r, profiles));
+  return Promise.all((data || []).map(async (r: Record<string, unknown>) => mapListing(r, profiles)));
 }

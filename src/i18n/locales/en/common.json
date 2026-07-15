@@ -94,6 +94,7 @@
     "maxLength": "Must be at most {{count}} characters",
     "invalidEmail": "Please enter a valid email",
     "invalidPhone": "Please enter a valid phone number",
+    "invalidPromptPay": "Please enter a valid PromptPay ID (10-digit phone or 13-digit ID)",
     "invalidPrice": "Please enter a valid price",
     "fileTooLarge": "File is too large (max {{size}}MB)",
     "invalidFileType": "Please upload an image file",
@@ -261,6 +262,9 @@
       "setDefaultFailed": "Could not set default",
       "tooFar": "You are {{distance}} m away. Must be within 500 m to verify.",
       "gpsFailed": "Could not get your device location",
+      "gpsPermissionDenied": "Location permission denied. Please allow access in your browser settings.",
+      "gpsTimeout": "Getting your location took too long. Please try again.",
+      "gpsUnavailable": "Could not get your device location",
       "verificationFailed": "Verification failed",
       "confirmFailed": "Could not confirm"
     }
@@ -268,6 +272,7 @@
   "mapLocationPicker": {
     "searchPlaceholder": "Search address or landmark",
     "searchButton": "Search",
+    "locateMe": "Locate me",
     "hint": "Click the map or search to set a pin",
     "confirm": "Confirm pin"
   },

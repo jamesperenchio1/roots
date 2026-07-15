@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
+import { getProvinceLabel } from '@/lib/provinces';
 import {
   getMarketOverview,
   getPriceSnapshotsForSpecies,
@@ -112,18 +113,47 @@ function SpeciesSection({
 const CATEGORIES: (Category | '')[] = ['', 'aroid', 'hoya', 'cactus', 'succulent', 'fern', 'orchid', 'other'];
 const SIZES: (SizeCategory | '')[] = ['', 'S', 'M', 'L', 'XL'];
 
-function findDefaultSpecies(): Species {
+const SPECIES_STORAGE_KEY = 'roots.market.selectedSpecies';
+
+function scoreSpecies(s: Species) {
+  const snapshots = getPriceSnapshotsForSpecies(s.id, undefined, 180);
+  const listings = getActiveListings({ speciesId: s.id }).length;
+  const mostRecent = snapshots.length > 0
+    ? new Date(snapshots[snapshots.length - 1].snapshot_date).getTime()
+    : 0;
+  return { mostRecent, listings, hasData: snapshots.length > 0 || listings > 0 };
+}
+
+function findDefaultSpecies(): Species | undefined {
   const all = getMarketSpecies();
-  const withData = all.filter(
-    s => getPriceSnapshotsForSpecies(s.id, undefined, 180).length > 0 || getActiveListings({ speciesId: s.id }).length > 0
-  );
-  return withData[0] || all[0];
+  if (all.length === 0) return undefined;
+
+  const scored = all.map(s => ({ species: s, ...scoreSpecies(s) }));
+  scored.sort((a, b) => {
+    if (a.hasData !== b.hasData) return a.hasData ? -1 : 1;
+    if (a.mostRecent !== b.mostRecent) return b.mostRecent - a.mostRecent;
+    return b.listings - a.listings;
+  });
+
+  return scored[0]?.species;
 }
 
 export default function MarketPage() {
-  const { t } = useTranslation(['marketplace', 'common']);
+  const { t, i18n } = useTranslation(['marketplace', 'common']);
   const [hydratedTick, setHydratedTick] = useState(0);
-  const [selectedSpecies, setSelectedSpecies] = useState<Species>(findDefaultSpecies);
+  const hasManualSelection = useRef(false);
+  const [selectedSpecies, setSelectedSpecies] = useState<Species | undefined>(() => {
+    const saved = localStorage.getItem(SPECIES_STORAGE_KEY);
+    const all = getMarketSpecies();
+    if (saved) {
+      const species = getSpeciesById(saved);
+      if (species && all.some(s => s.id === species.id)) {
+        hasManualSelection.current = true;
+        return species;
+      }
+    }
+    return findDefaultSpecies();
+  });
   const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
 
@@ -134,16 +164,22 @@ export default function MarketPage() {
     return unsubscribe;
   }, []);
 
+  // Only auto-select a fallback when the user has not manually picked a species.
   useEffect(() => {
-    if (hydratedTick === 0) return;
-    const hasData =
-      getPriceSnapshotsForSpecies(selectedSpecies.id, undefined, 180).length > 0 ||
-      getActiveListings({ speciesId: selectedSpecies.id }).length > 0;
-    if (!hasData) {
-      const fallback = findDefaultSpecies();
-      if (fallback) setSelectedSpecies(fallback);
+    if (hydratedTick === 0 || hasManualSelection.current) return;
+    const current = selectedSpecies;
+    const all = getMarketSpecies();
+    if (current && all.some(s => s.id === current.id)) {
+      const hasData =
+        getPriceSnapshotsForSpecies(current.id, undefined, 180).length > 0 ||
+        getActiveListings({ speciesId: current.id }).length > 0;
+      if (hasData) return;
     }
-  }, [hydratedTick, selectedSpecies.id]);
+    const fallback = findDefaultSpecies();
+    if (fallback && fallback.id !== current?.id) {
+      setSelectedSpecies(fallback);
+    }
+  }, [hydratedTick, selectedSpecies?.id]);
 
   const market = getMarketOverview();
 
@@ -171,18 +207,33 @@ export default function MarketPage() {
 
   const priceData = useMemo(
     () =>
-      getPriceSnapshotsForSpecies(selectedSpecies.id, sizeFilter || undefined, 90).map(ps => ({
-        date: ps.snapshot_date,
-        price: ps.median_price_thb,
-        volume: ps.sale_count,
-      })),
-    [selectedSpecies.id, sizeFilter]
+      selectedSpecies
+        ? getPriceSnapshotsForSpecies(selectedSpecies.id, sizeFilter || undefined, 90).map(ps => ({
+            date: ps.snapshot_date,
+            price: ps.median_price_thb,
+            volume: ps.sale_count,
+          }))
+        : [],
+    [selectedSpecies?.id, sizeFilter]
+  );
+
+  const speciesListings = useMemo(
+    () =>
+      selectedSpecies
+        ? getActiveListings({ speciesId: selectedSpecies.id }).filter(l => !sizeFilter || l.size_category === sizeFilter)
+        : [],
+    [selectedSpecies?.id, sizeFilter]
   );
 
   const handleSpeciesChange = (_value: string, entry?: { id: string }) => {
     if (!entry) return;
     const species = getSpeciesById(entry.id);
-    if (species) setSelectedSpecies(species);
+    if (!species) return;
+    hasManualSelection.current = true;
+    setSelectedSpecies(species);
+    try {
+      localStorage.setItem(SPECIES_STORAGE_KEY, species.id);
+    } catch {}
   };
 
   return (
@@ -197,15 +248,18 @@ export default function MarketPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-4 gap-4">
             <div>
-              <h2 className="text-lg font-medium mb-1">{selectedSpecies.scientific_name}</h2>
+              <h2 className="text-lg font-medium mb-1">
+                {selectedSpecies ? selectedSpecies.scientific_name : t('marketplace:create.speciesPlaceholder')}
+              </h2>
               <p className="text-sm text-zinc-500">{t('marketplace:market.priceHistoryVolume')}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
               <SpeciesAutocomplete
-                value={selectedSpecies.scientific_name}
+                value={selectedSpecies?.scientific_name ?? ''}
                 onChange={handleSpeciesChange}
                 placeholder={t('marketplace:create.speciesPlaceholder') as string}
                 label={t('marketplace:create.speciesLabel') as string}
+                category={categoryFilter}
               />
               <div>
                 <label className="text-sm text-zinc-400 mb-1.5 block">{t('marketplace:browse.category')}</label>
@@ -236,14 +290,49 @@ export default function MarketPage() {
             </div>
           </div>
           <PriceChart
-            key={`${selectedSpecies.id}-${sizeFilter}`}
+            key={`${selectedSpecies?.id ?? 'none'}-${sizeFilter}`}
             data={priceData}
             height={300}
             showVolume={true}
           />
           <div className="mt-6">
-            <StatsPanel speciesId={selectedSpecies.id} sizeCategory={sizeFilter || undefined} />
+            {selectedSpecies && (
+              <StatsPanel speciesId={selectedSpecies.id} sizeCategory={sizeFilter || undefined} />
+            )}
           </div>
+        </div>
+
+        {/* Active Listings */}
+        <div className="mb-10">
+          <h2 className="text-lg font-medium mb-4">{t('marketplace:species.activeListingsCount', { count: speciesListings.length })}</h2>
+          {speciesListings.length > 0 ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {speciesListings.map(l => (
+                <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all group">
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-zinc-800 mb-3">
+                    <img
+                      src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'}
+                      alt={l.species?.common_name_en || 'Plant listing'}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
+                    <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{l.size_category}</span>
+                  </div>
+                  <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{l.description}</p>
+                  <div className="flex items-center justify-between text-xs text-zinc-600">
+                    <span>{l.seller?.display_name}</span>
+                    <span>{getProvinceLabel(l.pickup_province, i18n.language)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-zinc-500">{t('marketplace:species.noActiveListings')}</p>
+          )}
         </div>
 
         {/* Trending Sections */}

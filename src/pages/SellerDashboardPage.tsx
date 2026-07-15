@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 import { generateQR } from '@/lib/promptpay';
+import { isValidPromptPayId } from '@/lib/validation';
 import type { Listing, Transaction } from '@/types';
 
 interface TransactionPayoutItem {
@@ -861,15 +862,23 @@ function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction })
 
 function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
   const { user, refreshProfile } = useAuth();
-  const [promptpayId, setPromptpayId] = useState(me?.promptpay_id ?? '');
+  const [promptpayId, setPromptpayId] = useState(user?.promptpay_id ?? '');
   const [location, setLocation] = useState(me?.location ?? '');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setPromptpayId(user?.promptpay_id ?? '');
+  }, [user?.promptpay_id]);
+
   const handleSave = async () => {
     if (!user) return;
+    if (promptpayId.trim() && !isValidPromptPayId(promptpayId.trim())) {
+      toast.error(t('common:errors.invalidPromptPay'));
+      return;
+    }
     setSaving(true);
     try {
-      await updateProfile(user.id, { promptpay_id: promptpayId || undefined, location: location || undefined, updated_at: new Date().toISOString() });
+      await updateProfile(user.id, { promptpay_id: promptpayId.trim() || null, location: location.trim() || null, updated_at: new Date().toISOString() });
       await refreshProfile();
       toast.success(t('dashboard:buyer.settingsSaved'));
     } catch (err) {
