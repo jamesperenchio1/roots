@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ConversationWithDetails } from '@/lib/messaging';
@@ -12,7 +13,7 @@ interface ConversationItemProps {
   onClick?: () => void;
 }
 
-export default function ConversationItem({ conversation, isActive, dateFormatter, presence, onClick }: ConversationItemProps) {
+function ConversationItemInner({ conversation, isActive, dateFormatter, presence, onClick }: ConversationItemProps) {
   const { t } = useTranslation(['messages', 'common']);
   const { otherUser, lastMessage, unreadCount, listing } = conversation;
 
@@ -56,3 +57,6 @@ export default function ConversationItem({ conversation, isActive, dateFormatter
     </button>
   );
 }
+
+const ConversationItem = memo(ConversationItemInner);
+export default ConversationItem;

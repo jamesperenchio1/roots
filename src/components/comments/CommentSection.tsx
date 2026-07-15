@@ -1,10 +1,18 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommentComposer } from './CommentComposer';
 import { CommentTree } from './CommentTree';
-import { getCommentsForSpecies, hydrateCommentsForSpecies, getCommentsForListing, hydrateCommentsForListing } from '@/lib/api';
+import {
+  getCommentsForSpecies,
+  hydrateCommentsForSpecies,
+  getCommentsForListing,
+  hydrateCommentsForListing,
+  subscribeToComments,
+  subscribeCommentsStore,
+  getCommentsStoreVersion,
+} from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import type { Comment } from '@/types';
 
@@ -24,11 +32,19 @@ export function CommentSection({ speciesId, listingId }: CommentSectionProps) {
   const isListing = !!listingId;
   const targetId = listingId || speciesId || '';
 
-  // version is a manual cache-buster after hydration/mutation
+  // Subscribe to realtime comment changes so new comments appear without a manual refresh.
+  useSyncExternalStore(subscribeCommentsStore, getCommentsStoreVersion);
+  useEffect(() => {
+    if (!targetId) return;
+    return subscribeToComments(targetId, isListing);
+  }, [targetId, isListing]);
+
+  // version bumps on manual refresh; storeVersion bumps on realtime inserts.
+  const storeVersion = useSyncExternalStore(subscribeCommentsStore, getCommentsStoreVersion);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const comments = useMemo(
     () => (isListing ? getCommentsForListing(targetId) : getCommentsForSpecies(targetId)),
-    [targetId, isListing, version]
+    [targetId, isListing, version, storeVersion]
   );
 
   const hydrate = useCallback(async () => {

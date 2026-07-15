@@ -1,3 +1,6 @@
+-- SUPERSEDED: See note in 20260715000001. Same as 000001 — this duplicate was
+-- committed in error and is entirely superseded by 20260716000002_production_hardening.
+
 -- Fix the messages -> conversations last-message trigger.
 -- messages.id is stored as text, but conversations.last_message_id is uuid,
 -- so the assignment must cast explicitly.

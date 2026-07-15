@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageSquare, ArrowLeft, Search, MoreVertical, Phone, Pin, Archive, VolumeX, Flag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,8 @@ import {
   hydrateUserConversations,
   getOrCreateDirectConversation,
   subscribeToConversation,
+  subscribeConversations,
+  getConversationsVersion,
   searchMessages,
   reportMessage,
   updateParticipantSettings,
@@ -36,6 +38,7 @@ import {
   hydrateUserPresence,
   type ConversationWithDetails,
 } from '@/lib/messaging';
+import { useDraftMessage } from '@/hooks/useDraftMessage';
 import { getListingById } from '@/data/mockData';
 import type { Message, UserPresence } from '@/types';
 import ConversationList from '@/components/messaging/ConversationList';
@@ -95,7 +98,13 @@ export default function MessagesPage() {
   const prevMessageCountRef = useRef(0);
   const lastConversationIdRef = useRef<string | undefined>(undefined);
 
+  // Track conversations store for realtime updates and unread badge sync.
+  useSyncExternalStore(subscribeConversations, getConversationsVersion);
+
   const dateLocale = i18n.language === 'th' ? 'th-TH' : 'en-GB';
+
+  // Draft persistence per conversation.
+  const draft = useDraftMessage(activeConversationId);
 
   const formatMessageTime = useCallback((dateStr: string) => {
     const d = new Date(dateStr);
@@ -152,13 +161,14 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, threadId]);
 
-  // Load messages for active conversation and mark as read
+  // Load messages for active conversation and mark as read; restore draft.
   useEffect(() => {
     if (activeConversationId && user) {
       const msgs = getConversationMessages(activeConversationId);
       setMessages(msgs);
       setPendingMessageId(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
       setPendingAttachments([]);
+      setInput(draft.load());
       markConversationRead(activeConversationId, user.id).then(() => {
         refreshConversations();
       });
@@ -275,26 +285,54 @@ export default function MessagesPage() {
 
   const handleSend = async () => {
     if (!input.trim() || !user || !activeConversationId) return;
+    const text = input.trim();
     setSending(true);
+    // Optimistic: immediately clear input and draft, add a local optimistic message.
+    setInput('');
+    draft.clear();
+    if (!editingMessage) {
+      const optimisticMsg: import('@/types').Message = {
+        id: pendingMessageId,
+        conversation_id: activeConversationId,
+        sender_id: user.id,
+        content: text,
+        created_at: new Date().toISOString(),
+        edited_at: undefined,
+        deleted_at: undefined,
+        reply_to_message_id: replyTo?.id ?? undefined,
+        content_type: 'text',
+        flagged_contact_info: false,
+        is_system_event: false,
+        sender: user,
+        reactions: [],
+        reads: [],
+        attachments: pendingAttachments.length ? pendingAttachments : undefined,
+      };
+      setMessages((prev) => [...prev, optimisticMsg]);
+    }
     try {
       if (editingMessage) {
-        await editMessage(editingMessage.id, user.id, input.trim());
+        await editMessage(editingMessage.id, user.id, text);
         setEditingMessage(null);
       } else {
         await sendMessage({
           conversationId: activeConversationId,
           senderId: user.id,
-          content: input.trim(),
+          content: text,
           listingId: activeConversation?.conversation.listing_id,
           replyToMessageId: replyTo?.id,
           attachments: pendingAttachments,
         });
       }
-      setInput('');
       setReplyTo(null);
       refreshConversations();
+      // Replace optimistic message with confirmed server state.
       setMessages(getConversationMessages(activeConversationId));
+      setPendingMessageId(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
     } catch (err) {
+      // Roll back optimistic message on failure.
+      setMessages(getConversationMessages(activeConversationId));
+      setInput(text);
       toast.error(err instanceof Error ? err.message : t('messages:errors.sendFailed'));
     } finally {
       setSending(false);
@@ -303,6 +341,7 @@ export default function MessagesPage() {
 
   const handleInputChange = (value: string) => {
     setInput(value);
+    draft.save(value);
     if (activeConversationId && user) {
       setTypingWithDebounce(
         activeConversationId,

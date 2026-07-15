@@ -1632,6 +1632,47 @@ function mapCommentReaction(r: DbRow): CommentReaction {
 const COMMENT_PAGE_SIZE = 20;
 const REPLY_PAGE_SIZE = 10;
 
+// External store for comments so CommentSection can react to realtime inserts.
+let commentsVersion = 0;
+const commentListeners = new Set<() => void>();
+export function bumpCommentsVersion() {
+  commentsVersion++;
+  commentListeners.forEach((l) => l());
+}
+export function subscribeCommentsStore(cb: () => void): () => void {
+  commentListeners.add(cb);
+  return () => { commentListeners.delete(cb); };
+}
+export function getCommentsStoreVersion(): number {
+  return commentsVersion;
+}
+
+export function subscribeToComments(targetId: string, isListing: boolean): () => void {
+  const key = `comments-${isListing ? 'listing' : 'species'}-${targetId}`;
+  const filterField = isListing ? 'listing_id' : 'species_id';
+  return ensureRealtimeChannel(key, () =>
+    supabase
+      .channel(key)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `${filterField}=eq.${targetId}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            upsertById(COMMENTS, mapComment(payload.new as Record<string, unknown>));
+          } else if (payload.eventType === 'UPDATE') {
+            upsertById(COMMENTS, mapComment(payload.new as Record<string, unknown>));
+          } else if (payload.eventType === 'DELETE') {
+            const id = (payload.old as { id: string }).id;
+            const idx = COMMENTS.findIndex((c) => c.id === id);
+            if (idx >= 0) COMMENTS.splice(idx, 1);
+          }
+          bumpCommentsVersion();
+        }
+      )
+      .subscribe()
+  );
+}
+
 export function getCommentsForSpecies(
   speciesId: string,
   { cursor, limit = COMMENT_PAGE_SIZE }: { cursor?: string; limit?: number } = {}

@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store, QrCode } from 'lucide-react';
+import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store, QrCode, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import NotificationBell from './NotificationBell';
 import LanguageSwitcher from './LanguageSwitcher';
+import RealtimeBanner from './RealtimeBanner';
+import { subscribeConversations, getConversationsVersion, getUnreadMessageCount } from '@/lib/messaging';
 
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();
   const { t } = useTranslation('common');
   const [menuOpen, setMenuOpen] = useState(false);
+  useSyncExternalStore(subscribeConversations, getConversationsVersion);
+  const unreadMessages = user ? getUnreadMessageCount(user.id) : 0;
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const location = useLocation();
@@ -30,6 +34,8 @@ export default function Navbar() {
   };
 
   return (
+    <>
+    <RealtimeBanner />
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
@@ -62,6 +68,16 @@ export default function Navbar() {
             <button onClick={() => setSearchOpen(!searchOpen)} className="p-2 text-zinc-400 hover:text-white transition-colors">
               <Search className="w-5 h-5" />
             </button>
+            {user && (
+              <Link to="/messages" className="relative p-2 text-zinc-400 hover:text-white transition-colors" aria-label={t('nav.messages', 'Messages')}>
+                <MessageSquare className="w-5 h-5" />
+                {unreadMessages > 0 && (
+                  <span className="absolute top-1 right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-emerald-500 text-[10px] font-bold text-black">
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </span>
+                )}
+              </Link>
+            )}
             {user && <NotificationBell userId={user.id} />}
             {user ? (
               <div className="hidden md:flex items-center gap-3">
@@ -126,6 +142,12 @@ export default function Navbar() {
           <Link to="/fees" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('common:nav.fees')}</Link>
           {user ? (
             <>
+              <Link to="/messages" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 py-2 text-zinc-300 hover:text-white">
+                {t('nav.messages', 'Messages')}
+                {unreadMessages > 0 && (
+                  <span className="bg-emerald-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{unreadMessages}</span>
+                )}
+              </Link>
               <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.dashboard')}</Link>
               <Link to="/seller-dashboard" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.sellerDashboard')}</Link>
               {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block py-2 text-amber-400">{t('nav.admin')}</Link>}
@@ -140,5 +162,6 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+    </>
   );
 }
