@@ -43,6 +43,8 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   isLoading: boolean;
   isRestoring: boolean;
+  freshSignup: boolean;
+  acknowledgeFreshSignup: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -57,6 +59,8 @@ const AuthContext = createContext<AuthContextType>({
   updatePassword: async () => ({ ok: false }),
   isLoading: false,
   isRestoring: true,
+  freshSignup: false,
+  acknowledgeFreshSignup: () => {},
 });
 
 function isNetworkError(err: Error): boolean {
@@ -108,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
+  const [freshSignup, setFreshSignup] = useState(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   const startSubscriptions = useCallback((uid: string) => {
@@ -177,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           setUser(null);
+          setFreshSignup(false);
           stopSubscriptions();
         }
       } catch (err) {
@@ -259,6 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await ensureProfile(data.user.id, data.user.user_metadata);
       // Auto-confirm trigger lets us sign in right away.
       const { ok } = await login(input.email.trim(), input.password);
+      if (ok) {
+        setFreshSignup(true);
+      }
       return ok
         ? { ok: true }
         : { ok: false, error: i18n.t('auth:signup.loginRequired') };
@@ -333,8 +342,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.warn('logout failed', { error: err instanceof Error ? err.message : String(err) });
     }
     setUser(null);
+    setFreshSignup(false);
     stopSubscriptions();
   }, [stopSubscriptions]);
+
+  const acknowledgeFreshSignup = useCallback(() => {
+    setFreshSignup(false);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
@@ -359,7 +373,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updatePassword,
     isLoading,
     isRestoring,
-  }), [user, login, signup, signInWithOAuth, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring]);
+    freshSignup,
+    acknowledgeFreshSignup,
+  }), [user, login, signup, signInWithOAuth, logout, refreshProfile, resetPassword, updatePassword, isLoading, isRestoring, freshSignup, acknowledgeFreshSignup]);
 
   return (
     <AuthContext.Provider value={value}>

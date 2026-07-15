@@ -49,6 +49,7 @@ export function mapProfile(r: DbRow): Profile {
     location: (r.location as string | undefined) ?? undefined,
     rating: stats.count > 0 ? stats.average : (existingRating ?? 0),
     sales_count: (r.sales_count as number | undefined) ?? 0,
+    onboarding_status: (r.onboarding_status as Record<string, unknown> | undefined) ?? {},
   };
 }
 

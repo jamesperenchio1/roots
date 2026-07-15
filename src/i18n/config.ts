@@ -9,6 +9,7 @@ import enMarketplace from './locales/en/marketplace.json';
 import enDashboard from './locales/en/dashboard.json';
 import enCheckout from './locales/en/checkout.json';
 import enMessages from './locales/en/messages.json';
+import enTutorial from './locales/en/tutorial.json';
 
 export const defaultNS = 'common';
 
@@ -21,6 +22,7 @@ export const resources = {
     dashboard: enDashboard,
     checkout: enCheckout,
     messages: enMessages,
+    tutorial: enTutorial,
   },
 } as const;
 
@@ -33,6 +35,7 @@ export async function loadThaiResources() {
     { default: dashboard },
     { default: checkout },
     { default: messages },
+    { default: tutorial },
   ] = await Promise.all([
     import('./locales/th/common.json'),
     import('./locales/th/home.json'),
@@ -41,6 +44,7 @@ export async function loadThaiResources() {
     import('./locales/th/dashboard.json'),
     import('./locales/th/checkout.json'),
     import('./locales/th/messages.json'),
+    import('./locales/th/tutorial.json'),
   ]);
   i18n.addResourceBundle('th', 'common', common, true, true);
   i18n.addResourceBundle('th', 'home', home, true, true);
@@ -49,6 +53,7 @@ export async function loadThaiResources() {
   i18n.addResourceBundle('th', 'dashboard', dashboard, true, true);
   i18n.addResourceBundle('th', 'checkout', checkout, true, true);
   i18n.addResourceBundle('th', 'messages', messages, true, true);
+  i18n.addResourceBundle('th', 'tutorial', tutorial, true, true);
 }
 
 export type SupportedLanguage = 'en' | 'th';

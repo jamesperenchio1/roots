@@ -266,9 +266,9 @@ async function createUsers() {
   return users;
 }
 
-function buildListing(species, seller, size, price) {
+function buildListing(species, seller, size, price, hasQrProvenance) {
   const delivery = pick(deliveryOptionsPool);
-  const potSize = randInt(8, 30);
+  const potSize = size === 'S' ? randInt(8, 12) : size === 'M' ? randInt(12, 18) : size === 'L' ? randInt(18, 25) : randInt(22, 35);
   const createdAt = randDate(180, 0);
   const province = seller.province;
   const tags = pickN(tagPool, randInt(2, 5));
@@ -293,6 +293,7 @@ function buildListing(species, seller, size, price) {
     pickup_lat: province.lat + (Math.random() - 0.5) * 0.04,
     pickup_lng: province.lng + (Math.random() - 0.5) * 0.04,
     status: 'active',
+    has_qr_provenance: hasQrProvenance,
     image_url: species.image,
     photos: [species.image, species.image],
     view_count: randInt(20, 800),
@@ -309,6 +310,23 @@ function priceFor(species, size) {
   return base * randInt(Math.round(minMul * 10), Math.round(maxMul * 10)) / 10;
 }
 
+const sizeDistribution = {
+  S: 0.25,
+  M: 0.35,
+  L: 0.28,
+  XL: 0.12,
+};
+
+function pickSize() {
+  const r = Math.random();
+  let cumulative = 0;
+  for (const [size, weight] of Object.entries(sizeDistribution)) {
+    cumulative += weight;
+    if (r <= cumulative) return size;
+  }
+  return 'M';
+}
+
 async function createPlantsAndListings(users) {
   console.log('Creating plants and listings...');
   const plants = [];
@@ -316,23 +334,27 @@ async function createPlantsAndListings(users) {
   const activeListings = [];
 
   for (const seller of users.filter((u) => u.sales_count > 0 || Math.random() > 0.2)) {
-    const numPlants = randInt(1, 3);
-    for (let p = 0; p < numPlants; p++) {
+    const numListings = randInt(1, 4);
+    for (let p = 0; p < numListings; p++) {
       const species = pick(speciesCatalog);
-      const size = pick(['S', 'M', 'L', 'XL']);
-      const plantId = UUID();
-      const plant = {
-        id: plantId,
-        species_id: species.id,
-        current_owner_id: seller.id,
-        status: 'active',
-        qr_signature: crypto.randomBytes(16).toString('hex'),
-        created_at: randDate(365, 30),
-      };
-      plants.push(plant);
+      const size = pickSize();
+      const hasQrProvenance = Math.random() < 0.7;
+      let plantId = null;
 
-      const listing = buildListing(species, seller, size, priceFor(species, size));
-      listing.plant_id = plantId;
+      if (hasQrProvenance) {
+        plantId = UUID();
+        plants.push({
+          id: plantId,
+          species_id: species.id,
+          current_owner_id: seller.id,
+          status: 'active',
+          qr_signature: crypto.randomBytes(16).toString('hex'),
+          created_at: randDate(365, 30),
+        });
+      }
+
+      const listing = buildListing(species, seller, size, priceFor(species, size), hasQrProvenance);
+      if (plantId) listing.plant_id = plantId;
 
       const r = Math.random();
       if (r < 0.1) {
@@ -349,12 +371,12 @@ async function createPlantsAndListings(users) {
     }
   }
 
-  // Add a few listings without plants for variety.
-  for (let i = 0; i < 4; i++) {
+  // Add a few listings without QR provenance for variety.
+  for (let i = 0; i < 6; i++) {
     const seller = pick(users);
     const species = pick(speciesCatalog);
-    const size = pick(['S', 'M', 'L', 'XL']);
-    const listing = buildListing(species, seller, size, priceFor(species, size));
+    const size = pickSize();
+    const listing = buildListing(species, seller, size, priceFor(species, size), false);
     listings.push(listing);
     if (listing.status === 'active') activeListings.push(listing);
   }
@@ -365,7 +387,7 @@ async function createPlantsAndListings(users) {
   const { error: listingErr } = await supabase.from('listings').insert(listings);
   if (listingErr) console.error('Failed to insert listings:', listingErr.message);
 
-  console.log(`Created ${plants.length} plants and ${listings.length} listings.`);
+  console.log(`Created ${plants.length} plants and ${listings.length} listings (${Math.round((listings.filter((l) => l.has_qr_provenance).length / listings.length) * 100)}% with QR).`);
   return { plants, listings, activeListings };
 }
 
@@ -381,7 +403,9 @@ async function createTransactionsAndTransfers(users, listings) {
   for (const listing of soldListings) {
     const seller = users.find((u) => u.id === listing.seller_id);
     const buyer = pick(users.filter((u) => u.id !== seller.id));
-    const salePrice = listing.price_thb;
+    // Vary the actual sale price around the listing price to create richer snapshot data.
+    const priceVariance = 1 + (Math.random() - 0.5) * 0.2;
+    const salePrice = Math.max(10, Math.round(listing.price_thb * priceVariance));
     const platformFee = Math.round(salePrice * 0.05);
     const payout = salePrice - platformFee;
     const createdAt = randDate(120, 5);
@@ -755,31 +779,38 @@ async function createNotifications(users, transactions) {
   console.log(`Created ${notifications.length} notifications.`);
 }
 
+const placeNames = ['Home', 'Office', 'Garden', 'Mum\'s House', 'Shop'];
+const streetNames = ['Sukhumvit', 'Ratchadaphisek', 'Nimmanhaemin', 'Charoen Krung', 'Phuket Road', 'Silom', 'Phetchaburi', 'Chaeng Watthana'];
+
 async function createUserLocations(users) {
-  console.log('Creating user locations...');
+  console.log('Creating saved places...');
   const locations = [];
 
   for (const user of users) {
-    const province = provinces.find((p) => p.name === user.location) || pick(provinces);
-    locations.push({
-      id: UUID(),
-      profile_id: user.id,
-      name: 'Home',
-      address_line: `${randInt(1, 999)} ${pick(['Sukhumvit', 'Ratchadaphisek', 'Nimmanhaemin', 'Charoen Krung', 'Phuket Road'])} ${pick(['Soi', 'Road', 'Lane'])} ${randInt(1, 50)}`,
-      province: province.name,
-      lat: province.lat + (Math.random() - 0.5) * 0.03,
-      lng: province.lng + (Math.random() - 0.5) * 0.03,
-      is_default: true,
-      verified_at: Math.random() > 0.3 ? randDate(200, 10) : null,
-      verification_method: Math.random() > 0.3 ? 'phone' : null,
-      created_at: randDate(300, 0),
-      updated_at: randDate(30, 0),
-    });
+    const homeProvince = provinces.find((p) => p.name === user.location) || pick(provinces);
+    const numPlaces = randInt(1, 3);
+    for (let i = 0; i < numPlaces; i++) {
+      const province = i === 0 ? homeProvince : pick(provinces);
+      locations.push({
+        id: UUID(),
+        profile_id: user.id,
+        name: i === 0 ? 'Home' : pick(placeNames.slice(1)),
+        address_line: `${randInt(1, 999)} ${pick(streetNames)} ${pick(['Soi', 'Road', 'Lane'])} ${randInt(1, 50)}`,
+        province: province.name,
+        lat: province.lat + (Math.random() - 0.5) * 0.03,
+        lng: province.lng + (Math.random() - 0.5) * 0.03,
+        is_default: i === 0,
+        verified_at: Math.random() > 0.3 ? randDate(200, 10) : null,
+        verification_method: Math.random() > 0.3 ? 'phone' : null,
+        created_at: randDate(300, 0),
+        updated_at: randDate(30, 0),
+      });
+    }
   }
 
   const { error } = await supabase.from('user_locations').insert(locations);
   if (error) console.error('Failed to insert user_locations:', error.message);
-  console.log(`Created ${locations.length} user locations.`);
+  console.log(`Created ${locations.length} saved places.`);
 }
 
 async function createQRScans(plants, users) {
@@ -804,56 +835,14 @@ async function createQRScans(plants, users) {
   console.log(`Created ${scans.length} QR scans.`);
 }
 
-async function createPriceSnapshots() {
-  console.log('Creating price snapshots...');
-  const snapshots = [];
-  const targetSpecies = speciesCatalog.filter((s) => ['sp-aroid-2', 'sp-aroid-3', 'sp-aroid-4', 'sp-hoya-1', 'sp-fol-1'].includes(s.id));
-  const targetSpeciesIds = targetSpecies.map((s) => s.id);
-  const sizes = ['S', 'M', 'L'];
-
-  // Remove any existing seed snapshots for the same species/size/date combos to stay idempotent.
-  await supabase.from('price_snapshots').delete().in('species_id', targetSpeciesIds);
-
-  for (const species of targetSpecies) {
-    for (const size of sizes) {
-      const base = priceFor(species, size);
-      for (let day = 365; day >= 0; day--) {
-        const date = new Date();
-        date.setDate(date.getDate() - day);
-        const trend = Math.sin(day / 30) * base * 0.08;
-        const noise = (Math.random() - 0.5) * base * 0.1;
-        const median = Math.max(Math.round(base + trend + noise), 10);
-        const min = Math.round(median * (0.8 + Math.random() * 0.1));
-        const max = Math.round(median * (1.1 + Math.random() * 0.2));
-        const mean = Math.round((min + max) / 2);
-        const saleCount = randInt(0, 5);
-
-        snapshots.push({
-          id: UUID(),
-          species_id: species.id,
-          size_category: size,
-          snapshot_date: date.toISOString().slice(0, 10),
-          median_price_thb: median,
-          mean_price_thb: mean,
-          min_price_thb: min,
-          max_price_thb: max,
-          sale_count: saleCount,
-          listing_count: randInt(1, 8),
-          avg_asking_price: Math.round(mean * (0.95 + Math.random() * 0.15)),
-        });
-      }
-    }
+async function refreshPriceSnapshots() {
+  console.log('Refreshing price snapshots...');
+  const { error } = await supabase.rpc('daily_refresh_all_price_snapshots');
+  if (error) {
+    console.warn('Failed to refresh price snapshots:', error.message);
+    return;
   }
-
-  // Insert in chunks to avoid oversized payloads.
-  const chunkSize = 500;
-  for (let i = 0; i < snapshots.length; i += chunkSize) {
-    const chunk = snapshots.slice(i, i + chunkSize);
-    const { error } = await supabase.from('price_snapshots').insert(chunk);
-    if (error) console.error(`Failed to insert price_snapshots chunk ${i}:`, error.message);
-  }
-
-  console.log(`Created ${snapshots.length} price snapshots.`);
+  console.log('Price snapshots refreshed.');
 }
 
 async function main() {
@@ -873,7 +862,7 @@ async function main() {
   await createNotifications(users, transactions);
   await createUserLocations(users);
   await createQRScans(plants, users);
-  await createPriceSnapshots();
+  await refreshPriceSnapshots();
 
   console.log('\nSeed complete.');
 }

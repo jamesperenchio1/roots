@@ -1,6 +1,7 @@
 import { useEffect, useState, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { hydratePublicData } from '@/lib/api';
 import { Leaf } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
@@ -11,6 +12,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 import AuthGuard from '@/components/AuthGuard';
 import AdminGuard from '@/components/AdminGuard';
 import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
+import TutorialModal from '@/components/TutorialModal';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const BrowsePage = lazy(() => import('@/pages/BrowsePage'));
@@ -50,6 +52,19 @@ function PageLoader() {
       <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
       <p className="text-sm text-zinc-500">Loading…</p>
     </div>
+  );
+}
+
+function TutorialModalWrapper() {
+  const { showTutorial, closeTutorial, skipTour, completeTour, dontShowAgain } = useOnboarding();
+  return (
+    <TutorialModal
+      open={showTutorial}
+      onOpenChange={closeTutorial}
+      onSkip={skipTour}
+      onComplete={completeTour}
+      onDontShowAgain={dontShowAgain}
+    />
   );
 }
 
@@ -117,6 +132,7 @@ function AppContent() {
       <Toaster />
       <ScrollToTop />
       <PwaUpdatePrompt />
+      <TutorialModalWrapper />
     </div>
   );
 }

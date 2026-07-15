@@ -1,0 +1,35 @@
+{
+  "welcomeTitle": "Welcome to ROOTS",
+  "welcomeSubtitle": "Thailand's plant marketplace. Here's a quick tour to get you growing.",
+  "dontShowAgain": "Don't show again",
+  "skip": "Skip",
+  "startTour": "Start tour",
+  "next": "Next",
+  "finish": "Finish",
+  "steps": {
+    "browse": {
+      "title": "Browse plants",
+      "description": "Explore thousands of plants by species, size, price, and location. Filter to find exactly what you want."
+    },
+    "buy": {
+      "title": "Buy with confidence",
+      "description": "Make offers, message sellers, and pay securely. Every purchase is protected by our escrow system."
+    },
+    "sell": {
+      "title": "Sell your plants",
+      "description": "List your plants in minutes. Manage inventory, orders, and payouts from your seller dashboard."
+    },
+    "qr": {
+      "title": "QR provenance",
+      "description": "Scan a plant's QR code to see its full history — previous owners, care notes, and verified transfers."
+    },
+    "savedPlaces": {
+      "title": "Saved places",
+      "description": "Save pickup and delivery locations so checkout is faster and sellers know where to meet."
+    },
+    "marketData": {
+      "title": "Market data",
+      "description": "Track price trends, compare species, and set alerts so you never miss a deal."
+    }
+  }
+}
