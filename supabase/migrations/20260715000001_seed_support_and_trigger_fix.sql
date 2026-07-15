@@ -1,3 +1,10 @@
+-- SUPERSEDED: Both the trigger fix and the cleanup_seed_data function in this
+-- migration are overridden by 20260716000002_production_hardening.sql, which
+-- changes last_message_id to text (removing the ::uuid cast) and adds the
+-- is_app_admin() guard + REVOKE to cleanup_seed_data. This migration is kept
+-- only because Supabase tracks applied migrations by filename; removing it
+-- would confuse the migration history on already-deployed environments.
+
 -- Fix the messages -> conversations last-message trigger.
 -- messages.id is stored as text, but conversations.last_message_id is uuid,
 -- so the assignment must cast explicitly.

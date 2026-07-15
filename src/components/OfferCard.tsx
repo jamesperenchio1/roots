@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Check, X, RotateCcw, ArrowLeft, Tag, Clock, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Offer } from '@/types';
@@ -12,7 +12,7 @@ interface OfferCardProps {
   onWithdraw?: () => void;
 }
 
-export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferCardProps) {
+function OfferCardInner({ offer, mode, onRespond, onWithdraw }: OfferCardProps) {
   const { t } = useTranslation(['marketplace', 'common']);
   const [counterMode, setCounterMode] = useState(false);
   const [counterPrice, setCounterPrice] = useState('');
@@ -153,3 +153,6 @@ export default function OfferCard({ offer, mode, onRespond, onWithdraw }: OfferC
     </div>
   );
 }
+
+const OfferCard = memo(OfferCardInner);
+export default OfferCard;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Reply, Pencil, Trash2, Copy, Forward, Flag, Check, CheckCheck, File, Download, Image } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,7 +28,7 @@ interface MessageBubbleProps {
   formatTime: (dateStr: string) => string;
 }
 
-export default function MessageBubble({
+function MessageBubbleInner({
   message,
   isMe,
   showAvatar,
@@ -214,6 +214,9 @@ export default function MessageBubble({
   );
 }
 
+
+const MessageBubble = memo(MessageBubbleInner);
+export default MessageBubble;
 
 function MessageAttachments({ attachments }: { attachments: import('@/types').MessageAttachment[] }) {
   const { t } = useTranslation(['messages']);
