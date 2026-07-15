@@ -124,7 +124,8 @@ function getInitialSelection(): { species?: Species; manual: boolean } {
       return { species, manual: true };
     }
   }
-  return { species: findDefaultSpecies(), manual: false };
+  const fallback = findDefaultSpecies();
+  return { species: fallback, manual: false };
 }
 
 function scoreSpecies(s: Species) {
@@ -141,13 +142,15 @@ function findDefaultSpecies(): Species | undefined {
   if (all.length === 0) return undefined;
 
   const scored = all.map(s => ({ species: s, ...scoreSpecies(s) }));
-  scored.sort((a, b) => {
-    if (a.hasData !== b.hasData) return a.hasData ? -1 : 1;
+  const withData = scored.filter(s => s.hasData);
+  if (withData.length === 0) return undefined;
+
+  withData.sort((a, b) => {
     if (a.mostRecent !== b.mostRecent) return b.mostRecent - a.mostRecent;
     return b.listings - a.listings;
   });
 
-  return scored[0]?.species;
+  return withData[0]?.species;
 }
 
 export default function MarketPage() {
