@@ -12,7 +12,7 @@ interface WeatherWidgetProps {
 function getCareTipKey(weather: WeatherData): string {
   if (weather.temp > 35) return 'marketplace:weather.careTip.hot';
   if (weather.temp < 20) return 'marketplace:weather.careTip.cool';
-  if (weather.condition === 'Thunderstorm' || weather.condition === 'Showers' || weather.rain_chance > 70) {
+  if (weather.condition === 'Thunderstorm' || weather.condition === 'Showers' || weather.condition === 'Drizzle / Rain' || weather.rain_chance > 70) {
     return 'marketplace:weather.careTip.rainy';
   }
   if (weather.humidity < 40) return 'marketplace:weather.careTip.dry';

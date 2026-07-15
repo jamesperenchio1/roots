@@ -29,6 +29,7 @@ interface OpenMeteoCurrent {
   is_day: number;
   precipitation: number;
   weather_code: number;
+  uv_index: number;
 }
 
 interface OpenMeteoDaily {
@@ -111,7 +112,7 @@ export async function getWeather(lat: number, lon: number): Promise<WeatherData 
   const cached = getCache<WeatherData>(cacheKey);
   if (cached) return cached;
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,is_day,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FBangkok&forecast_days=3`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,is_day,precipitation,weather_code,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FBangkok&forecast_days=3`;
   const data = await fetchJson<OpenMeteoResponse>(url);
   if (!data) return null;
 
@@ -132,7 +133,7 @@ export async function getWeather(lat: number, lon: number): Promise<WeatherData 
   const weather: WeatherData = {
     temp: current.temperature_2m,
     humidity: current.relative_humidity_2m,
-    uv_index: 0, // Open-Meteo free tier current doesn't include UV; approximate via logic if needed
+    uv_index: current.uv_index ?? 0,
     is_day: current.is_day === 1,
     rain_chance: daily.precipitation_probability_max[0] ?? 0,
     condition: weatherCodeToCondition(current.weather_code),
@@ -163,7 +164,7 @@ export function weatherCodeToCondition(code: number): string {
 export function getCareTip(weather: WeatherData): string {
   if (weather.temp > 35) return 'Very hot — mist sensitive plants, avoid direct sun';
   if (weather.temp < 20) return 'Cool weather — reduce watering frequency';
-  if (weather.condition === 'Thunderstorm' || weather.condition === 'Showers' || weather.rain_chance > 70) {
+  if (weather.condition === 'Thunderstorm' || weather.condition === 'Showers' || weather.condition === 'Drizzle / Rain' || weather.rain_chance > 70) {
     return 'Rainy day — avoid watering, check drainage';
   }
   if (weather.humidity < 40) return 'Dry air — consider humidifier for tropical plants';

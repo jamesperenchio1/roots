@@ -103,9 +103,26 @@ export function wateringToIcon(level: string): string {
 export function sunlightToEmoji(sun: string[]): string {
   if (!sun || sun.length === 0) return '☀️';
   const joined = sun.map(s => s.toLowerCase()).join(' ');
-  if (joined.includes('full sun')) return '☀️☀️';
-  if (joined.includes('part shade') || joined.includes('partial sun')) return '⛅';
-  if (joined.includes('shade')) return '🌥️';
-  if (joined.includes('indirect')) return '🪟';
-  return '☀️';
+
+  // Light ranges that span multiple intensities — show the middle value
+  if (joined.includes('full sun to partial')) return '☀️☀️';
+  if (joined.includes('low to bright')) return '☀️☀️';
+
+  // High / direct light
+  if (joined.includes('full sun') || joined.includes('bright direct') || joined.includes('partial sun')) {
+    return '☀️☀️☀️';
+  }
+
+  // Medium / indirect light
+  if (joined.includes('bright indirect') || joined.includes('medium indirect') || joined.includes('part shade')) {
+    return '☀️☀️';
+  }
+
+  // Low / shade
+  if (joined.includes('shade') || joined.includes('low light')) {
+    return '☀️';
+  }
+
+  // Unknown but presumably moderate
+  return '☀️☀️';
 }
