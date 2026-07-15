@@ -29,18 +29,28 @@ export async function scheduleEmailNotification(
   senderName: string,
   preview: string
 ): Promise<void> {
+  // The unique index on (recipient_id, conversation_id) is a partial index
+  // (WHERE sent_at IS NULL AND cancelled_at IS NULL). PostgREST upsert cannot
+  // target partial indexes via onConflict, so we do a manual cancel+insert to
+  // coalesce notifications: cancel the old pending row then insert a fresh one
+  // with the latest message preview. Both operations are best-effort.
   try {
-    await supabase.from('email_notification_queue').upsert(
-      {
-        recipient_id: recipientId,
-        conversation_id: conversationId,
-        message_id: messageId,
-        sender_name: senderName,
-        preview,
-        scheduled_at: getScheduledAt(),
-      },
-      { onConflict: 'recipient_id,conversation_id' }
-    );
+    await supabase
+      .from('email_notification_queue')
+      .update({ cancelled_at: new Date().toISOString() })
+      .eq('recipient_id', recipientId)
+      .eq('conversation_id', conversationId)
+      .is('sent_at', null)
+      .is('cancelled_at', null);
+
+    await supabase.from('email_notification_queue').insert({
+      recipient_id: recipientId,
+      conversation_id: conversationId,
+      message_id: messageId,
+      sender_name: senderName,
+      preview,
+      scheduled_at: getScheduledAt(),
+    });
   } catch (e) {
     logger.warn('scheduleEmailNotification failed', { error: e instanceof Error ? e.message : String(e) });
   }

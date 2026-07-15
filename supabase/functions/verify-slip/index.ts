@@ -1,8 +1,11 @@
-import { createClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 import { corsHeaders, preflightResponse } from '../_shared/cors.ts';
-import { errorResponse, jsonResponse } from '../_shared/auth.ts';
-
-const CORS_HEADERS = corsHeaders(null);
+import {
+  createServiceClient,
+  errorResponse,
+  getAuthUser,
+  getSupabaseEnv,
+  jsonResponse,
+} from '../_shared/auth.ts';
 
 type VerifyStatus = 'verified' | 'failed' | 'manual';
 
@@ -22,31 +25,16 @@ interface Transaction {
   payment_trans_ref?: string | null;
 }
 
-async function getAuthUser(req: Request, supabaseUrl: string, serviceRoleKey: string): Promise<User | null> {
-  const authHeader = req.headers.get('authorization');
-  const token = authHeader?.replace(/^Bearer\s+/i, '');
-  if (!token) return null;
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return null;
-  return data.user;
-}
-
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   if (req.method === 'OPTIONS') return preflightResponse(origin);
   const headers = corsHeaders(origin);
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Server misconfigured');
-    }
+    const env = getSupabaseEnv();
+    if (!env) throw new Error('Server misconfigured');
 
-    const user = await getAuthUser(req, supabaseUrl, serviceRoleKey);
+    const user = await getAuthUser(req, env);
     if (!user) return errorResponse('Unauthorized', 401, headers);
 
     const { transactionId } = await req.json();
@@ -54,9 +42,7 @@ Deno.serve(async (req) => {
       return errorResponse('transactionId is required', 400, headers);
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const admin = createServiceClient(env);
 
     const { data: tx, error: txError } = await admin
       .from('transactions')
