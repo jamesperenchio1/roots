@@ -112,12 +112,27 @@ export const OFFERS: Offer[] = [];
 // marketplace has live trade data there are no snapshots to show.
 export const PRICE_SNAPSHOTS: PriceSnapshot[] = [];
 
+// External store for price snapshots so market charts update live.
+let priceSnapshotsVersion = 0;
+const priceSnapshotListeners = new Set<() => void>();
+export function bumpPriceSnapshots() {
+  priceSnapshotsVersion++;
+  priceSnapshotListeners.forEach((l) => l());
+}
+export function subscribePriceSnapshots(cb: () => void): () => void {
+  priceSnapshotListeners.add(cb);
+  return () => { priceSnapshotListeners.delete(cb); };
+}
+export function getPriceSnapshotsVersion(): number {
+  return priceSnapshotsVersion;
+}
+
 export function getPriceSnapshotsForSpecies(speciesId: string, sizeCategory?: string, days: number = 90): PriceSnapshot[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
   return PRICE_SNAPSHOTS.filter(ps =>
     ps.species_id === speciesId &&
-    (sizeCategory ? ps.size_category === sizeCategory : ps.size_category === null) &&
+    (sizeCategory ? ps.size_category === sizeCategory : ps.size_category == null) &&
     new Date(ps.snapshot_date) >= cutoff
   ).sort((a, b) => new Date(a.snapshot_date).getTime() - new Date(b.snapshot_date).getTime());
 }

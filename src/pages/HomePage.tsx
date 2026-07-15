@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
-import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES, getListingById } from '@/data/mockData';
+import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES, getListingById, subscribePriceSnapshots, getPriceSnapshotsVersion } from '@/data/mockData';
 import { subscribeListings, getListingsVersion } from '@/lib/api';
 import { PriceChart } from '@/components/PriceChart';
 import { LazyImage } from '@/components/LazyImage';
@@ -17,6 +17,9 @@ export default function HomePage() {
 
   // Re-render when realtime listings change.
   const listingsVersion = useSyncExternalStore(subscribeListings, getListingsVersion);
+
+  // Re-render when price snapshots are hydrated or updated.
+  const snapshotsVersion = useSyncExternalStore(subscribePriceSnapshots, getPriceSnapshotsVersion);
 
   useEffect(() => {
     setListings(getActiveListings().slice(0, 8));
@@ -34,7 +37,9 @@ export default function HomePage() {
           price: ps.median_price_thb,
         }))
       : [],
-    [featuredSpeciesId]
+    // snapshotsVersion is required because getPriceSnapshotsForSpecies reads mutable PRICE_SNAPSHOTS.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [featuredSpeciesId, snapshotsVersion]
   );
 
   useEffect(() => {
