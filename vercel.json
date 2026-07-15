@@ -25,7 +25,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://daacilgagkphafpjdcte.supabase.co https://api.gbif.org https://api.inaturalist.org https://static.inaturalist.org https://inaturalist-open-data.s3.amazonaws.com https://en.wikipedia.org https://*.wikipedia.org https://upload.wikimedia.org; connect-src 'self' https://daacilgagkphafpjdcte.supabase.co wss://daacilgagkphafpjdcte.supabase.co https://perenual.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://my-api.plantnet.org https://api.gbif.org https://api.inaturalist.org https://en.wikipedia.org https://*.wikipedia.org; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://daacilgagkphafpjdcte.supabase.co https://api.gbif.org https://api.inaturalist.org https://static.inaturalist.org https://inaturalist-open-data.s3.amazonaws.com https://en.wikipedia.org https://*.wikipedia.org https://upload.wikimedia.org https://*.tile.openstreetmap.org; connect-src 'self' https://daacilgagkphafpjdcte.supabase.co wss://daacilgagkphafpjdcte.supabase.co https://perenual.com https://geocoding-api.open-meteo.com https://api.open-meteo.com https://my-api.plantnet.org https://api.gbif.org https://api.inaturalist.org https://en.wikipedia.org https://*.wikipedia.org https://nominatim.openstreetmap.org; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
         }
       ]
     },
