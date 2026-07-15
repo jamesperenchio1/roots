@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
@@ -115,6 +115,18 @@ const SIZES: (SizeCategory | '')[] = ['', 'S', 'M', 'L', 'XL'];
 
 const SPECIES_STORAGE_KEY = 'roots.market.selectedSpecies';
 
+function getInitialSelection(): { species?: Species; manual: boolean } {
+  const saved = localStorage.getItem(SPECIES_STORAGE_KEY);
+  const all = getMarketSpecies();
+  if (saved) {
+    const species = getSpeciesById(saved);
+    if (species && all.some(s => s.id === species.id)) {
+      return { species, manual: true };
+    }
+  }
+  return { species: findDefaultSpecies(), manual: false };
+}
+
 function scoreSpecies(s: Species) {
   const snapshots = getPriceSnapshotsForSpecies(s.id, undefined, 180);
   const listings = getActiveListings({ speciesId: s.id }).length;
@@ -141,19 +153,7 @@ function findDefaultSpecies(): Species | undefined {
 export default function MarketPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
   const [hydratedTick, setHydratedTick] = useState(0);
-  const hasManualSelection = useRef(false);
-  const [selectedSpecies, setSelectedSpecies] = useState<Species | undefined>(() => {
-    const saved = localStorage.getItem(SPECIES_STORAGE_KEY);
-    const all = getMarketSpecies();
-    if (saved) {
-      const species = getSpeciesById(saved);
-      if (species && all.some(s => s.id === species.id)) {
-        hasManualSelection.current = true;
-        return species;
-      }
-    }
-    return findDefaultSpecies();
-  });
+  const [{ species: selectedSpecies, manual: hasManualSelection }, setSelection] = useState(getInitialSelection);
   const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
 
@@ -166,7 +166,7 @@ export default function MarketPage() {
 
   // Only auto-select a fallback when the user has not manually picked a species.
   useEffect(() => {
-    if (hydratedTick === 0 || hasManualSelection.current) return;
+    if (hydratedTick === 0 || hasManualSelection) return;
     const current = selectedSpecies;
     const all = getMarketSpecies();
     if (current && all.some(s => s.id === current.id)) {
@@ -177,9 +177,9 @@ export default function MarketPage() {
     }
     const fallback = findDefaultSpecies();
     if (fallback && fallback.id !== current?.id) {
-      setSelectedSpecies(fallback);
+      setSelection(prev => ({ ...prev, species: fallback }));
     }
-  }, [hydratedTick, selectedSpecies?.id]);
+  }, [hydratedTick, selectedSpecies, selectedSpecies?.id, hasManualSelection]);
 
   const market = getMarketOverview();
 
@@ -214,7 +214,7 @@ export default function MarketPage() {
             volume: ps.sale_count,
           }))
         : [],
-    [selectedSpecies?.id, sizeFilter]
+    [selectedSpecies, sizeFilter]
   );
 
   const speciesListings = useMemo(
@@ -222,18 +222,19 @@ export default function MarketPage() {
       selectedSpecies
         ? getActiveListings({ speciesId: selectedSpecies.id }).filter(l => !sizeFilter || l.size_category === sizeFilter)
         : [],
-    [selectedSpecies?.id, sizeFilter]
+    [selectedSpecies, sizeFilter]
   );
 
   const handleSpeciesChange = (_value: string, entry?: { id: string }) => {
     if (!entry) return;
     const species = getSpeciesById(entry.id);
     if (!species) return;
-    hasManualSelection.current = true;
-    setSelectedSpecies(species);
+    setSelection({ species, manual: true });
     try {
       localStorage.setItem(SPECIES_STORAGE_KEY, species.id);
-    } catch {}
+    } catch {
+      // Ignore private mode / quota errors.
+    }
   };
 
   return (

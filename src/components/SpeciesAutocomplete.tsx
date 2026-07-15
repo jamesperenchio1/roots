@@ -10,9 +10,10 @@ interface SpeciesAutocompleteProps {
   onChange: (value: string, species?: SpeciesEntry) => void;
   placeholder?: string;
   label?: string;
+  category?: string;
 }
 
-export default function SpeciesAutocomplete({ value, onChange, placeholder, label }: SpeciesAutocompleteProps) {
+export default function SpeciesAutocomplete({ value, onChange, placeholder, label, category }: SpeciesAutocompleteProps) {
   const { t } = useTranslation(['common', 'marketplace']);
   const [query, setQuery] = useState(value);
   const debouncedQuery = useDebounce(query, 150);
@@ -52,7 +53,10 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
     setGbifResults([]);
 
     if (debouncedQuery.length >= 2) {
-      const matches = searchSpecies(debouncedQuery, 8);
+      let matches = searchSpecies(debouncedQuery, 8);
+      if (category) {
+        matches = matches.filter(m => m.category === category);
+      }
       setLocalResults(matches);
       const norm = normalizeSpeciesName(debouncedQuery);
       const exactMatch = matches.some(m =>
@@ -65,11 +69,11 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
       setLocalResults([]);
       setIsNewSpecies(false);
     }
-  }, [debouncedQuery]);
+  }, [debouncedQuery, category]);
 
   // GBIF fallback when local catalog has no matches
   useEffect(() => {
-    if (gbifQuery.length < 3 || localResults.length > 0) {
+    if (gbifQuery.length < 3 || localResults.length > 0 || category) {
       setGbifResults([]);
       setIsLoadingGbif(false);
       return;
@@ -89,7 +93,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
       });
 
     return () => { cancelled = true; };
-  }, [gbifQuery, localResults.length]);
+  }, [gbifQuery, localResults.length, category]);
 
   const handleInputChange = useCallback((val: string) => {
     setQuery(val);
