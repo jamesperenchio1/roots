@@ -117,7 +117,7 @@ export function getPriceSnapshotsForSpecies(speciesId: string, sizeCategory?: st
   cutoff.setDate(cutoff.getDate() - days);
   return PRICE_SNAPSHOTS.filter(ps =>
     ps.species_id === speciesId &&
-    (sizeCategory ? ps.size_category === sizeCategory : true) &&
+    (sizeCategory ? ps.size_category === sizeCategory : ps.size_category === null) &&
     new Date(ps.snapshot_date) >= cutoff
   ).sort((a, b) => new Date(a.snapshot_date).getTime() - new Date(b.snapshot_date).getTime());
 }

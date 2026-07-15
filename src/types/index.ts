@@ -32,6 +32,7 @@ export interface Profile {
   location?: string;
   rating?: number;
   sales_count?: number;
+  onboarding_status?: Record<string, unknown>;
 }
 
 export interface ShippingAddress {
@@ -87,7 +88,8 @@ export interface Plant {
 
 export interface Listing {
   id: string;
-  plant_id: string;
+  plant_id?: string;
+  has_qr_provenance?: boolean;
   seller_id: string;
   price_thb: number;
   size_category: SizeCategory;
@@ -142,7 +144,7 @@ export interface Transaction {
   listing_id: string;
   buyer_id: string;
   seller_id: string;
-  plant_id: string;
+  plant_id?: string;
   sale_price_thb: number;
   platform_fee_thb: number;
   seller_payout_thb: number;

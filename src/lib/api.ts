@@ -73,7 +73,8 @@ export function mapListing(r: DbRow, profiles: Record<string, Profile>): Listing
   const sellerId = r.seller_id as string;
   return {
     id: r.id as string,
-    plant_id: (r.plant_id as string | undefined) || (r.id as string),
+    plant_id: (r.plant_id as string | undefined) || undefined,
+    has_qr_provenance: (r.has_qr_provenance as boolean | undefined) !== false,
     seller_id: sellerId,
     price_thb: r.price_thb as number,
     size_category: (r.size_category as SizeCategory | undefined) || 'M',
@@ -502,6 +503,7 @@ export interface NewListingInput {
   pickup_lng?: number;
   photos: string[];
   tags?: string[];
+  has_qr_provenance?: boolean;
 }
 
 export async function createListing(input: NewListingInput, seller: Profile): Promise<Listing> {
@@ -528,6 +530,7 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
       image_url: input.photos[0] || null,
       photos: input.photos,
       tags: input.tags || [],
+      has_qr_provenance: input.has_qr_provenance !== false,
     })
     .select('*')
     .single();
