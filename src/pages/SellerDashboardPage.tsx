@@ -878,7 +878,7 @@ function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
     }
     setSaving(true);
     try {
-      await updateProfile(user.id, { promptpay_id: promptpayId.trim() || null, location: location.trim() || null, updated_at: new Date().toISOString() });
+      await updateProfile(user.id, { promptpay_id: promptpayId.trim() || null, location: location.trim() || undefined, updated_at: new Date().toISOString() });
       await refreshProfile();
       toast.success(t('dashboard:buyer.settingsSaved'));
     } catch (err) {

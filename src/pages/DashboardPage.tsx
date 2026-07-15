@@ -209,9 +209,9 @@ export default function DashboardPage() {
       case 'plants':
         return (
           <div className="grid sm:grid-cols-2 gap-4">
-            {getTransactionsWithDetails().filter(t => t.buyer_id === user?.id && t.status === 'completed').map(tx => (
+            {getTransactionsWithDetails().filter(t => t.buyer_id === user?.id && t.status === 'completed' && t.plant_id).map(tx => (
               <div key={tx.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
-                <p className="text-sm font-medium mb-1">{t('dashboard:buyer.plantLabel', { id: tx.plant_id.slice(-4) })}</p>
+                <p className="text-sm font-medium mb-1">{t('dashboard:buyer.plantLabel', { id: tx.plant_id!.slice(-4) })}</p>
                 <p className="text-xs text-zinc-500 mb-2">{t('dashboard:buyer.purchasedFor', { amount: tx.sale_price_thb.toLocaleString(), currency: t('common:currency') })}</p>
                 <div className="flex gap-2">
                   <Link to={`/p/${tx.plant_id}`} className="text-xs text-emerald-400 hover:underline">{t('dashboard:buyer.viewProvenance')}</Link>

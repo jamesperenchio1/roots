@@ -33,7 +33,7 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
     price: ps.median_price_thb,
   }));
   const stats = getSpeciesPriceStats(speciesId, 30);
-  const provenance = getProvenanceChain(listing.plant_id);
+  const provenance = listing.plant_id ? getProvenanceChain(listing.plant_id) : null;
   const listedDate = listing.created_at
     ? format(new Date(listing.created_at), 'dd/MM/yyyy')
     : null;
