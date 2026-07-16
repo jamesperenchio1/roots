@@ -39,7 +39,7 @@ test.describe('Auth pages', () => {
     // Verify values are entered correctly without submitting
     await expect(page.getByPlaceholder(/display name/i)).toHaveValue('Test User');
     await expect(page.getByPlaceholder(/you@example.com/i)).toHaveValue('test@example.com');
-    await expect(page.getByPlaceholder(/min 6 characters/i)).toHaveValue('password123');
+    await expect(page.getByPlaceholder(/min 8/i)).toHaveValue('password123');
     await expect(page.getByPlaceholder(/08xxxxxxxx/i)).toHaveValue('0812345678');
     await expect(page.getByTestId('province-combobox')).toHaveText('Bangkok');
   });
