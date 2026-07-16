@@ -27,8 +27,8 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
-| 1.1 | **Global mutable singleton stores** bypass React state. Pages read synchronously from arrays that are hydrated asynchronously, causing empty/not-found flashes and race conditions. | P0 | `src/data/mockData.ts` exports mutable arrays; `src/lib/api.ts` mutates them directly (`LISTINGS.length = 0; LISTINGS.push(...)`). |
-| 1.2 | Pages render "not found" before public data has finished hydrating. | P0 | `ListingPage`, `SellerPage`, `OrderPage` initialize from `getListingById` / `getTransactionById` immediately. |
+| 1.1 | ~~**Global mutable singleton stores** bypass React state.~~ | Done | Main data reads now go through TanStack Query (`useListings`, `usePublicData`, `useTransaction`, etc.) with explicit `isPending` loading states; legacy mutable arrays remain only as test fixtures and local-only fallback helpers. |
+| 1.2 | ~~Pages render "not found" before public data has finished hydrating.~~ | Done | `ListingPage`, `SellerPage`, and `OrderPage` wait for query `isPending` before rendering not-found states. |
 | 1.3 | ~~`BrowsePage` fakes loading with a 400 ms `setTimeout` regardless of actual hydration state.~~ | Done | `BrowsePage` now derives loading from TanStack Query `isPending`. |
 | 1.4 | ~~Duplicated realtime subscriptions — `AuthProvider` and individual pages both open Supabase channels.~~ | Done | Page-level channels removed; realtime is centralized in `AuthProvider` and messaging helpers. |
 | 1.5 | ~~Long pages mix many concerns, making them hard to test and maintain.~~ | Done | Refactored all four: `SellerDashboardPage` (~217 lines), `CreateListingPage` (~336 lines), `MessagesPage` (~361 lines), `AdminPage` (~65 lines). Sections/tabs extracted to `src/components/seller-dashboard/`, `src/components/create-listing/`, `src/components/messaging/`, and `src/components/admin/`. |
@@ -206,7 +206,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 11. [x] Prevent buyer from purchasing their own listing (`CheckoutPage` guard + `createOrder` server-side check).
 12. [x] Fix checkout PromptPay-no-ID explanation and add missing i18n strings (`checkout:errors.ownListing`, `checkout:errors.sellerNoPromptPay`).
-13. Refactor global mutable store to use explicit hydration loading state (quick win).
+13. [x] Refactor global mutable store to use explicit hydration loading state (quick win).
 14. Remove duplicate realtime subscriptions in pages.
 15. [x] Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
 16. [x] Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
