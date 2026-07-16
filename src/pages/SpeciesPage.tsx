@@ -480,7 +480,7 @@ export default function SpeciesPage() {
                   <div className="aspect-[4/3] rounded-lg overflow-hidden bg-zinc-800 mb-3">
                     <img
                       src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'}
-                      alt={l.species?.common_name_en || 'Plant listing'}
+                      alt={l.species?.common_name_en || t('marketplace:listingAlt')}
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"

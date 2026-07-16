@@ -1,32 +1,40 @@
+import { useCallback, useEffect, useState } from 'react';
+
 const STORAGE_KEY = 'recently_viewed';
 const MAX_ITEMS = 12;
 
 export function useRecentlyViewed() {
-  const getRecentlyViewed = (): string[] => {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    } catch {
-      return [];
-    }
-  };
+  const [recentlyViewed, setRecentlyViewed] = useState<string[]>([]);
 
-  const recordView = (listingId: string) => {
+  useEffect(() => {
     try {
-      const current = getRecentlyViewed();
-      const next = [listingId, ...current.filter(id => id !== listingId)].slice(0, MAX_ITEMS);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setRecentlyViewed(JSON.parse(raw));
     } catch {
-      // ignore storage errors
+      // Ignore malformed or unavailable storage.
     }
-  };
+  }, []);
 
-  const clearRecentlyViewed = () => {
+  const recordView = useCallback((listingId: string) => {
+    try {
+      setRecentlyViewed((prev) => {
+        const next = [listingId, ...prev.filter((id) => id !== listingId)].slice(0, MAX_ITEMS);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    } catch {
+      // Ignore private mode / quota errors.
+    }
+  }, []);
+
+  const clearRecentlyViewed = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      setRecentlyViewed([]);
     } catch {
-      // ignore storage errors
+      // Ignore storage errors.
     }
-  };
+  }, []);
 
-  return { getRecentlyViewed, recordView, clearRecentlyViewed };
+  return { recentlyViewed, recordView, clearRecentlyViewed };
 }

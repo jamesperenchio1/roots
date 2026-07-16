@@ -12,14 +12,14 @@ import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 export default function HomePage() {
-  const { t } = useTranslation(['home', 'common']);
+  const { t } = useTranslation(['home', 'common', 'marketplace']);
   const [heroLoaded, setHeroLoaded] = useState(false);
   const { data: listingsData } = useListings();
   const listings = useMemo(() => (listingsData ?? []).slice(0, 8), [listingsData]);
   const { data: market } = useMarketOverview();
-  const { getRecentlyViewed } = useRecentlyViewed();
-  const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
+  const { recentlyViewed: recentlyViewedIds } = useRecentlyViewed();
   const recentlyViewed = recentlyViewedIds
+    .slice(0, 4)
     .map((id) => (listingsData ?? []).find((l) => l.id === id))
     .filter(Boolean);
 
@@ -93,7 +93,7 @@ export default function HomePage() {
                     src={listing!.photos?.[0]?.storage_path || PLANT_IMAGES[listing!.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
                     srcSet={getSrcSet(listing!.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
                     sizes={CARD_SIZES}
-                    alt={listing!.species?.scientific_name || 'Plant listing'}
+                    alt={listing!.species?.scientific_name || t('marketplace:listingAlt')}
                     aspectRatio="3/4"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
@@ -140,7 +140,7 @@ export default function HomePage() {
                     src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
                     srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
                     sizes={CARD_SIZES}
-                    alt={listing.species?.scientific_name || 'Plant listing'}
+                    alt={listing.species?.scientific_name || t('marketplace:listingAlt')}
                     aspectRatio="3/4"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
@@ -184,7 +184,7 @@ export default function HomePage() {
                     <Link to={`/species/${item.species.id}`} key={i} className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-colors">
                       <div>
                         <p className="font-medium text-sm">{item.species.common_name_en || item.species.scientific_name}</p>
-                        <p className="text-xs text-zinc-500">{item.sales_count} sales</p>
+                        <p className="text-xs text-zinc-500">{t('home:salesCount', { count: item.sales_count })}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium">{Math.round(item.current_median).toLocaleString()} {t('common:currency')}</p>

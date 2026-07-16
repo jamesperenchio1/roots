@@ -506,6 +506,7 @@
       "responseTime": "ตอบกลับภายใน 24 ชั่วโมง",
       "office": "สำนักงาน",
       "hours": "เวลาซัพพอร์ต",
+      "hoursValue": "จันทร์ – เสาร์, 9:00 – 18:00",
       "timezone": "ICT (เวลากรุงเทพฯ)"
     },
     "form": {
@@ -587,7 +588,10 @@
       "title": "ตัวอย่างการคำนวณ",
       "soldFor": "ขายต้นไม้ได้",
       "platformFee": "ค่าธรรมเนียมแพลตฟอร์ม (8%)",
-      "youReceive": "คุณได้รับ"
+      "youReceive": "คุณได้รับ",
+      "soldForValue": "{{value}} {{currency}}",
+      "platformFeeValue": "{{value}} {{currency}}",
+      "youReceiveValue": "{{value}} {{currency}}"
     },
     "noCharges": {
       "title": "เราไม่คิดค่าบริการสำหรับ:",

@@ -36,5 +36,6 @@
   },
   "priceHistory": "Price History",
   "liveData": "Live data",
-  "noPriceHistory": "No price history yet."
+  "noPriceHistory": "No price history yet.",
+  "salesCount": "{{count}} sales"
 }

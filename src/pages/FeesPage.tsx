@@ -68,15 +68,15 @@ export default function FeesPage() {
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-zinc-400">{t('common:fees.example.soldFor')}</span>
-              <span>10,000 THB</span>
+              <span>{t('common:fees.example.soldForValue', { value: '10,000', currency: t('common:currency') })}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-zinc-400">{t('common:fees.example.platformFee')}</span>
-              <span className="text-red-400">-800 THB</span>
+              <span className="text-red-400">{t('common:fees.example.platformFeeValue', { value: '-800', currency: t('common:currency') })}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-zinc-400">{t('common:fees.example.youReceive')}</span>
-              <span className="text-emerald-400 font-medium">9,200 THB</span>
+              <span className="text-emerald-400 font-medium">{t('common:fees.example.youReceiveValue', { value: '9,200', currency: t('common:currency') })}</span>
             </div>
           </div>
         </div>

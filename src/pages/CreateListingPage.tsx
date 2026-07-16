@@ -625,7 +625,7 @@ export default function CreateListingPage() {
                   onClick={() => setTags(prev => prev.includes(tTag) ? prev.filter(x => x !== tTag) : [...prev, tTag])}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${tags.includes(tTag) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'}`}
                 >
-                  {t(`marketplace:create.tagSuggestions.${tTag}`, { defaultValue: tTag })}
+                  {t(`marketplace:create.tagSuggestions.${tTag}`)}
                 </button>
               ))}
             </div>
@@ -666,7 +666,7 @@ export default function CreateListingPage() {
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {tags.map(tTag => (
                   <span key={tTag} className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
-                    {t(`marketplace:create.tagSuggestions.${tTag}`, { defaultValue: tTag })}
+                    {t(`marketplace:create.tagSuggestions.${tTag}`)}
                     <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== tTag))} className="text-zinc-500 hover:text-white">×</button>
                   </span>
                 ))}

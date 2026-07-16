@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
@@ -132,9 +132,16 @@ function scoreSpeciesFromData(data: PublicData, s: Species) {
 
 export default function MarketPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
-  const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | undefined>(
-    () => localStorage.getItem(SPECIES_STORAGE_KEY) ?? undefined
-  );
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SPECIES_STORAGE_KEY);
+      if (saved) setSelectedSpeciesId(saved);
+    } catch {
+      // Ignore storage errors.
+    }
+  }, []);
   const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
   const { data: market } = useMarketOverview();
@@ -284,7 +291,7 @@ export default function MarketPage() {
                   <div className="aspect-[4/3] rounded-lg overflow-hidden bg-zinc-800 mb-3">
                     <img
                       src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'}
-                      alt={l.species?.common_name_en || 'Plant listing'}
+                      alt={l.species?.common_name_en || t('marketplace:listingAlt')}
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"

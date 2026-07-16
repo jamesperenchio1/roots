@@ -36,5 +36,6 @@
   },
   "priceHistory": "ประวัติราคา",
   "liveData": "ข้อมูลสด",
-  "noPriceHistory": "ยังไม่มีประวัติราคา"
+  "noPriceHistory": "ยังไม่มีประวัติราคา",
+  "salesCount": "{{count}} การขาย"
 }

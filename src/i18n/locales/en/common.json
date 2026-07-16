@@ -506,6 +506,7 @@
       "responseTime": "Response within 24 hours",
       "office": "Office",
       "hours": "Support Hours",
+      "hoursValue": "Mon – Sat, 9:00 – 18:00",
       "timezone": "ICT (Bangkok time)"
     },
     "form": {
@@ -587,7 +588,10 @@
       "title": "Example Breakdown",
       "soldFor": "Plant sold for",
       "platformFee": "Platform fee (8%)",
-      "youReceive": "You receive"
+      "youReceive": "You receive",
+      "soldForValue": "{{value}} {{currency}}",
+      "platformFeeValue": "{{value}} {{currency}}",
+      "youReceiveValue": "{{value}} {{currency}}"
     },
     "noCharges": {
       "title": "We don't charge for:",

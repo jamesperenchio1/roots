@@ -1636,7 +1636,7 @@ export function notifyNewOrder(sellerId: string, orderId: string, plantName: str
     user_id: sellerId,
     type: 'order',
     title: 'New order received',
-    message: `Someone purchased your ${plantName} for ${amount.toLocaleString()} THB`,
+    message: `Someone purchased your ${plantName} for ${amount.toLocaleString()} ${i18n.t('common:currency')}`,
     link: `/order/${orderId}`,
     read: false,
   });
@@ -1680,7 +1680,7 @@ export function notifyOfferReceived(sellerId: string, offerId: string, listingNa
     user_id: sellerId,
     type: 'offer',
     title: 'New offer received',
-    message: `A buyer offered ${amount.toLocaleString()} THB for your ${listingName}`,
+    message: `A buyer offered ${amount.toLocaleString()} ${i18n.t('common:currency')} for your ${listingName}`,
     link: `/offers/${offerId}`,
     read: false,
   });

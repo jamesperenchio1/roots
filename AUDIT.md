@@ -34,7 +34,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 1.5 | Long pages mix many concerns, making them hard to test and maintain. | P1 | `SellerDashboardPage` (921 lines), `CreateListingPage` (722 lines), `MessagesPage` (657 lines), `AdminPage` (498 lines). |
 | 1.6 | No shared `ListingCard` component — each page reimplements card markup. | P1 | `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage` |
 | 1.7 | Inconsistent form controls across create/edit listing. | P1 | `CreateListingPage` uses `ProvinceCombobox` + `MapLocationPicker`; `EditListingPage` uses a plain `<select>`. |
-| 1.8 | `localStorage` is read synchronously during render in several hooks/pages. | P1 | `useOnboarding.ts`, `useRecentlyViewed.ts`, `MarketPage.tsx`, `ShippingGuidePage.tsx` |
+| 1.8 | ~~`localStorage` is read synchronously during render in several hooks/pages.~~ | Done | `useOnboarding.ts` already effect-only; `useRecentlyViewed.ts` and `MarketPage.tsx` moved to `useEffect`. |
 | 1.9 | 17 `eslint-disable react-hooks/exhaustive-deps` comments hide stale-closure risks. | P1 | Across `DashboardPage`, `MessagesPage`, `HomePage`, `CommentSection`, etc. |
 | 1.10 | Many installed shadcn/ui components are unused, increasing bundle and maintenance surface. | P2 | `alert-dialog`, `aspect-ratio`, `breadcrumb`, `chart`, `checkbox`, `collapsible`, `context-menu`, `drawer`, `menubar`, `navigation-menu`, `pagination`, `radio-group`, `resizable`, `scroll-area`, `sheet`, `sidebar`, `slider`, `switch`, `table`, `toggle`, `toggle-group`, etc. |
 
@@ -66,7 +66,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 |---|---|---|---|
 | 2.1 | Loading states are inconsistent or fake, leaving users unsure whether content is coming. | P1 | `BrowsePage` fake 400 ms skeleton; `SellerPage` flashes `<NotFound />`. |
 | 2.2 | PromptPay checkout lacks clear explanation when the seller has no PromptPay ID. | P1 | `CheckoutPage` blocks pay without explaining why. |
-| 2.3 | Some static copy is still in English even when Thai is selected. | P1 | `SpeciesPage` "Family:", "Genus:"; `CreateListingPage` "Exact pickup pin", "This can be changed later"; `SellerDashboardPage` "PromptPay". |
+| 2.3 | ~~Some static copy is still in English even when Thai is selected.~~ | Done | Family/genus labels, pickup pin note, PromptPay copy, fees example, contact hours, home sales count, listing alt text, and tag suggestions are now i18n keys. |
 | 2.4 | Mobile touch targets and layouts need verification; the live site is inaccessible for automated testing. | P1 | Vercel Security Checkpoint blocks Playwright. |
 | 2.5 | Empty states are generic and do not guide the user to the next action. | P2 | `common:empty` is used everywhere. |
 
@@ -76,7 +76,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
-| 3.1 | Several hardcoded English strings remain in JSX and attributes. | P1 | Placeholders in `SpeciesPage`, labels in `CreateListingPage`, `alt` in `HomePage`, `aria-label` in `Footer`, `sr-only` text in `carousel`, `pagination`, `dialog`, etc. |
+| 3.1 | Several hardcoded English strings remain in JSX and attributes. | P1/P2 | Page-level placeholders/alts addressed; shadcn component `sr-only` text remains P2. |
 | 3.2 | Thai resources are loaded on demand but there is no loading indicator while switching. | P2 | `loadThaiResources()` is fire-and-forget. |
 | 3.3 | No URL locale support; language choice is localStorage only. | P2 | `src/i18n/config.ts` |
 | 3.4 | Currency formatting uses hardcoded "THB" / "บาท" in some places rather than a formatter. | P2 | `plantQr.price`, `identification.catalogueRange` |
@@ -164,8 +164,8 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
 | 10.1 | `npm run lint` fails (1 error, 4 warnings). | P0 | `src/lib/api.test.ts` unused `beforeEach`; `CommentSection.tsx`; `useOnboarding.ts`; seed script eslint-disable. |
-| 10.2 | Unused production dependencies bloat the bundle and install. | P1 | `@sentry/browser`, `@hookform/resolvers`, `zod`, `framer-motion`, `dompurify`, `@types/dompurify`, `react-hotkeys-hook`, `tw-animate-css`. |
-| 10.3 | Missing dependency: `dotenv` is used in `scripts/seed-database.cjs` but not declared. | P1 | package.json vs script. |
+| 10.2 | ~~Unused production dependencies bloat the bundle and install.~~ | Done | Removed `@sentry/browser`, `@hookform/resolvers`, `zod`, `framer-motion`, `dompurify`, `@types/dompurify`, `react-hotkeys-hook`, `tw-animate-css`. |
+| 10.3 | ~~Missing dependency: `dotenv` is used in `scripts/seed-database.cjs` but not declared.~~ | Done | Added `dotenv` to devDependencies. |
 | 10.4 | Missing `@vitest/coverage-v8` means configured coverage reporting is broken. | P1 | `vitest.config.ts` references it. |
 | 10.5 | `.env.example` is missing required server/edge variables. | P1 | `SUPABASE_SERVICE_ROLE_KEY`, `SLIPOK_API_KEY`, `SLIPOK_BRANCH_ID`, `APP_URL`. |
 | 10.6 | `.env.example` documents unused analytics/payment variables. | P2 | `VITE_PLAUSIBLE_DOMAIN`, `VITE_GA_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_OMISE_PUBLIC_KEY`. |
@@ -208,20 +208,20 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 12. [x] Fix checkout PromptPay-no-ID explanation and add missing i18n strings (`checkout:errors.ownListing`, `checkout:errors.sellerNoPromptPay`).
 13. Refactor global mutable store to use explicit hydration loading state (quick win).
 14. Remove duplicate realtime subscriptions in pages.
-15. Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
+15. [x] Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
 16. Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
-17. Fix remaining hardcoded UI strings found in i18n audit (shadcn component `sr-only` text is P2).
+17. [x] Fix remaining hardcoded page-level UI strings (shadcn component `sr-only` text remains P2).
 18. Add indexes for common query patterns.
 19. Batch profile lookups to fix N+1.
 20. Add RLS policy tests.
 
 ### P2 — Polish
 
-19. Create shared `ListingCard`, `EmptyState`, `Skeleton` patterns.
-20. Lazy-load charts below the fold.
-21. Add responsive image transforms.
-22. Expand test coverage.
-23. Clean up unused shadcn/ui components.
+21. Create shared `ListingCard`, `EmptyState`, `Skeleton` patterns.
+22. Lazy-load charts below the fold.
+23. Add responsive image transforms.
+24. Expand test coverage.
+25. Clean up unused shadcn/ui components.
 
 ---
 

@@ -286,11 +286,11 @@ function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplicate, t }
             <div key={l.id} className="group bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/15 hover:-translate-y-0.5 transition-all">
               <div className="flex items-start gap-4">
                 <Link to={`/listing/${l.id}`} className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                  <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt={l.species?.scientific_name || 'Plant listing'} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt={l.species?.scientific_name || t('marketplace:listingAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <Link to={`/listing/${l.id}`} className="font-medium truncate hover:text-emerald-400 transition-colors">{l.species?.common_name_en || speciesData?.common_name_en || 'Unknown Plant'}</Link>
+                    <Link to={`/listing/${l.id}`} className="font-medium truncate hover:text-emerald-400 transition-colors">{l.species?.common_name_en || speciesData?.common_name_en || t('common:unknownPlant')}</Link>
                     <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400 shrink-0">{t(`common:status.${l.status}`)}</span>
                   </div>
                   <p className="text-xs text-zinc-500 truncate mb-2">{l.species?.scientific_name || speciesData?.scientific_name}</p>
@@ -380,7 +380,7 @@ function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t }: { l
               onClick={() => { fileRef.current?.click(); setOpen(false); }}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-white/5"
             >
-              <ScanSearch className="w-3.5 h-3.5" /> Verify QR
+              <ScanSearch className="w-3.5 h-3.5" /> {t('dashboard:verifyQr')}
             </button>
           )}
           {(listing.status === 'active' || listing.status === 'pending_review') && (

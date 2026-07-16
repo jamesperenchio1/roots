@@ -84,7 +84,7 @@ export default function ContactPage() {
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 text-center">
             <Clock className="w-6 h-6 text-emerald-400 mx-auto mb-3" />
             <p className="font-medium mb-1">{t('common:contact.channels.hours')}</p>
-            <p className="text-sm text-zinc-500">Mon – Sat, 9:00 – 18:00</p>
+            <p className="text-sm text-zinc-500">{t('common:contact.channels.hoursValue')}</p>
             <p className="text-xs text-zinc-600 mt-1">{t('common:contact.channels.timezone')}</p>
           </div>
         </div>
