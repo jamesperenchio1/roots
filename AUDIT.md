@@ -99,7 +99,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 |---|---|---|---|
 | 5.1 | Buyer can buy their own listing. | P1 | `CheckoutPage` |
 | 5.2 | ~~Dirty form navigation in `EditListingPage` only warns on `beforeunload`, not React Router navigation.~~ | Done | Added `useBlocker` guard with confirm modal when `isDirty` is true. |
-| 5.3 | Contact form messages go nowhere (no email backend). | P1 | `ContactPage` |
+| 5.3 | ~~Contact form messages go nowhere (no email backend).~~ | Done | Added `send-contact-email` Edge Function, `contact_submissions` table, and wired `ContactPage` to call it. |
 | 5.4 | Card payment tab in checkout is non-functional placeholder. | P2 | `CheckoutPage` |
 | 5.5 | No undo actions for destructive operations (withdraw listing, reject offer, etc.). | P2 | Across dashboards. |
 

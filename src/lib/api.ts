@@ -2527,4 +2527,28 @@ export async function sendMessage(data: LegacySendMessageInput): Promise<import(
   });
 }
 
+export interface ContactEmailInput {
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+  userId?: string | null;
+}
+
+export async function sendContactEmail(input: ContactEmailInput): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-contact-email', {
+    body: {
+      name: input.name,
+      email: input.email,
+      topic: input.topic,
+      message: input.message,
+      userId: input.userId ?? null,
+    },
+  });
+  if (error) {
+    logger.error('sendContactEmail failed', new Error(error.message));
+    throw new Error(error.message || 'Failed to send contact message');
+  }
+}
+
 export { SPECIES };

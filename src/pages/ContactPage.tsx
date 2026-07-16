@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { logger } from '@/lib/logger';
+import { sendContactEmail } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import {
   Accordion,
@@ -36,9 +38,12 @@ const FAQS = [
 
 export default function ContactPage() {
   const { t } = useTranslation(['common']);
+  const { user } = useAuth();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', topic: 'General Question', message: '' });
+
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,21 +51,29 @@ export default function ContactPage() {
       toast.error(t('common:contact.form.required'));
       return;
     }
+    if (!isValidEmail(form.email.trim())) {
+      toast.error(t('common:contact.form.invalidEmail'));
+      return;
+    }
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 400));
-    setSubmitting(false);
-    setSubmitted(true);
-    toast.success(t('common:contact.form.successToast'));
-
-    const subject = encodeURIComponent(`ROOTS contact: ${form.topic}`);
-    const body = encodeURIComponent(
-      `Name: ${form.name.trim()}\nEmail: ${form.email.trim()}\nTopic: ${form.topic}\n\n${form.message.trim()}`
-    );
-    window.open(`mailto:rootsthailand1@gmail.com?subject=${subject}&body=${body}`, '_blank');
-
-    logger.info('Contact form submitted', {
-      topic: form.topic,
-    });
+    try {
+      await sendContactEmail({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        topic: form.topic,
+        message: form.message.trim(),
+        userId: user?.id,
+      });
+      setSubmitted(true);
+      toast.success(t('common:contact.form.successToast'));
+      logger.info('Contact form submitted', { topic: form.topic });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      logger.error('Contact form submission failed', new Error(message));
+      toast.error(t('common:contact.form.error'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

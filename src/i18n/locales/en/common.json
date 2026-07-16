@@ -523,6 +523,8 @@
       "topic": "Topic",
       "message": "Message",
       "required": "Please fill in all fields",
+      "invalidEmail": "Please enter a valid email address",
+      "error": "Unable to send message. Please try again later.",
       "successToast": "Message sent! We will reply within 24 hours.",
       "sending": "Sending…",
       "send": "Send Message"
