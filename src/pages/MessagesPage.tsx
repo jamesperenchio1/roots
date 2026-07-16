@@ -1,30 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MessageSquare, ArrowLeft, Search, MoreVertical, Phone, Pin, Archive, VolumeX, Flag } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
-import {
-  sendMessage,
-  editMessage,
-  deleteMessage,
-  addReaction,
-  removeReaction,
   markConversationRead,
   getOrCreateDirectConversation,
   subscribeToConversation,
-  searchMessages,
-  reportMessage,
-  updateParticipantSettings,
-  setTypingWithDebounce,
   clearTypingTimer,
   updatePresence,
   subscribeToPresenceChannel,
@@ -33,14 +13,16 @@ import { queryClient } from '@/lib/queryClient';
 import { messageKeys } from '@/lib/queryKeys';
 import { useConversations, useConversationMessages, usePresenceMap } from '@/hooks/queries/useMessages';
 import { useDraftMessage } from '@/hooks/useDraftMessage';
+import { useMessageActions } from '@/hooks/useMessageActions';
 import { useListings } from '@/hooks/queries/useListings';
-import type { Message } from '@/types';
-import ConversationList from '@/components/messaging/ConversationList';
-import MessageBubble from '@/components/messaging/MessageBubble';
+import { useAuth } from '@/hooks/useAuth';
+import type { Message, MessageAttachment } from '@/types';
 import MessageComposer from '@/components/messaging/MessageComposer';
 import MessageSearch from '@/components/messaging/MessageSearch';
-import TypingIndicator from '@/components/messaging/TypingIndicator';
-import PresenceIndicator from '@/components/messaging/PresenceIndicator';
+import MessagesSidebar from '@/components/messaging/MessagesSidebar';
+import ConversationHeader from '@/components/messaging/ConversationHeader';
+import MessageList from '@/components/messaging/MessageList';
+import EmptyConversation from '@/components/messaging/EmptyConversation';
 
 function isLegacyThreadId(id: string): boolean {
   return id.startsWith('thread_');
@@ -84,8 +66,10 @@ export default function MessagesPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Array<{ user_id: string; display_name: string }>>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [pendingMessageId, setPendingMessageId] = useState<string>(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
-  const [pendingAttachments, setPendingAttachments] = useState<import('@/types').MessageAttachment[]>([]);
+  const [pendingMessageId, setPendingMessageId] = useState<string>(
+    `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  );
+  const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
@@ -98,19 +82,22 @@ export default function MessagesPage() {
   const draft = useDraftMessage(activeConversationId);
   const loadDraft = draft.load;
 
-  const formatMessageTime = useCallback((dateStr: string) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffMins < 1) return t('messages:relative.justNow');
-    if (diffMins < 60) return t('messages:relative.minutesAgo', { count: diffMins });
-    if (diffHours < 24) return t('messages:relative.hoursAgo', { count: diffHours });
-    if (diffDays < 7) return t('messages:relative.daysAgo', { count: diffDays });
-    return d.toLocaleDateString(dateLocale);
-  }, [t, dateLocale]);
+  const formatMessageTime = useCallback(
+    (dateStr: string) => {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      if (diffMins < 1) return t('messages:relative.justNow');
+      if (diffMins < 60) return t('messages:relative.minutesAgo', { count: diffMins });
+      if (diffHours < 24) return t('messages:relative.hoursAgo', { count: diffHours });
+      if (diffDays < 7) return t('messages:relative.daysAgo', { count: diffDays });
+      return d.toLocaleDateString(dateLocale);
+    },
+    [t, dateLocale]
+  );
 
   const refreshConversations = useCallback(() => {
     if (!userId) return;
@@ -146,7 +133,9 @@ export default function MessagesPage() {
     };
 
     resolve();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId, threadId, navigate, refreshConversations]);
 
   // Mark active conversation as read; restore draft; reset per-conversation state.
@@ -206,6 +195,7 @@ export default function MessagesPage() {
 
   const activeConversation = conversations.find((c) => c.conversation.id === activeConversationId);
   const otherUser = activeConversation?.otherUser;
+  const currentParticipant = activeConversation?.participants.find((p) => p.user_id === user?.id);
 
   const partnerIds = useMemo(
     () => conversations.map((c) => c.otherUser?.id).filter((id): id is string => Boolean(id)),
@@ -245,309 +235,86 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user || partnerIds.length === 0) return;
     const unsubscribe = subscribeToPresenceChannel(partnerIds);
-    return () => { unsubscribe(); };
+    return () => {
+      unsubscribe();
+    };
   }, [partnerIds, user]);
 
   const hasContactFlag = messages.some((m) => m.flagged_contact_info);
 
-  const handleSend = async () => {
-    if (!input.trim() || !user || !activeConversationId) return;
-    const text = input.trim();
-    setSending(true);
-    // Optimistic: immediately clear input and draft, add a local optimistic message.
-    setInput('');
-    draft.clear();
-    if (!editingMessage) {
-      const optimisticMsg: import('@/types').Message = {
-        id: pendingMessageId,
-        conversation_id: activeConversationId,
-        sender_id: user.id,
-        content: text,
-        created_at: new Date().toISOString(),
-        edited_at: undefined,
-        deleted_at: undefined,
-        reply_to_message_id: replyTo?.id ?? undefined,
-        content_type: 'text',
-        flagged_contact_info: false,
-        is_system_event: false,
-        sender: user,
-        reactions: [],
-        reads: [],
-        attachments: pendingAttachments.length ? pendingAttachments : undefined,
-      };
-      setOptimisticMessages((prev) => [...prev, optimisticMsg]);
-    }
-    try {
-      if (editingMessage) {
-        await editMessage(editingMessage.id, user.id, text);
-        setEditingMessage(null);
-      } else {
-        await sendMessage({
-          conversationId: activeConversationId,
-          senderId: user.id,
-          content: text,
-          listingId: activeConversation?.conversation.listing_id,
-          replyToMessageId: replyTo?.id,
-          attachments: pendingAttachments,
-        });
-      }
-      setReplyTo(null);
-      setOptimisticMessages([]);
-      refreshConversations();
-      // Replace optimistic message with confirmed server state.
-      await queryClient.invalidateQueries({
-        queryKey: messageKeys.conversation(user.id, activeConversationId),
-      });
-      setPendingMessageId(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
-    } catch (err) {
-      // Roll back optimistic message on failure.
-      setOptimisticMessages([]);
-      setInput(text);
-      toast.error(err instanceof Error ? err.message : t('messages:errors.sendFailed'));
-    } finally {
-      setSending(false);
-    }
-  };
+  const {
+    handleSend,
+    handleInputChange,
+    handleReply,
+    handleEdit,
+    handleDelete,
+    handleReact,
+    handleRemoveReaction,
+    handleReport,
+    handleSearch,
+    handleJump,
+    handleTogglePin,
+    handleToggleArchive,
+    handleToggleMute,
+  } = useMessageActions({
+    user,
+    activeConversationId,
+    activeConversationListingId: activeConversation?.conversation.listing_id,
+    currentParticipant,
+    draft,
+    replyTo,
+    setReplyTo,
+    editingMessage,
+    setEditingMessage,
+    pendingAttachments,
+    pendingMessageId,
+    setPendingMessageId,
+    input,
+    setInput,
+    setSending,
+    setOptimisticMessages,
+    refreshConversations,
+    t,
+  });
 
-  const handleInputChange = (value: string) => {
-    setInput(value);
-    draft.save(value);
-    if (activeConversationId && user) {
-      setTypingWithDebounce(
-        activeConversationId,
-        user.id,
-        user.display_name || 'Someone',
-        value.trim().length > 0
-      );
-    }
-  };
-
-  const handleReply = (message: Message) => {
-    setReplyTo(message);
-    setEditingMessage(null);
-  };
-
-  const handleEdit = (message: Message) => {
-    if (message.sender_id !== user?.id) return;
-    setEditingMessage(message);
-    setInput(message.content);
-    setReplyTo(null);
-  };
-
-  const handleDelete = async (message: Message) => {
-    if (!user || message.sender_id !== user.id) return;
-    try {
-      await deleteMessage(message.id, user.id);
-      if (activeConversationId) {
-        queryClient.invalidateQueries({ queryKey: messageKeys.conversation(user.id, activeConversationId) });
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('messages:errors.deleteFailed'));
-    }
-  };
-
-  const handleReact = async (messageId: string, reaction: string) => {
-    if (!user) return;
-    await addReaction(messageId, user.id, reaction);
-    if (activeConversationId) {
-      queryClient.invalidateQueries({ queryKey: messageKeys.conversation(user.id, activeConversationId) });
-    }
-  };
-
-  const handleRemoveReaction = async (messageId: string, reaction: string) => {
-    if (!user) return;
-    await removeReaction(messageId, user.id, reaction);
-    if (activeConversationId) {
-      queryClient.invalidateQueries({ queryKey: messageKeys.conversation(user.id, activeConversationId) });
-    }
-  };
-
-  const handleReport = async (message: Message) => {
-    if (!user) return;
-    try {
-      await reportMessage(message.id, user.id, 'inappropriate', undefined);
-      toast.success(t('messages:reportSubmitted'));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('messages:errors.reportFailed'));
-    }
-  };
-
-  const handleSearch = async (query: string) => {
-    if (!user) return [];
-    return searchMessages(user.id, query);
-  };
-
-  const handleJump = (messageId: string) => {
-    const el = document.getElementById(`message-${messageId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('ring-2', 'ring-emerald-500', 'rounded-2xl');
-      setTimeout(() => el.classList.remove('ring-2', 'ring-emerald-500', 'rounded-2xl'), 2000);
-    }
-  };
-
-  const handleTogglePin = async () => {
-    if (!user || !activeConversationId) return;
-    const isPinned = activeConversation?.participants.find((p) => p.user_id === user.id)?.is_pinned ?? false;
-    await updateParticipantSettings(activeConversationId, user.id, { is_pinned: !isPinned });
-    refreshConversations();
-  };
-
-  const handleToggleArchive = async () => {
-    if (!user || !activeConversationId) return;
-    const isArchived = activeConversation?.participants.find((p) => p.user_id === user.id)?.is_archived ?? false;
-    await updateParticipantSettings(activeConversationId, user.id, { is_archived: !isArchived });
-    refreshConversations();
-  };
-
-  const handleToggleMute = async () => {
-    if (!user || !activeConversationId) return;
-    const isMuted = activeConversation?.participants.find((p) => p.user_id === user.id)?.is_muted ?? false;
-    await updateParticipantSettings(activeConversationId, user.id, { is_muted: !isMuted });
-    refreshConversations();
-  };
-
-  const dateSeparator = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const today = new Date();
-    const isToday = d.toDateString() === today.toDateString();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday = d.toDateString() === yesterday.toDateString();
-    if (isToday) return t('messages:today');
-    if (isYesterday) return t('messages:yesterday');
-    return d.toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-  };
-
-  const groupedMessages = useMemo(() => {
-    const groups: { date: string; messages: Message[] }[] = [];
-    messages.forEach((msg) => {
-      const dateKey = new Date(msg.created_at).toDateString();
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.date === dateKey) {
-        lastGroup.messages.push(msg);
-      } else {
-        groups.push({ date: dateKey, messages: [msg] });
-      }
-    });
-    return groups;
-  }, [messages]);
+  const legacyListingId =
+    threadId && isLegacyThreadId(threadId) ? getListingIdFromThreadId(threadId) : undefined;
+  const legacyListingName = legacyListingId
+    ? allListings.find((l) => l.id === legacyListingId)?.species?.common_name_en
+    : undefined;
 
   return (
     <div className="pt-20 pb-0 md:pb-16 px-0 md:px-4 sm:px-6 flex flex-col md:flex-row max-w-7xl mx-auto min-h-[calc(100dvh-80px)] md:min-h-[70vh]">
-      {/* Sidebar */}
-      <div
-        className={`${activeConversationId ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/10 bg-zinc-900/20 flex-col md:min-h-[70vh]`}
-      >
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-lg font-medium">{t('messages:title')}</h2>
-          <Link
-            to="/dashboard"
-            className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            {t('common:nav.dashboard')}
-          </Link>
-        </div>
-        <ConversationList
-          conversations={conversations}
-          activeId={activeConversationId}
-          loading={loading}
-          emptyTitle={t('messages:loading')}
-          emptyDescription={t('messages:noThreads')}
-          emptyCta={t('common:empty.cta')}
-          dateFormatter={formatMessageTime}
-          presenceMap={presenceMap}
-          onSelect={(id) => navigate(`/messages/${id}`)}
-        />
-      </div>
+      <MessagesSidebar
+        hasActiveConversation={!!activeConversationId}
+        conversations={conversations}
+        activeId={activeConversationId}
+        loading={loading}
+        dateFormatter={formatMessageTime}
+        presenceMap={presenceMap}
+        onSelect={(id) => navigate(`/messages/${id}`)}
+      />
 
-      {/* Conversation */}
       <div
         className={`${!activeConversationId ? 'hidden md:flex' : 'flex'} flex-1 flex-col md:min-h-[70vh]`}
       >
         {!activeConversationId ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-            <MessageSquare className="w-12 h-12 text-zinc-700 mb-4" />
-            <p className="text-zinc-500 mb-2">{t('messages:emptyState.title')}</p>
-            <p className="text-zinc-600 text-sm">
-              {t('messages:emptyState.description')}
-            </p>
-          </div>
+          <EmptyConversation />
         ) : (
           <>
-            {/* Header */}
-            <div className="border-b border-white/10 p-4 flex items-center gap-3">
-              <button
-                onClick={() => navigate('/messages')}
-                className="md:hidden text-zinc-400 hover:text-white transition-colors"
-                aria-label={t('common:actions.back')}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium flex items-center gap-1.5">
-                  {otherUser?.display_name || t('common:unknown')}
-                  <PresenceIndicator presence={presenceMap[otherUser?.id || '']} showText />
-                </p>
-                {activeConversation?.listing && (
-                  <Link
-                    to={`/listing/${activeConversation.listing.id}`}
-                    className="text-xs text-emerald-400 hover:underline truncate block"
-                  >
-                    {t('messages:reLabel', { name: activeConversation.listing.species?.common_name_en || t('common:unknown') })}
-                  </Link>
-                )}
-                {!activeConversation?.listing && threadId && isLegacyThreadId(threadId) && getListingIdFromThreadId(threadId) && (
-                  <Link
-                    to={`/listing/${getListingIdFromThreadId(threadId)}`}
-                    className="text-xs text-emerald-400 hover:underline truncate block"
-                  >
-                    {t('messages:reLabel', { name: allListings.find((l) => l.id === getListingIdFromThreadId(threadId)!)?.species?.common_name_en || t('common:unknown') })}
-                  </Link>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-zinc-500 hover:text-white"
-                onClick={() => setSearchOpen((s) => !s)}
-                aria-label={t('messages:search')}
-              >
-                <Search className="w-4 h-4" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-zinc-500 hover:text-white">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-zinc-900 border-white/10 text-white">
-                  <DropdownMenuItem onClick={handleTogglePin} className="cursor-pointer">
-                    <Pin className="w-4 h-4 mr-2" />
-                    {activeConversation?.participants.find((p) => p.user_id === user?.id)?.is_pinned
-                      ? t('messages:actions.unpin')
-                      : t('messages:actions.pin')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleToggleArchive} className="cursor-pointer">
-                    <Archive className="w-4 h-4 mr-2" />
-                    {activeConversation?.participants.find((p) => p.user_id === user?.id)?.is_archived
-                      ? t('messages:actions.unarchive')
-                      : t('messages:actions.archive')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleToggleMute} className="cursor-pointer">
-                    <VolumeX className="w-4 h-4 mr-2" />
-                    {activeConversation?.participants.find((p) => p.user_id === user?.id)?.is_muted
-                      ? t('messages:actions.unmute')
-                      : t('messages:actions.mute')}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem disabled className="cursor-pointer opacity-50">
-                    <Phone className="w-4 h-4 mr-2" /> {t('messages:actions.call')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <ConversationHeader
+              otherUser={otherUser}
+              listing={activeConversation?.listing}
+              legacyListingId={legacyListingId}
+              legacyListingName={legacyListingName}
+              presence={presenceMap[otherUser?.id || '']}
+              currentParticipant={currentParticipant}
+              onBack={() => navigate('/messages')}
+              onToggleSearch={() => setSearchOpen((s) => !s)}
+              onTogglePin={handleTogglePin}
+              onToggleArchive={handleToggleArchive}
+              onToggleMute={handleToggleMute}
+            />
 
             {searchOpen && (
               <MessageSearch
@@ -557,56 +324,23 @@ export default function MessagesPage() {
               />
             )}
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesContainerRef}>
-              {hasContactFlag && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2 text-amber-400 text-xs">
-                  <Flag className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>{t('messages:contactFlag')}</span>
-                </div>
-              )}
-              {messages.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-zinc-600 text-sm">{t('messages:noMessages')}</p>
-                </div>
-              ) : (
-                groupedMessages.map((group) => (
-                  <div key={group.date} className="space-y-3">
-                    <div className="flex justify-center">
-                      <span className="text-[10px] text-zinc-500 bg-zinc-900/80 px-2 py-1 rounded-full">
-                        {dateSeparator(group.messages[0].created_at)}
-                      </span>
-                    </div>
-                    {group.messages.map((msg, idx) => {
-                      const isMe = msg.sender_id === user?.id;
-                      const prev = group.messages[idx - 1];
-                      const showAvatar = !isMe && (!prev || prev.sender_id !== msg.sender_id);
-                      return (
-                        <div key={msg.id} id={`message-${msg.id}`}>
-                          <MessageBubble
-                            message={msg}
-                            isMe={isMe}
-                            showAvatar={showAvatar}
-                            currentUserId={user?.id || ''}
-                            onReply={handleReply}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                            onReport={handleReport}
-                            onReact={handleReact}
-                            onRemoveReaction={handleRemoveReaction}
-                            formatTime={formatMessageTime}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))
-              )}
-              <TypingIndicator names={typingUsers.map((u) => u.display_name)} />
-              <div ref={messagesEndRef} />
-            </div>
+            <MessageList
+              messages={messages}
+              currentUserId={user?.id}
+              hasContactFlag={hasContactFlag}
+              typingUsers={typingUsers}
+              containerRef={messagesContainerRef}
+              endRef={messagesEndRef}
+              dateLocale={dateLocale}
+              onReply={handleReply}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onReport={handleReport}
+              onReact={handleReact}
+              onRemoveReaction={handleRemoveReaction}
+              formatTime={formatMessageTime}
+            />
 
-            {/* Composer */}
             <MessageComposer
               value={input}
               onChange={handleInputChange}
