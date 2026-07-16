@@ -43,7 +43,7 @@ export default function TutorialModal({
   onComplete,
   onDontShowAgain,
 }: TutorialModalProps) {
-  const { t } = useTranslation('tutorial');
+  const { t } = useTranslation(['tutorial', 'common']);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
@@ -137,8 +137,8 @@ export default function TutorialModal({
 
           {started && (
             <>
-              <CarouselPrevious className="left-0 border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white disabled:opacity-30" />
-              <CarouselNext className="right-0 border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white disabled:opacity-30" />
+              <CarouselPrevious label={t('common:actions.previous')} className="left-0 border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white disabled:opacity-30" />
+              <CarouselNext label={t('common:actions.next')} className="right-0 border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white disabled:opacity-30" />
             </>
           )}
         </Carousel>

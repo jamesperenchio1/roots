@@ -121,7 +121,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
-| 7.1 | Some icon-only buttons have English-only `aria-label` / `sr-only` text. | P1 | `carousel.tsx`, `pagination.tsx`, `dialog.tsx`, `sheet.tsx`, `sidebar.tsx`. |
+| 7.1 | ~~Some icon-only buttons have English-only `aria-label` / `sr-only` text.~~ | Done | `CarouselPrevious`/`CarouselNext` and `DialogContent` close button now accept override labels; `TutorialModal` and `CommentReportDialog` pass translated `common:actions` labels. Unused `pagination`/`sheet`/`sidebar` components removed. |
 | 7.2 | Focus management for modals and drawers depends on Radix defaults; no explicit focus traps reviewed. | P2 | shadcn/ui wrappers. |
 | 7.3 | Reduce-motion preference is not explicitly handled. | P2 | `framer-motion` unused; Tailwind `animate-*` classes present. |
 

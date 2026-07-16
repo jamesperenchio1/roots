@@ -67,7 +67,7 @@ export function CommentReportDialog({ commentId, currentUserId, onReported }: Co
           {t('common:comments.report.label')}
         </button>
       </DialogTrigger>
-      <DialogContent className="border-white/10 bg-zinc-900 text-white sm:max-w-md">
+      <DialogContent closeLabel={t('common:actions.close')} className="border-white/10 bg-zinc-900 text-white sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t('common:comments.report.title')}</DialogTitle>
