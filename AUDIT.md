@@ -33,7 +33,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 1.4 | Duplicated realtime subscriptions — `AuthProvider` and individual pages both open Supabase channels. | P1 | `OrderPage`, `SellerDashboardPage` open their own channels. |
 | 1.5 | Long pages mix many concerns, making them hard to test and maintain. | P1 | `SellerDashboardPage` (921 lines), `CreateListingPage` (722 lines), `MessagesPage` (657 lines), `AdminPage` (498 lines). |
 | 1.6 | No shared `ListingCard` component — each page reimplements card markup. | P1 | `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage` |
-| 1.7 | Inconsistent form controls across create/edit listing. | P1 | `CreateListingPage` uses `ProvinceCombobox` + `MapLocationPicker`; `EditListingPage` uses a plain `<select>`. |
+| 1.7 | ~~Inconsistent form controls across create/edit listing.~~ | Done | `EditListingPage` now uses `ProvinceCombobox` to match `CreateListingPage`. |
 | 1.8 | ~~`localStorage` is read synchronously during render in several hooks/pages.~~ | Done | `useOnboarding.ts` already effect-only; `useRecentlyViewed.ts` and `MarketPage.tsx` moved to `useEffect`. |
 | 1.9 | 17 `eslint-disable react-hooks/exhaustive-deps` comments hide stale-closure risks. | P1 | Across `DashboardPage`, `MessagesPage`, `HomePage`, `CommentSection`, etc. |
 | 1.10 | Many installed shadcn/ui components are unused, increasing bundle and maintenance surface. | P2 | `alert-dialog`, `aspect-ratio`, `breadcrumb`, `chart`, `checkbox`, `collapsible`, `context-menu`, `drawer`, `menubar`, `navigation-menu`, `pagination`, `radio-group`, `resizable`, `scroll-area`, `sheet`, `sidebar`, `slider`, `switch`, `table`, `toggle`, `toggle-group`, etc. |
@@ -98,7 +98,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
 | 5.1 | Buyer can buy their own listing. | P1 | `CheckoutPage` |
-| 5.2 | Dirty form navigation in `EditListingPage` only warns on `beforeunload`, not React Router navigation. | P1 | `src/pages/EditListingPage.tsx` |
+| 5.2 | ~~Dirty form navigation in `EditListingPage` only warns on `beforeunload`, not React Router navigation.~~ | Done | Added `useBlocker` guard with confirm modal when `isDirty` is true. |
 | 5.3 | Contact form messages go nowhere (no email backend). | P1 | `ContactPage` |
 | 5.4 | Card payment tab in checkout is non-functional placeholder. | P2 | `CheckoutPage` |
 | 5.5 | No undo actions for destructive operations (withdraw listing, reject offer, etc.). | P2 | Across dashboards. |
@@ -209,7 +209,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 13. Refactor global mutable store to use explicit hydration loading state (quick win).
 14. Remove duplicate realtime subscriptions in pages.
 15. [x] Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
-16. Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
+16. [x] Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
 17. [x] Fix remaining hardcoded page-level UI strings (shadcn component `sr-only` text remains P2).
 18. Add indexes for common query patterns.
 19. Batch profile lookups to fix N+1.

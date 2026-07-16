@@ -42,6 +42,7 @@
     "loadMore": "Load more",
     "back": "Back",
     "next": "Next",
+    "leave": "Leave",
     "submit": "Submit",
     "copy": "Copy",
     "share": "Share",
@@ -60,6 +61,10 @@
     "accept": "Accept",
     "reject": "Reject",
     "counter": "Counter"
+  },
+  "unsavedChanges": {
+    "title": "Unsaved changes",
+    "description": "You have unsaved changes. Are you sure you want to leave this page?"
   },
   "status": {
     "active": "Active",
