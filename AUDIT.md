@@ -183,7 +183,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 11.1 | Live deployment behind Vercel Security Checkpoint (HTTP 403). | P0 | `https://roots-rho-two.vercel.app` returns checkpoint page. |
 | 11.2 | Build succeeds, but lint fails, so CI would reject the release. | P0 | `npm run build` ✓, `npm run lint` ✗. |
 | 11.3 | Sentry source-map upload configured but Sentry logger is not wired. | P2 | `src/lib/logger.ts` |
-| 11.4 | No mobile viewport in Playwright config. | P2 | `playwright.config.ts` |
+| 11.4 | ~~No mobile viewport in Playwright config.~~ | Done | Added `mobile-chrome` project using `devices['Pixel 5']` alongside desktop Chromium. |
 
 ---
 
