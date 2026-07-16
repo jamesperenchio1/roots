@@ -96,14 +96,9 @@ export async function mapListing(r: DbRow, profiles: Record<string, Profile>): P
   const speciesId = r.species_id as string | undefined;
   const cover = photos[0] || (speciesId ? PLANT_IMAGES[speciesId] : '') || FALLBACK_IMG;
   const sellerId = r.seller_id as string;
-  let seller = profiles[sellerId];
-  if (!seller && sellerId) {
-    const fetched = await fetchProfile(sellerId);
-    if (fetched) {
-      profileCache[sellerId] = fetched;
-      seller = fetched;
-    }
-  }
+  // Callers are responsible for hydrating the profile map in batch; no per-row
+  // fetch so we avoid N+1 queries when mapping large result sets.
+  const seller = profiles[sellerId];
   return {
     id: r.id as string,
     plant_id: (r.plant_id as string | undefined) || undefined,

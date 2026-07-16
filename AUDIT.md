@@ -110,7 +110,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
 | 6.1 | `hydratePublicData` loads entire public datasets without pagination. | P1 | `src/lib/api.ts` — profiles, active listings, reviews. |
-| 6.2 | N+1 profile fetching in `mapListing`. | P1 | `src/lib/api.ts:80-94` |
+| 6.2 | ~~N+1 profile fetching in `mapListing`.~~ | Done | Removed per-row `fetchProfile` fallback; callers now pass a hydrated profile map. |
 | 6.3 | Large vendor chunks: `vendor-react` (~512 KB / 169 KB gzip), `vendor-recharts` (~387 KB / 105 KB gzip), `html5-qrcode-scanner` (~335 KB / 99 KB gzip). | P2 | Build output. |
 | 6.4 | No responsive image optimization / srcset; full-size Supabase images are loaded everywhere. | P2 | Build output, `ListingPage`, `BrowsePage`. |
 | 6.5 | `recharts` is loaded even when charts are below the fold. | P2 | `MarketPage`, `ListingPage` |
