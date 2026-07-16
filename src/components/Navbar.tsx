@@ -7,7 +7,7 @@ import NotificationBell from './NotificationBell';
 import LanguageSwitcher from './LanguageSwitcher';
 import RealtimeBanner from './RealtimeBanner';
 import { subscribeConversations, getConversationsVersion, getUnreadMessageCount } from '@/lib/messaging';
-import { BootErrorContext } from '@/App';
+import { BootErrorContext } from '@/lib/bootErrorContext';
 
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();

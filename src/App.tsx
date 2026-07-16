@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense, lazy, createContext } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -137,23 +137,12 @@ function AppContent() {
   );
 }
 
-export const BootErrorContext = createContext(false);
-
 function BootGate({ children }: { children: React.ReactNode }) {
-  const [bootError, setBootError] = useState(false);
   useEffect(() => {
-    let mounted = true;
-    hydratePublicData().catch(() => {
-      if (mounted) setBootError(true);
-    });
-    return () => { mounted = false; };
+    hydratePublicData();
   }, []);
 
-  return (
-    <BootErrorContext.Provider value={bootError}>
-      {children}
-    </BootErrorContext.Provider>
-  );
+  return <>{children}</>;
 }
 
 export default function App() {
