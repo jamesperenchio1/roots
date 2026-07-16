@@ -168,7 +168,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 10.3 | ~~Missing dependency: `dotenv` is used in `scripts/seed-database.cjs` but not declared.~~ | Done | Added `dotenv` to devDependencies. |
 | 10.4 | ~~Missing `@vitest/coverage-v8` means configured coverage reporting is broken.~~ | Done | Added `@vitest/coverage-v8` to devDependencies. |
 | 10.5 | ~~`.env.example` is missing required server/edge variables.~~ | Done | `.env.example` now documents service-role key, SlipOK, EasySlip, Upstash, email, cron, and contact email variables. |
-| 10.6 | `.env.example` documents unused analytics/payment variables. | P2 | `VITE_PLAUSIBLE_DOMAIN`, `VITE_GA_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_OMISE_PUBLIC_KEY`. |
+| 10.6 | ~~`.env.example` documents unused analytics/payment variables.~~ | Done | Removed unused `VITE_PLAUSIBLE_DOMAIN`, `VITE_GA_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, and `VITE_OMISE_PUBLIC_KEY` from `.env.example`. |
 | 10.7 | Heavy use of `as` casts in `src/lib/api.ts` (~629) bypasses generated types. | P1 | `src/lib/api.ts` |
 | 10.8 | Test coverage is low (17 test files for 181 source files). | P2 | Coverage report missing. |
 | 10.9 | ~~`SellerDashboardPage.test.tsx` lives in `src/pages/` instead of a test directory.~~ | Done | Moved to `src/test/SellerDashboardPage.test.tsx` and updated import to `@/pages/SellerDashboardPage`. |
