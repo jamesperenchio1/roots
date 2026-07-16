@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store, QrCode, MessageSquare } from 'lucide-react';
@@ -7,6 +7,7 @@ import NotificationBell from './NotificationBell';
 import LanguageSwitcher from './LanguageSwitcher';
 import RealtimeBanner from './RealtimeBanner';
 import { useUnreadMessageCount } from '@/hooks/queries/useMessages';
+import { BootErrorContext } from '@/lib/bootErrorContext';
 
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();
@@ -17,6 +18,7 @@ export default function Navbar() {
   const [query, setQuery] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
+  const bootError = useContext(BootErrorContext);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -36,6 +38,13 @@ export default function Navbar() {
     <>
     <RealtimeBanner />
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
+      {bootError && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-center">
+          <p className="text-xs text-amber-200">
+            Connection issue detected. Some features may be limited until the server responds.
+          </p>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2 shrink-0">

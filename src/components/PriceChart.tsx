@@ -87,6 +87,17 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
 
   const fmtPrice = (n: number) => `${Math.round(n).toLocaleString()} ${t('common:currency')}`;
 
+  const yTickFmt = (v: number) =>
+    v >= 1000 ? `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k` : `${Math.round(v)}`;
+
+  const prices = filteredData.map(d => d.price);
+  const priceMin = prices.length > 0 ? Math.min(...prices) : 0;
+  const priceMax = prices.length > 0 ? Math.max(...prices) : 0;
+  const yDomain: [number | string, number | string] =
+    priceMin === priceMax && prices.length > 0
+      ? [Math.max(0, priceMin * 0.8), priceMax * 1.2 || priceMax + 100]
+      : ['auto', 'auto'];
+
   return (
     <div className="relative">
       <div className="flex items-center gap-1 mb-4">
@@ -116,7 +127,7 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => v.slice(5)} />
-              <YAxis yAxisId="price" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <YAxis yAxisId="price" domain={yDomain} tick={{ fontSize: 11, fill: '#666' }} tickFormatter={yTickFmt} />
               <YAxis yAxisId="vol" orientation="right" tick={{ fontSize: 11, fill: '#666' }} />
               <Tooltip content={<CustomTooltip />} />
               <Area yAxisId="price" type="monotone" dataKey="price" stroke={color} fill="url(#priceGradient)" strokeWidth={2} dot={false} />
@@ -136,7 +147,7 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => v.slice(5)} />
-              <YAxis tick={{ fontSize: 11, fill: '#666' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <YAxis domain={yDomain} tick={{ fontSize: 11, fill: '#666' }} tickFormatter={yTickFmt} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="price" stroke={color} fill={showArea ? 'url(#priceGradient2)' : 'transparent'} strokeWidth={2} dot={false} />
               {compare.start && <ReferenceLine x={compare.start} stroke="#facc15" strokeDasharray="4 4" />}

@@ -1,5 +1,4 @@
 import { describe, test, expect, vi } from 'vitest';
-import { supabase } from './supabase';
 
 vi.mock('./supabase', () => ({
   supabase: {
