@@ -114,7 +114,8 @@ export default function SellerDashboardPage() {
 
   const handleMarkSold = async (id: string) => {
     try {
-      await markListingSold(id);
+      if (!user) return;
+      await markListingSold(id, user.id);
       toast.success(t('dashboard:seller.markedSold'));
       setMarkSoldConfirm(null);
     } catch (err) {

@@ -939,6 +939,16 @@ function canTransition(current: string, next: string): boolean {
   return VALID_STATUS_TRANSITIONS[current]?.includes(next) ?? false;
 }
 
+const ALLOWED_ORDER_UPDATE_FIELDS = new Set([
+  'status',
+  'shipped_at',
+  'delivered_at',
+  'completed_at',
+  'courier',
+  'tracking_number',
+  'dispute_reason',
+]);
+
 export async function updateOrderStatus(id: string, patch: Partial<Record<string, unknown>>): Promise<void> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
@@ -978,7 +988,14 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
     }
   }
 
-  const { error } = await supabase.from('transactions').update(patch).eq('id', id);
+  const allowedPatch = Object.fromEntries(
+    Object.entries(patch).filter(([key]) => ALLOWED_ORDER_UPDATE_FIELDS.has(key))
+  );
+  if (Object.keys(allowedPatch).length === 0) {
+    throw new Error('No valid order fields provided');
+  }
+
+  const { error } = await supabase.from('transactions').update(allowedPatch).eq('id', id);
   if (error) throw error;
 
   const localTx = TRANSACTIONS.find((t) => t.id === id);
@@ -1072,7 +1089,21 @@ export async function withdrawListing(id: string): Promise<void> {
   }
 }
 
-export async function markListingSold(id: string, buyerId?: string): Promise<void> {
+export async function markListingSold(id: string, sellerId: string, buyerId?: string): Promise<void> {
+  const { data: listing, error: listingError } = await supabase
+    .from('listings')
+    .select('id, seller_id, status, plant_id, price_thb')
+    .eq('id', id)
+    .single();
+  if (listingError || !listing) throw listingError || new Error('Listing not found');
+
+  const callerProfile = await fetchProfile(sellerId);
+  const isOwner = listing.seller_id === sellerId;
+  const isAdmin = !!callerProfile?.is_admin;
+  if (!isOwner && !isAdmin) {
+    throw new Error(i18n.t('common:errors.unauthorized'));
+  }
+
   const { error } = await supabase.from('listings').update({ status: 'sold' }).eq('id', id);
   if (error) throw error;
   const local = LISTINGS.find(l => l.id === id);
@@ -1082,18 +1113,18 @@ export async function markListingSold(id: string, buyerId?: string): Promise<voi
     invalidateUserQueries(local.seller_id);
   }
   // If a buyer is provided, record a manual transfer so provenance stays intact.
-  if (buyerId && local) {
+  if (buyerId && listing) {
     const { data: plant, error: plantError } = await supabase
       .from('plants')
       .select('id')
-      .eq('id', local.plant_id || '')
+      .eq('id', (listing.plant_id as string | null) || '')
       .single();
     if (!plantError && plant) {
       await supabase.from('transfers').insert({
         plant_id: plant.id,
-        from_user_id: local.seller_id,
+        from_user_id: listing.seller_id,
         to_user_id: buyerId,
-        sale_price_thb: local.price_thb,
+        sale_price_thb: listing.price_thb,
         transferred_at: new Date().toISOString(),
       }).then(() => {});
       await supabase.from('plants').update({ current_owner_id: buyerId }).eq('id', plant.id).then(() => {});
