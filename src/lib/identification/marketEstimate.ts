@@ -1,9 +1,18 @@
 import type { CombinedResult } from './types';
-import type { MarketEstimate } from '@/types';
-import { getActiveListings, getSpeciesPriceStats, getSpeciesById, getPriceSnapshotsForSpecies } from '@/data/mockData';
+import type { Listing, MarketEstimate, PriceSnapshot } from '@/types';
+import { getSpeciesById } from '@/data/mockData';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
+import { getPriceSnapshotsForSpeciesFromData, getSpeciesPriceStatsFromData } from '@/lib/api';
 
-export function buildMarketEstimate(result: CombinedResult): Omit<MarketEstimate, 'id' | 'result_id' | 'created_at'> {
+export interface MarketEstimateData {
+  listings: Listing[];
+  priceSnapshots: PriceSnapshot[];
+}
+
+export function buildMarketEstimate(
+  result: CombinedResult,
+  marketData: MarketEstimateData
+): Omit<MarketEstimate, 'id' | 'result_id' | 'created_at'> {
   const species = getSpeciesById(result.scientific_name) || ALL_SPECIES.find((s) => s.scientific_name.toLowerCase() === result.scientific_name.toLowerCase());
   const speciesId = species?.id;
 
@@ -23,11 +32,13 @@ export function buildMarketEstimate(result: CombinedResult): Omit<MarketEstimate
     };
   }
 
-  const active = getActiveListings({ speciesId });
-  const stats30 = getSpeciesPriceStats(speciesId, 30);
-  const stats90 = getSpeciesPriceStats(speciesId, 90);
-  const snapshots90 = getPriceSnapshotsForSpecies(speciesId, undefined, 90);
-  const snapshots180 = getPriceSnapshotsForSpecies(speciesId, undefined, 180);
+  const active = marketData.listings.filter(
+    (l) => l.status === 'active' && l.species?.id === speciesId
+  );
+  const stats30 = getSpeciesPriceStatsFromData(marketData.priceSnapshots, marketData.listings, speciesId, 30);
+  const stats90 = getSpeciesPriceStatsFromData(marketData.priceSnapshots, marketData.listings, speciesId, 90);
+  const snapshots90 = getPriceSnapshotsForSpeciesFromData(marketData.priceSnapshots, speciesId, undefined, 90);
+  const snapshots180 = getPriceSnapshotsForSpeciesFromData(marketData.priceSnapshots, speciesId, undefined, 180);
 
   const avgAsking = active.length > 0
     ? Math.round(active.reduce((s, l) => s + l.price_thb, 0) / active.length)

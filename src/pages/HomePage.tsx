@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
-import { PLANT_IMAGES, getListingById } from '@/data/mockData';
+import { PLANT_IMAGES } from '@/data/mockData';
 import { useListings } from '@/hooks/queries/useListings';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
@@ -19,7 +19,9 @@ export default function HomePage() {
   const { data: market } = useMarketOverview();
   const { getRecentlyViewed } = useRecentlyViewed();
   const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
-  const recentlyViewed = recentlyViewedIds.map(id => getListingById(id)).filter(Boolean);
+  const recentlyViewed = recentlyViewedIds
+    .map((id) => (listingsData ?? []).find((l) => l.id === id))
+    .filter(Boolean);
 
   // Price history for the most-listed species, derived from real snapshots only.
   const featuredSpeciesId = market?.trending_up[0]?.species?.id ?? market?.most_traded[0]?.species?.id;

@@ -39,7 +39,7 @@ import {
   type ConversationWithDetails,
 } from '@/lib/messaging';
 import { useDraftMessage } from '@/hooks/useDraftMessage';
-import { getListingById } from '@/data/mockData';
+import { useListings } from '@/hooks/queries/useListings';
 import type { Message, UserPresence } from '@/types';
 import ConversationList from '@/components/messaging/ConversationList';
 import MessageBubble from '@/components/messaging/MessageBubble';
@@ -73,6 +73,7 @@ function getListingIdFromThreadId(threadId: string): string | undefined {
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const { data: allListings = [] } = useListings();
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation(['messages', 'common']);
@@ -533,7 +534,7 @@ export default function MessagesPage() {
                     to={`/listing/${getListingIdFromThreadId(threadId)}`}
                     className="text-xs text-emerald-400 hover:underline truncate block"
                   >
-                    {t('messages:reLabel', { name: getListingById(getListingIdFromThreadId(threadId)!)?.species?.common_name_en || t('common:unknown') })}
+                    {t('messages:reLabel', { name: allListings.find((l) => l.id === getListingIdFromThreadId(threadId)!)?.species?.common_name_en || t('common:unknown') })}
                   </Link>
                 )}
               </div>

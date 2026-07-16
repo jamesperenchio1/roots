@@ -4,7 +4,9 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar,
   Brush, ReferenceLine, ReferenceArea
 } from 'recharts';
-import { getPriceSnapshotsForSpecies, getActiveListings } from '@/data/mockData';
+import { useListings } from '@/hooks/queries/useListings';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
+import { computeSpeciesPriceStats } from '@/hooks/queries/useSpeciesPriceStats';
 
 interface PricePoint {
   date: string;
@@ -221,36 +223,15 @@ interface StatsPanelProps {
   fallbackPrice?: number;
 }
 
-function calculateStats(speciesId: string, sizeCategory: string | undefined, days: number) {
-  const data = getPriceSnapshotsForSpecies(speciesId, sizeCategory, days);
-  if (data.length === 0) {
-    const live = getActiveListings({ speciesId, size: sizeCategory });
-    if (live.length === 0) return null;
-    const prices = live.map(l => l.price_thb).sort((a, b) => a - b);
-    const mid = Math.floor(prices.length / 2);
-    const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
-    const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
-    return { median, mean, min: prices[0], max: prices[prices.length - 1], totalSales: 0 };
-  }
-  const prices = data.map(d => d.median_price_thb);
-  const sorted = [...prices].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  const totalSales = data.reduce((s, d) => s + d.sale_count, 0);
-  return { median, mean, min, max, totalSales };
-}
-
 export function StatsPanel({ speciesId, sizeCategory, fallbackPrice }: StatsPanelProps) {
   const { t } = useTranslation(['marketplace', 'common']);
-  const stats30 = calculateStats(speciesId, sizeCategory, 30);
-  const stats90 = calculateStats(speciesId, sizeCategory, 90);
+  const { data: allTimeData = [] } = usePriceSnapshots(speciesId, sizeCategory, 180);
+  const { data: listings = [] } = useListings();
+  const stats30 = computeSpeciesPriceStats(allTimeData, listings, speciesId, 30);
+  const stats90 = computeSpeciesPriceStats(allTimeData, listings, speciesId, 90);
   const trendPct = stats30 && stats90
     ? ((stats30.median - stats90.median) / stats90.median * 100)
     : 0;
-  const allTimeData = getPriceSnapshotsForSpecies(speciesId, sizeCategory, 180);
   const allPrices = allTimeData.map(d => d.median_price_thb);
   const lowest = allPrices.length > 0 ? Math.min(...allPrices) : (fallbackPrice ?? 0);
   const highest = allPrices.length > 0 ? Math.max(...allPrices) : (fallbackPrice ?? 0);

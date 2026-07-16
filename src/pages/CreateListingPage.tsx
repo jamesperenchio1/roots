@@ -8,7 +8,7 @@ import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import MapLocationPicker from '@/components/MapLocationPicker';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
-import { getSpeciesPriceStats } from '@/data/mockData';
+import { useSpeciesPriceStats } from '@/hooks/queries/useSpeciesPriceStats';
 import { searchSpecies, type SpeciesEntry as SpeciesDbEntry } from '@/data/speciesDatabase';
 import { getLatestResult } from '@/lib/identification/api-identification';
 import { useAuth } from '@/hooks/useAuth';
@@ -157,9 +157,7 @@ export default function CreateListingPage() {
     setPhotos(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  const marketStats = species && price
-    ? getSpeciesPriceStats(species.id, 30)
-    : null;
+  const marketStats = useSpeciesPriceStats(species?.id, 30);
   const pricePosition = marketStats && price
     ? ((parseInt(price) - marketStats.median) / marketStats.median * 100)
     : 0;

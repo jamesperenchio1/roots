@@ -3,7 +3,8 @@
 // fallback initial data for a handful of un-migrated getters.
 import { supabase, PHOTO_BUCKET } from './supabase';
 import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, WATCHLIST, getListingByPlantId, getListingById, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
-import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies } from '@/types';
+import { ALL_SPECIES } from '@/data/speciesDatabase';
+import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies, DashboardStats } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 import { queryClient } from './queryClient';
@@ -375,7 +376,7 @@ export async function fetchTransactionById(id: string): Promise<Transaction | nu
   }
 }
 
-function getPriceSnapshotsForSpeciesFromData(
+export function getPriceSnapshotsForSpeciesFromData(
   snapshots: PriceSnapshot[],
   speciesId: string,
   sizeCategory?: string,
@@ -392,7 +393,7 @@ function getPriceSnapshotsForSpeciesFromData(
     .sort((a, b) => new Date(a.snapshot_date).getTime() - new Date(b.snapshot_date).getTime());
 }
 
-function getSpeciesPriceStatsFromData(
+export function getSpeciesPriceStatsFromData(
   snapshots: PriceSnapshot[],
   listings: Listing[],
   speciesId: string,
@@ -417,6 +418,16 @@ function getSpeciesPriceStatsFromData(
   const max = Math.max(...prices);
   const totalSales = data.reduce((s, d) => s + d.sale_count, 0);
   return { median, mean, min, max, totalSales };
+}
+
+export function getMarketSpeciesFromData(data: PublicData | undefined): Species[] {
+  const ids = new Set<string>();
+  ALL_SPECIES.forEach((s) => ids.add(s.id));
+  (data?.listings ?? []).forEach((l) => { if (l.species?.id) ids.add(l.species.id); });
+  (data?.transactions ?? []).forEach((t) => { if (t.listing?.species?.id) ids.add(t.listing.species.id); });
+  return Array.from(ids)
+    .map((id) => getSpeciesById(id))
+    .filter((s): s is Species => !!s);
 }
 
 export function getMarketOverviewFromData(data: PublicData): MarketOverview {
@@ -483,6 +494,54 @@ export function getMarketOverviewFromData(data: PublicData): MarketOverview {
     hot_right_now,
     cold,
   };
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  try {
+    const [profilesCount, activeListingsCount, openDisputesCount, transactionsRes] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+      supabase
+        .from('transactions')
+        .select('created_at, sale_price_thb, status')
+        .order('created_at', { ascending: false })
+        .limit(10000),
+    ]);
+
+    const txs = (transactionsRes.data || []) as Array<{ created_at: string; sale_price_thb: number | null; status: string }>;
+    const gmvSince = (ms: number) =>
+      txs
+        .filter((t) => now - new Date(t.created_at).getTime() <= ms)
+        .reduce((sum, t) => sum + (t.sale_price_thb || 0), 0);
+    const completed = txs.filter((t) => t.status === 'completed').length;
+    const disputed = txs.filter((t) => t.status === 'disputed').length;
+
+    return {
+      gmv_today: gmvSince(DAY),
+      gmv_week: gmvSince(7 * DAY),
+      gmv_month: gmvSince(30 * DAY),
+      active_listings: activeListingsCount.count ?? 0,
+      dispute_rate: completed > 0 ? Math.round((disputed / completed) * 1000) / 10 : 0,
+      user_count: profilesCount.count ?? 0,
+      pending_disputes: openDisputesCount.count ?? 0,
+      pending_payouts: txs.filter((t) => t.status === 'delivered').length,
+    };
+  } catch (e) {
+    logger.warn('fetchDashboardStats failed', { error: e instanceof Error ? e.message : String(e) });
+    return {
+      gmv_today: 0,
+      gmv_week: 0,
+      gmv_month: 0,
+      active_listings: 0,
+      dispute_rate: 0,
+      user_count: 0,
+      pending_disputes: 0,
+      pending_payouts: 0,
+    };
+  }
 }
 
 export async function fetchUserNotifications(userId: string): Promise<Notification[]> {
@@ -1152,12 +1211,50 @@ export async function verifyQRSignature(plantId: string, signature: string): Pro
   }
 }
 
+export async function fetchListingById(id: string): Promise<Listing | null> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const profiles = await fetchProfileMap();
+    profileCache = { ...profileCache, ...profiles };
+    return await mapListing(data, profiles);
+  } catch (e) {
+    logger.warn('fetchListingById failed', { error: e instanceof Error ? e.message : String(e) });
+    return null;
+  }
+}
+
+export async function fetchListingByPlantId(plantId: string): Promise<Listing | null> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('plant_id', plantId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const profiles = await fetchProfileMap();
+    profileCache = { ...profileCache, ...profiles };
+    return await mapListing(data, profiles);
+  } catch (e) {
+    logger.warn('fetchListingByPlantId failed', { error: e instanceof Error ? e.message : String(e) });
+    return null;
+  }
+}
+
 export async function fetchProvenance(
   plantId: string,
   signature?: string | null
 ): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[]; plant: Plant | null; scans: QRScan[]; signatureValid: boolean | null }> {
   const isUuid = isValidUuid(plantId);
-  const listing = getListingByPlantId(plantId) || null;
+  const listing = (await fetchListingByPlantId(plantId)) || getListingByPlantId(plantId) || null;
   const plant = isUuid ? await fetchPlant(plantId) : null;
 
   let signatureValid: boolean | null = null;

@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { Listing } from '@/types';
 import { createOffer } from '@/lib/api';
-import { getPriceSnapshotsForSpecies, getSpeciesPriceStats, getProvenanceChain } from '@/data/mockData';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
+import { useSpeciesPriceStats } from '@/hooks/queries/useSpeciesPriceStats';
+import { useProvenanceSummary } from '@/hooks/queries/useProvenance';
 import { PriceChart } from '@/components/PriceChart';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -25,15 +27,17 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const speciesId = listing.species?.id || listing.plant_id?.replace('p-', 'sp-') || '';
+  const { data: snapshots = [] } = usePriceSnapshots(speciesId || undefined, undefined, 90);
+  const stats = useSpeciesPriceStats(speciesId || undefined, 30);
+  const { data: provenance = null } = useProvenanceSummary(listing.plant_id);
+
   if (!isOpen) return null;
 
-  const speciesId = listing.species?.id || listing.plant_id?.replace('p-', 'sp-') || '';
-  const chartData = getPriceSnapshotsForSpecies(speciesId, undefined, 90).map(ps => ({
+  const chartData = snapshots.map(ps => ({
     date: ps.snapshot_date,
     price: ps.median_price_thb,
   }));
-  const stats = getSpeciesPriceStats(speciesId, 30);
-  const provenance = listing.plant_id ? getProvenanceChain(listing.plant_id) : null;
   const listedDate = listing.created_at
     ? format(new Date(listing.created_at), 'dd/MM/yyyy')
     : null;

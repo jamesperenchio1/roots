@@ -1,18 +1,12 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { publicKeys } from '@/lib/queryKeys';
-import { fetchPublicData, type PublicData } from '@/lib/api';
+import { fetchListingById, fetchPublicData, type PublicData } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
 import type { Listing } from '@/types';
 
 function selectListings(data: PublicData): Listing[] {
   return data.listings;
-}
-
-function selectListing(id: string | undefined) {
-  return (data: PublicData): Listing | undefined => {
-    if (!id) return undefined;
-    return data.listings.find((l) => l.id === id);
-  };
 }
 
 export function useListings() {
@@ -27,13 +21,17 @@ export function useListings() {
 }
 
 export function useListing(id: string | undefined) {
-  return useQuery({
-    queryKey: publicKeys.all(),
-    queryFn: fetchPublicData,
-    select: selectListing(id),
+  return useQuery<Listing | null>({
+    queryKey: publicKeys.listing(id),
+    queryFn: () => (id ? fetchListingById(id) : null),
+    initialData: () => {
+      if (!id) return null;
+      const cached = queryClient.getQueryData<PublicData>(publicKeys.all());
+      return cached?.listings.find((l) => l.id === id) ?? null;
+    },
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     retry: 1,
   });
 }

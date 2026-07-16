@@ -9,10 +9,10 @@ import {
   Copy, Printer, Archive, Rocket, ScanSearch
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getSpeciesPriceStats } from '@/data/mockData';
 import {
   getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived,
-  getSignedSlipUrl, withdrawListing, markListingSold, markOrderDelivered, updateProfile
+  getSignedSlipUrl, withdrawListing, markListingSold, markOrderDelivered, updateProfile,
+  getSpeciesPriceStatsFromData
 } from '@/lib/api';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import OfferCard from '@/components/OfferCard';
@@ -26,6 +26,7 @@ import type { Listing, Transaction, Profile } from '@/types';
 import { useSellerListings } from '@/hooks/queries/useSellerListings';
 import { useUserTransactions } from '@/hooks/queries/useUserData';
 import { useOffers } from '@/hooks/queries/useUserData';
+import { usePublicData } from '@/hooks/queries/usePublicData';
 
 interface TransactionPayoutItem {
   orderId: string;
@@ -253,6 +254,7 @@ function ConfirmModal({ title, description, onCancel, onConfirm, confirmText }: 
 }
 
 function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplicate, t }: { listings: Listing[]; sales: Transaction[]; onWithdraw: (id: string) => void; onMarkSold: (id: string) => void; onDuplicate: () => void; t: TFunction }) {
+  const { data: publicData } = usePublicData();
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -273,7 +275,9 @@ function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplicate, t }
       <div className="grid gap-3">
         {listings.map((l) => {
           const speciesData = ALL_SPECIES.find((s) => l.plant_id?.includes(s.id));
-          const price30d = getSpeciesPriceStats(l.plant_id?.replace('p-', 'sp-') || '', 30);
+          const price30d = publicData
+            ? getSpeciesPriceStatsFromData(publicData.priceSnapshots, publicData.listings, l.plant_id?.replace('p-', 'sp-') || '', 30)
+            : null;
           const vsMarket = price30d ? ((l.price_thb - price30d.median) / price30d.median * 100).toFixed(0) : '0';
           const sale = sales.find((s) => s.listing_id === l.id);
           const soldTo = sale?.buyer?.display_name;

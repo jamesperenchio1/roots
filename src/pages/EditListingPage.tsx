@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
-import { getListingById, getSpeciesPriceStats } from '@/data/mockData';
+import { useListing } from '@/hooks/queries/useListings';
+import { useSpeciesPriceStats } from '@/hooks/queries/useSpeciesPriceStats';
 import { useAuth } from '@/hooks/useAuth';
 import { updateListing, uploadListingPhoto } from '@/lib/api';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
@@ -50,6 +51,7 @@ export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: listing, isPending: listingLoading } = useListing(id);
 
   const [pageLoading, setPageLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -79,7 +81,7 @@ export default function EditListingPage() {
       setPageLoading(false);
       return;
     }
-    const listing = getListingById(id);
+    if (listingLoading) return;
     if (!listing || !user || listing.seller_id !== user.id) {
       setNotFound(true);
       setPageLoading(false);
@@ -109,7 +111,7 @@ export default function EditListingPage() {
       }))
     );
     setPageLoading(false);
-  }, [id, user]);
+  }, [id, user, listing, listingLoading]);
 
   // Unsaved changes warning
   useEffect(() => {
@@ -216,7 +218,7 @@ export default function EditListingPage() {
     }
   };
 
-  const marketStats = species && price ? getSpeciesPriceStats(species.id, 30) : null;
+  const marketStats = useSpeciesPriceStats(species?.id, 30);
   const pricePosition =
     marketStats && price ? ((parseInt(price) - marketStats.median) / marketStats.median) * 100 : 0;
 

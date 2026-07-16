@@ -11,7 +11,7 @@ import { fetchProvenance, recordQRScan } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
 import { PriceChart } from '@/components/PriceChart';
-import { getPriceSnapshotsForSpecies } from '@/data/mockData';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { useAuth } from '@/hooks/useAuth';
 import type { Listing, Transfer, Plant } from '@/types';
 
@@ -137,7 +137,7 @@ export default function PlantQRPage() {
     return () => { active = false; };
   }, [plantId, signature, user?.id, t]);
 
-  const priceData = getPriceSnapshotsForSpecies(speciesId, undefined, 90);
+  const { data: priceData = [] } = usePriceSnapshots(speciesId || undefined, undefined, 90);
   const totalSalesValue = events.reduce((sum, e) => sum + (e.price || 0), 0);
   const totalOwners = new Set(events.map(e => e.to).filter(Boolean)).size || 1;
   const originDate = events[0]?.date || (listing?.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10));

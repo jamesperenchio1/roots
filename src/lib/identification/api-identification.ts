@@ -12,6 +12,9 @@ import { mergeProviderResults, decideNextEvidence } from './evidence';
 import { getDefaultProviders } from './registry';
 import { buildMarketEstimate } from './marketEstimate';
 import { getSpeciesById } from '@/data/mockData';
+import { fetchPublicData } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { publicKeys } from '@/lib/queryKeys';
 
 export async function createIdentificationRequest(input: {
   userId?: string;
@@ -188,7 +191,12 @@ export async function saveIdentificationResult(
     );
   }
 
-  const estimate = buildMarketEstimate(combined);
+  const marketData = await queryClient.fetchQuery({
+    queryKey: publicKeys.all(),
+    queryFn: fetchPublicData,
+    staleTime: 5 * 60 * 1000,
+  });
+  const estimate = buildMarketEstimate(combined, marketData);
   const { data: estimateRow } = await supabase
     .from('market_estimates')
     .insert({
