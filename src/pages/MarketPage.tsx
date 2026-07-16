@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
-import { getProvinceLabel } from '@/lib/provinces';
+import { ListingCard } from '@/components/ListingCard';
 import { getSpeciesById } from '@/data/mockData';
 import { getMarketSpeciesFromData, type PublicData } from '@/lib/api';
 import { PriceChart, Sparkline } from '@/components/PriceChart';
@@ -131,7 +131,7 @@ function scoreSpeciesFromData(data: PublicData, s: Species) {
 }
 
 export default function MarketPage() {
-  const { t, i18n } = useTranslation(['marketplace', 'common']);
+  const { t } = useTranslation(['marketplace', 'common']);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -287,26 +287,7 @@ export default function MarketPage() {
           {speciesListings.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {speciesListings.map(l => (
-                <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all group">
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-zinc-800 mb-3">
-                    <img
-                      src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'}
-                      alt={l.species?.common_name_en || t('marketplace:listingAlt')}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
-                    <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{l.size_category}</span>
-                  </div>
-                  <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{l.description}</p>
-                  <div className="flex items-center justify-between text-xs text-zinc-600">
-                    <span>{l.seller?.display_name}</span>
-                    <span>{getProvinceLabel(l.pickup_province, i18n.language)}</span>
-                  </div>
-                </Link>
+                <ListingCard key={l.id} listing={l} layout="market" />
               ))}
             </div>
           ) : (

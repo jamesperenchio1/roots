@@ -32,7 +32,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 1.3 | `BrowsePage` fakes loading with a 400 ms `setTimeout` regardless of actual hydration state. | P1 | `src/pages/BrowsePage.tsx` |
 | 1.4 | Duplicated realtime subscriptions — `AuthProvider` and individual pages both open Supabase channels. | P1 | `OrderPage`, `SellerDashboardPage` open their own channels. |
 | 1.5 | Long pages mix many concerns, making them hard to test and maintain. | P1 | `SellerDashboardPage` (921 lines), `CreateListingPage` (722 lines), `MessagesPage` (657 lines), `AdminPage` (498 lines). |
-| 1.6 | No shared `ListingCard` component — each page reimplements card markup. | P1 | `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage` |
+| 1.6 | ~~No shared `ListingCard` component — each page reimplements card markup.~~ | Done | Extracted `src/components/ListingCard.tsx` and replaced inline cards on `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage`. |
 | 1.7 | ~~Inconsistent form controls across create/edit listing.~~ | Done | `EditListingPage` now uses `ProvinceCombobox` to match `CreateListingPage`. |
 | 1.8 | ~~`localStorage` is read synchronously during render in several hooks/pages.~~ | Done | `useOnboarding.ts` already effect-only; `useRecentlyViewed.ts` and `MarketPage.tsx` moved to `useEffect`. |
 | 1.9 | 17 `eslint-disable react-hooks/exhaustive-deps` comments hide stale-closure risks. | P1 | Across `DashboardPage`, `MessagesPage`, `HomePage`, `CommentSection`, etc. |
@@ -89,7 +89,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 |---|---|---|---|
 | 4.1 | PageLoader is a plain spinner with low contrast and no brand personality. | P2 | `src/App.tsx` |
 | 4.2 | Empty states, error states, and skeletons are not visually consistent. | P2 | Spread across pages. |
-| 4.3 | Card markups differ across pages, creating inconsistent hover/focus/loading behavior. | P2 | No shared `ListingCard`. |
+| 4.3 | ~~Card markups differ across pages, creating inconsistent hover/focus/loading behavior.~~ | Done | Shared `ListingCard` unifies card markup and lazy-loading behaviour. |
 
 ---
 
@@ -217,7 +217,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 ### P2 — Polish
 
-21. Create shared `ListingCard`, `EmptyState`, `Skeleton` patterns.
+21. [x] Create shared `ListingCard` (with presets + display toggles).
 22. Lazy-load charts below the fold.
 23. Add responsive image transforms.
 24. Expand test coverage.

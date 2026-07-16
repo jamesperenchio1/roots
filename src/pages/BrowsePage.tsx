@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { PLANT_IMAGES } from '@/data/mockData';
 import { useListings } from '@/hooks/queries/useListings';
 
 function seededRandom(seed: string, index: number): number {
@@ -10,12 +9,9 @@ function seededRandom(seed: string, index: number): number {
   for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   return Math.abs(Math.sin(hash + index) * 10000 % 1);
 }
-import { Sparkline } from '@/components/PriceChart';
 import { usePagination } from '@/hooks/usePagination';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
-import { LazyImage } from '@/components/LazyImage';
-import { getProvinceLabel } from '@/lib/provinces';
-import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
+import { ListingCard } from '@/components/ListingCard';
 import type { Category, SizeCategory } from '@/types';
 
 const CATEGORIES: { value: Category | ''; labelKey: string }[] = [
@@ -42,7 +38,7 @@ const PROVINCES = ['', 'Bangkok', 'Chiang Mai', 'Chiang Rai', 'Phuket', 'Pattaya
 const PAGE_SIZE = 12;
 
 export default function BrowsePage() {
-  const { t, i18n } = useTranslation(['marketplace', 'common']);
+  const { t } = useTranslation(['marketplace', 'common']);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [category, setCategory] = useState<Category | ''>('');
   const [size, setSize] = useState<SizeCategory | ''>('');
@@ -191,48 +187,12 @@ export default function BrowsePage() {
             ))
           ) : (
             itemsToRender.map(listing => (
-              <Link
-                to={`/listing/${listing.id}`}
+              <ListingCard
                 key={listing.id}
-                className="group block break-inside-avoid bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all duration-300"
-              >
-                <LazyImage
-                  src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.species?.id || ''] || '/images/plants/monstera-thai.jpg'}
-                  srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
-                  sizes={CARD_SIZES}
-                  alt={listing.species?.scientific_name || t('marketplace:browse.listingAlt')}
-                  aspectRatio="3/4"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs text-zinc-500 mb-0.5 truncate">{listing.species?.scientific_name}</p>
-                      <p className="text-sm font-medium truncate">{listing.species?.common_name_en || listing.species?.common_name_th}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-emerald-400 font-semibold text-sm">
-                      {listing.price_thb.toLocaleString()} {t('common:currency')}
-                    </span>
-                    <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{listing.size_category}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Sparkline
-                      data={Array.from({ length: 20 }, (_, i) => seededRandom(listing.id, i) * 50 + listing.price_thb * 0.8)}
-                      width={50}
-                      height={16}
-                      color="#4ade80"
-                    />
-                    <span className="text-xs text-zinc-600">{listing.seller?.display_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2 text-xs text-zinc-600">
-                    <span>{listing.delivery_options?.includes('ship') && t('marketplace:listing.shipping')}</span>
-                    <span>{listing.delivery_options?.includes('pickup') && t('marketplace:listing.pickup')}</span>
-                    <span>{getProvinceLabel(listing.pickup_province, i18n.language)}</span>
-                  </div>
-                </div>
-              </Link>
+                listing={listing}
+                layout="browse"
+                sparklineData={Array.from({ length: 20 }, (_, i) => seededRandom(listing.id, i) * 50 + listing.price_thb * 0.8)}
+              />
             ))
           )}
         </div>

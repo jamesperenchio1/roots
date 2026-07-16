@@ -8,13 +8,13 @@ import { usePriceAlerts } from '@/hooks/queries/useUserData';
 import { normalizeSpeciesName } from '@/data/speciesDatabase';
 import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
-import { Sparkline } from '@/components/PriceChart';
+import { ListingCard } from '@/components/ListingCard';
 import { useState, useEffect, useMemo } from 'react';
 import type { SizeCategory } from '@/types';
 import PlantCareCard from '@/components/PlantCareCard';
 import { CommentSection } from '@/components/comments/CommentSection';
 import { useAuth } from '@/hooks/useAuth';
-import { getProvinceLabel } from '@/lib/provinces';
+
 import { createPriceAlert, deletePriceAlert } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { userKeys } from '@/lib/queryKeys';
@@ -43,7 +43,7 @@ interface WikiData {
 }
 
 export default function SpeciesPage() {
-  const { t, i18n } = useTranslation(['marketplace', 'common']);
+  const { t } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -476,27 +476,12 @@ export default function SpeciesPage() {
           {speciesListings.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {speciesListings.map(l => (
-                <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all group">
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-zinc-800 mb-3">
-                    <img
-                      src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'}
-                      alt={l.species?.common_name_en || t('marketplace:listingAlt')}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
-                    <span className="text-xs text-zinc-600 bg-zinc-800/50 px-2 py-0.5 rounded">{l.size_category}</span>
-                  </div>
-                  <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{l.description}</p>
-                  <div className="flex items-center justify-between text-xs text-zinc-600">
-                    <span>{l.seller?.display_name}</span>
-                    <span>{getProvinceLabel(l.pickup_province, i18n.language)}</span>
-                  </div>
-                  <Sparkline data={Array.from({ length: 20 }, (_, i) => seededRandom(l.id, i) * 50 + l.price_thb * 0.8)} width={200} height={30} />
-                </Link>
+                <ListingCard
+                  key={l.id}
+                  listing={l}
+                  layout="species"
+                  sparklineData={Array.from({ length: 20 }, (_, i) => seededRandom(l.id, i) * 50 + l.price_thb * 0.8)}
+                />
               ))}
             </div>
           ) : (

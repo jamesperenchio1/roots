@@ -2,13 +2,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
-import { PLANT_IMAGES } from '@/data/mockData';
 import { useListings } from '@/hooks/queries/useListings';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { PriceChart } from '@/components/PriceChart';
-import { LazyImage } from '@/components/LazyImage';
-import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
+import { ListingCard } from '@/components/ListingCard';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 export default function HomePage() {
@@ -88,26 +86,16 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {recentlyViewed.map(listing => (
-                <Link to={`/listing/${listing!.id}`} key={listing!.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
-                  <LazyImage
-                    src={listing!.photos?.[0]?.storage_path || PLANT_IMAGES[listing!.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                    srcSet={getSrcSet(listing!.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
-                    sizes={CARD_SIZES}
-                    alt={listing!.species?.scientific_name || t('marketplace:listingAlt')}
-                    aspectRatio="3/4"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="p-4">
-                    <div className="flex items-center gap-1 text-xs text-zinc-500 mb-1">
+                <ListingCard
+                  key={listing!.id}
+                  listing={listing!}
+                  layout="minimal"
+                  topSlot={(
+                    <div className="flex items-center gap-1 text-xs text-zinc-500">
                       <Clock className="w-3 h-3" /> {t('home:sections.recentlyViewed')}
                     </div>
-                    <p className="font-medium text-white mb-1 truncate">{listing!.species?.common_name_en || listing!.species?.common_name_th}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-emerald-400 font-semibold">{listing!.price_thb.toLocaleString()} {t('common:currency')}</span>
-                      <span className="text-xs text-zinc-600">{listing!.size_category}</span>
-                    </div>
-                  </div>
-                </Link>
+                  )}
+                />
               ))}
             </div>
           </div>
@@ -135,23 +123,7 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {listings.map(listing => (
-                <Link to={`/listing/${listing.id}`} key={listing.id} className="group bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-1">
-                  <LazyImage
-                    src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                    srcSet={getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' })}
-                    sizes={CARD_SIZES}
-                    alt={listing.species?.scientific_name || t('marketplace:listingAlt')}
-                    aspectRatio="3/4"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="p-4">
-                    <p className="font-medium text-white mb-1 truncate">{listing.species?.common_name_en || listing.species?.common_name_th}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-emerald-400 font-semibold">{listing.price_thb.toLocaleString()} {t('common:currency')}</span>
-                      <span className="text-xs text-zinc-600">{listing.size_category}</span>
-                    </div>
-                  </div>
-                </Link>
+                <ListingCard key={listing.id} listing={listing} layout="minimal" />
               ))}
             </div>
           )}

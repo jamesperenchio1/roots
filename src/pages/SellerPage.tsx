@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Star, Store, MapPin, Calendar, Leaf } from 'lucide-react';
-import { PLANT_IMAGES } from '@/data/mockData';
+import { ListingCard } from '@/components/ListingCard';
 import { useSeller } from '@/hooks/queries/useSeller';
 import { useListings } from '@/hooks/queries/useListings';
 import { getProvinceLabel } from '@/lib/provinces';
@@ -75,25 +75,7 @@ export default function SellerPage() {
         {listings.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {listings.map(l => (
-              <Link to={`/listing/${l.id}`} key={l.id} className="bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all group">
-                <div className="aspect-[3/4] overflow-hidden">
-                  <img
-                    src={l.photos?.[0]?.storage_path || PLANT_IMAGES[l.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'}
-                    alt={l.species?.scientific_name || t('marketplace:browse.listingAlt')}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-4">
-                  <p className="text-xs text-zinc-500 mb-1 truncate">{l.species?.scientific_name}</p>
-                  <p className="font-medium mb-2 truncate">{l.species?.common_name_en}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-emerald-400 font-semibold">{l.price_thb.toLocaleString()} {t('common:currency')}</span>
-                    <span className="text-xs text-zinc-600">{l.size_category}</span>
-                  </div>
-                </div>
-              </Link>
+              <ListingCard key={l.id} listing={l} layout="seller" />
             ))}
           </div>
         ) : (
