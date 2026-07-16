@@ -48,7 +48,7 @@ vi.mock('@/data/mockData', () => ({
   getSpeciesById: vi.fn(),
 }));
 
-const { mapProfile, mapListing } = await import('./api');
+const { mapProfile, mapListing, createOrder } = await import('./api');
 
 describe('mapProfile', () => {
   const baseRow = {
@@ -128,5 +128,33 @@ describe('mapListing', () => {
   test('uses FALLBACK_IMG when no photos provided', async () => {
     const listing = await mapListing({ ...baseRow, photos: [], image_url: undefined }, {});
     expect(listing.photos).toBeDefined();
+  });
+});
+
+describe('createOrder', () => {
+  test('rejects buyer purchasing their own listing before touching the database', async () => {
+    type Profile = import('./api').Profile;
+    type Listing = import('./api').Listing;
+    const buyer = { id: 'user-1', display_name: 'Seller', is_admin: false } as unknown as Profile;
+    const listing = {
+      id: 'listing-1',
+      seller_id: 'user-1',
+      price_thb: 500,
+      shipping_cost_thb: 0,
+      photos: [],
+      species: { common_name_en: 'Plant' },
+      seller: { id: 'user-1', display_name: 'Seller' },
+      delivery_options: ['ship'],
+      status: 'active',
+    } as unknown as Listing;
+
+    await expect(
+      createOrder({
+        listing,
+        buyer,
+        delivery_method: 'ship',
+        shipping_address: undefined,
+      })
+    ).rejects.toThrow(/own listing/i);
   });
 });

@@ -192,7 +192,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 ### P0 — Fix First
 
 1. [x] Fix `npm run lint` (remove unused `beforeEach`, clean eslint-disable directives).
-2. [ ] Add missing env vars to `.env.example`.
+2. [x] Add missing env vars to `.env.example` (verified complete).
 3. [x] Harden `confirmPaymentReceived` and `updateOrderStatus` in `src/lib/api.ts`.
 4. [x] Add the missing `guard_payment_confirmed` database trigger.
 5. [x] Fix hardcoded `'buyer'` in `src/pages/DisputePage.tsx` (role was already dynamic; confirmed no user-ID hardcoding remains).
@@ -204,14 +204,16 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 ### P1 — Next
 
-11. Refactor global mutable store to use explicit hydration loading state (quick win).
-12. Remove duplicate realtime subscriptions in pages.
-13. Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
-14. Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
-15. Fix hardcoded UI strings found in i18n audit.
-16. Add indexes for common query patterns.
-17. Batch profile lookups to fix N+1.
-18. Add RLS policy tests.
+11. [x] Prevent buyer from purchasing their own listing (`CheckoutPage` guard + `createOrder` server-side check).
+12. [x] Fix checkout PromptPay-no-ID explanation and add missing i18n strings (`checkout:errors.ownListing`, `checkout:errors.sellerNoPromptPay`).
+13. Refactor global mutable store to use explicit hydration loading state (quick win).
+14. Remove duplicate realtime subscriptions in pages.
+15. Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
+16. Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
+17. Fix remaining hardcoded UI strings found in i18n audit (shadcn component `sr-only` text is P2).
+18. Add indexes for common query patterns.
+19. Batch profile lookups to fix N+1.
+20. Add RLS policy tests.
 
 ### P2 — Polish
 

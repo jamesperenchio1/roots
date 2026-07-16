@@ -32,6 +32,7 @@ export default function CheckoutPage() {
   const total = (listing?.price_thb || 0) + shipping;
   const sellerPromptPay = listing?.seller?.promptpay_id;
   const canCheckout = Boolean(sellerPromptPay);
+  const isOwnListing = user?.id === listing?.seller_id;
 
   useEffect(() => {
     if (listing && method === 'promptpay' && sellerPromptPay) {
@@ -51,6 +52,10 @@ export default function CheckoutPage() {
   const handlePay = () => {
     if (!user) {
       navigate('/login');
+      return;
+    }
+    if (isOwnListing) {
+      toast.error(t('checkout:errors.ownListing'));
       return;
     }
     if (!canCheckout) {
@@ -208,7 +213,13 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {!canCheckout && (
+        {isOwnListing && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6 text-sm text-amber-400">
+            {t('checkout:errors.ownListing')}
+          </div>
+        )}
+
+        {!canCheckout && !isOwnListing && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 text-sm text-red-400">
             {t('checkout:errors.sellerNoPromptPay')}
           </div>
@@ -216,7 +227,7 @@ export default function CheckoutPage() {
 
         <Button
           onClick={handlePay}
-          disabled={paying || !canCheckout}
+          disabled={paying || !canCheckout || isOwnListing}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
         >
           {paying ? t('checkout:confirming') : t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}

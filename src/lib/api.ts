@@ -875,6 +875,9 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const total = price + shipping;
   const fee = Math.round(price * 0.08);
   const sellerId = input.listing.seller_id;
+  if (input.buyer.id === sellerId) {
+    throw new Error(i18n.t('checkout:errors.ownListing'));
+  }
   const cover = input.listing.photos?.[0]?.storage_path;
 
   const { data, error } = await supabase

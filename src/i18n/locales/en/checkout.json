@@ -115,7 +115,8 @@
   "errors": {
     "fixAddress": "Please fix the errors in your shipping address.",
     "slipRequired": "Please upload your payment slip so the seller can verify it.",
-    "sellerNoPromptPay": "This seller has not set a PromptPay ID and cannot accept payments right now."
+    "sellerNoPromptPay": "This seller has not set a PromptPay ID and cannot accept payments right now.",
+    "ownListing": "You cannot purchase your own listing."
   },
   "toast": {
     "paymentAutoVerified": "Payment verified automatically — your order is protected by escrow.",
