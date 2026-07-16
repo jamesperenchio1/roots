@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, Search } from 'lucide-react';
 import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
 import { subscribeListings, getListingsVersion } from '@/lib/api';
 
@@ -51,9 +51,10 @@ export default function BrowsePage() {
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
   const [isLoading, setIsLoading] = useState(true);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const q = (searchParams.get('q') || '').toLowerCase().trim();
   const showAll = searchParams.get('all') === '1';
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
 
   // Re-render when realtime listings change.
   useSyncExternalStore(subscribeListings, getListingsVersion);
@@ -98,10 +99,21 @@ export default function BrowsePage() {
   const { visibleItems, hasMore, loadMore, total } = usePagination(listings, { pageSize: showAll ? listings.length : PAGE_SIZE });
   const itemsToRender = showAll ? listings : visibleItems;
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newParams = new URLSearchParams(searchParams);
+    if (searchInput.trim()) {
+      newParams.set('q', searchInput.trim());
+    } else {
+      newParams.delete('q');
+    }
+    setSearchParams(newParams);
+  };
+
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex items-end justify-between mb-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-light tracking-tight mb-2">
               {q ? t('marketplace:browse.resultsForQuery', { query: q }) : t('marketplace:browse.allPlants')}
@@ -128,19 +140,32 @@ export default function BrowsePage() {
           </div>
         </div>
 
+        <form onSubmit={handleSearch} className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t('marketplace:browse.searchPlaceholder', 'Search plants…')}
+            className="w-full bg-zinc-900 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+          />
+        </form>
+
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.value}
+              onClick={() => setCategory(c.value as Category | '')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition-colors ${category === c.value ? 'bg-white text-black border-white' : 'bg-transparent border-white/15 text-zinc-400 hover:border-white/30 hover:text-white'}`}
+            >
+              {t(c.labelKey)}
+            </button>
+          ))}
+        </div>
+
         {filtersOpen && (
           <div className="bg-zinc-900/50 border border-white/10 rounded-xl p-6 mb-8">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">{t('marketplace:browse.category')}</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as Category | '')}
-                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                >
-                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
-                </select>
-              </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs text-zinc-500 mb-1.5 block">{t('marketplace:browse.size')}</label>
                 <select

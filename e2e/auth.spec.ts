@@ -13,7 +13,7 @@ test.describe('Auth pages', () => {
     await expect(page.locator('h1')).toHaveText(/create your account/i);
     await expect(page.getByPlaceholder(/display name/i)).toBeVisible();
     await expect(page.getByPlaceholder(/you@example.com/i)).toBeVisible();
-    await expect(page.getByPlaceholder(/min 6 characters/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/min 8/i)).toBeVisible();
   });
 
   test('login page loads', async ({ page }) => {
