@@ -38,7 +38,18 @@ export default function MapLocationPicker({ value, onChange, onGeocodedAddress, 
   const [locating, setLocating] = useState(false);
   const [picked, setPicked] = useState<MapLocationValue | null>(value || null);
 
-  const centerMap = (lat: number, lng: number) => {
+  // Keep refs to the latest callbacks so the one-time map init effect does not
+  // need to depend on values or functions that change every render.
+  const initialValueRef = useRef(value);
+  const centerMapRef = useRef(centerMap);
+  const updatePickRef = useRef(updatePick);
+
+  useEffect(() => {
+    centerMapRef.current = centerMap;
+    updatePickRef.current = updatePick;
+  });
+
+  function centerMap(lat: number, lng: number) {
     if (!mapRef.current) return;
     mapRef.current.setView([lat, lng], 16);
     if (markerRef.current) {
@@ -54,7 +65,7 @@ export default function MapLocationPicker({ value, onChange, onGeocodedAddress, 
     }
   };
 
-  const updatePick = async (lat: number, lng: number) => {
+  async function updatePick(lat: number, lng: number) {
     const address = await reverseGeocode(lat, lng);
     const next = { lat, lng, address: address || undefined };
     setPicked(next);
@@ -62,27 +73,26 @@ export default function MapLocationPicker({ value, onChange, onGeocodedAddress, 
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const initLat = value?.lat ?? 13.7563;
-    const initLng = value?.lng ?? 100.5018;
+    const initLat = initialValueRef.current?.lat ?? 13.7563;
+    const initLng = initialValueRef.current?.lng ?? 100.5018;
     const map = L.map(containerRef.current).setView([initLat, initLng], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
-      centerMap(lat, lng);
-      updatePick(lat, lng);
+      centerMapRef.current(lat, lng);
+      updatePickRef.current(lat, lng);
     });
     mapRef.current = map;
-    if (value?.lat && value?.lng) {
-      centerMap(value.lat, value.lng);
+    if (initialValueRef.current?.lat && initialValueRef.current?.lng) {
+      centerMapRef.current(initialValueRef.current.lat, initialValueRef.current.lng);
     }
     return () => {
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = async () => {

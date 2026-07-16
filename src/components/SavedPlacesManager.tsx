@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Plus, MapPin, Trash2, Star, Check, LocateFixed, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,7 +35,7 @@ export default function SavedPlacesManager() {
 
   const provinceOptions = getProvinceOptions(i18n.language);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -46,12 +46,11 @@ export default function SavedPlacesManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, t]);
 
   useEffect(() => {
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [refresh]);
 
   const resetForm = () => {
     setName('');

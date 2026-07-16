@@ -28,9 +28,9 @@ export function CommentTree({
 }: CommentTreeProps) {
   const { t } = useTranslation(['common']);
   const [expanded, setExpanded] = useState(depth < 2);
-  // replies_count is a manual cache-buster when new replies are added
+  // replies_count and version are manual cache-busters when new replies are added
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const replies = useMemo(() => getCommentReplies(comment.id), [comment.id, comment.replies_count, onChanged, version]);
+  const replies = useMemo(() => getCommentReplies(comment.id), [comment.id, comment.replies_count, version]);
 
   if (comment.status === 'hidden' && comment.author_id !== currentUserId) return null;
 

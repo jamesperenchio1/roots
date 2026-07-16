@@ -35,7 +35,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 1.6 | ~~No shared `ListingCard` component — each page reimplements card markup.~~ | Done | Extracted `src/components/ListingCard.tsx` and replaced inline cards on `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage`. |
 | 1.7 | ~~Inconsistent form controls across create/edit listing.~~ | Done | `EditListingPage` now uses `ProvinceCombobox` to match `CreateListingPage`. |
 | 1.8 | ~~`localStorage` is read synchronously during render in several hooks/pages.~~ | Done | `useOnboarding.ts` already effect-only; `useRecentlyViewed.ts` and `MarketPage.tsx` moved to `useEffect`. |
-| 1.9 | 17 `eslint-disable react-hooks/exhaustive-deps` comments hide stale-closure risks. | P1 | Across `DashboardPage`, `MessagesPage`, `HomePage`, `CommentSection`, etc. |
+| 1.9 | ~~17 `eslint-disable react-hooks/exhaustive-deps` comments hide stale-closure risks.~~ | Done | Reduced to one intentional disable in `CommentTree` for manual reply cache-busters; all page-level disables removed. |
 | 1.10 | Many installed shadcn/ui components are unused, increasing bundle and maintenance surface. | P2 | `alert-dialog`, `aspect-ratio`, `breadcrumb`, `chart`, `checkbox`, `collapsible`, `context-menu`, `drawer`, `menubar`, `navigation-menu`, `pagination`, `radio-group`, `resizable`, `scroll-area`, `sheet`, `sidebar`, `slider`, `switch`, `table`, `toggle`, `toggle-group`, etc. |
 
 ### Routes & Guards

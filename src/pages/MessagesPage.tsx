@@ -67,6 +67,7 @@ function getListingIdFromThreadId(threadId: string): string | undefined {
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const { data: allListings = [] } = useListings();
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
@@ -95,6 +96,7 @@ export default function MessagesPage() {
 
   // Draft persistence per conversation.
   const draft = useDraftMessage(activeConversationId);
+  const loadDraft = draft.load;
 
   const formatMessageTime = useCallback((dateStr: string) => {
     const d = new Date(dateStr);
@@ -111,11 +113,11 @@ export default function MessagesPage() {
   }, [t, dateLocale]);
 
   const refreshConversations = useCallback(() => {
-    if (!user) return;
-    queryClient.invalidateQueries({ queryKey: messageKeys.conversations(user.id) });
-  }, [user]);
+    if (!userId) return;
+    queryClient.invalidateQueries({ queryKey: messageKeys.conversations(userId) });
+  }, [userId]);
 
-  const { data: fetchedMessages = [] } = useConversationMessages(user?.id, activeConversationId);
+  const { data: fetchedMessages = [] } = useConversationMessages(userId, activeConversationId);
   const messages = useMemo(
     () => [...fetchedMessages, ...optimisticMessages],
     [fetchedMessages, optimisticMessages]
@@ -123,15 +125,15 @@ export default function MessagesPage() {
 
   // Resolve legacy thread ids into real conversation ids.
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
 
     const resolve = async () => {
       if (threadId && isLegacyThreadId(threadId)) {
-        const otherUserId = getOtherUserIdFromThreadId(threadId, user.id);
+        const otherUserId = getOtherUserIdFromThreadId(threadId, userId);
         const listingId = getListingIdFromThreadId(threadId);
         if (otherUserId) {
-          const conv = await getOrCreateDirectConversation(user.id, otherUserId, listingId);
+          const conv = await getOrCreateDirectConversation(userId, otherUserId, listingId);
           if (!cancelled) {
             setActiveConversationId(conv.id);
             navigate(`/messages/${conv.id}`, { replace: true });
@@ -145,22 +147,20 @@ export default function MessagesPage() {
 
     resolve();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, threadId]);
+  }, [userId, threadId, navigate, refreshConversations]);
 
   // Mark active conversation as read; restore draft; reset per-conversation state.
   useEffect(() => {
-    if (activeConversationId && user) {
+    if (activeConversationId && userId) {
       setOptimisticMessages([]);
       setPendingMessageId(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
       setPendingAttachments([]);
-      setInput(draft.load());
-      markConversationRead(activeConversationId, user.id).then(() => {
+      setInput(loadDraft());
+      markConversationRead(activeConversationId, userId).then(() => {
         refreshConversations();
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId, user?.id]);
+  }, [activeConversationId, userId, loadDraft, refreshConversations]);
 
   const checkIsAtBottom = useCallback(() => {
     const el = messagesContainerRef.current;
@@ -215,16 +215,15 @@ export default function MessagesPage() {
 
   // Realtime subscription for active conversation
   useEffect(() => {
-    if (!activeConversationId || !user) return;
+    if (!activeConversationId || !userId) return;
     const unsubscribe = subscribeToConversation(activeConversationId, (users) => {
-      setTypingUsers(users.filter((u) => u.user_id !== user.id));
+      setTypingUsers(users.filter((u) => u.user_id !== userId));
     });
     return () => {
       unsubscribe();
-      clearTypingTimer(activeConversationId, user.id);
+      clearTypingTimer(activeConversationId, userId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId, user?.id]);
+  }, [activeConversationId, userId]);
 
   // Presence: track current user and subscribe to changes for conversation partners.
   useEffect(() => {
