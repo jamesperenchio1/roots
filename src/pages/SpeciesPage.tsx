@@ -1,7 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Leaf, Bell, X, Trash2, Search } from 'lucide-react';
-import { getSpeciesById, getActiveListings, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
+import { getSpeciesById, PLANT_IMAGES } from '@/data/mockData';
+import { useListings } from '@/hooks/queries/useListings';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
+import { usePriceAlerts } from '@/hooks/queries/useUserData';
 import { normalizeSpeciesName } from '@/data/speciesDatabase';
 import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
@@ -12,7 +15,9 @@ import PlantCareCard from '@/components/PlantCareCard';
 import { CommentSection } from '@/components/comments/CommentSection';
 import { useAuth } from '@/hooks/useAuth';
 import { getProvinceLabel } from '@/lib/provinces';
-import { createPriceAlert, getUserPriceAlerts, deletePriceAlert } from '@/lib/api';
+import { createPriceAlert, deletePriceAlert } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { userKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import { fetchGbifSpecies, fetchINaturalistTaxon, fetchWikipediaSummary } from '@/lib/plantWiki';
 import type { GbifSpecies, INaturalistTaxon, WikipediaSummary } from '@/lib/plantWiki';
@@ -55,15 +60,11 @@ export default function SpeciesPage() {
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertThreshold, setAlertThreshold] = useState('');
   const [alertDirection, setAlertDirection] = useState<'above' | 'below'>('below');
-  const [userAlerts, setUserAlerts] = useState(() =>
-    user && id ? getUserPriceAlerts(user.id).filter(a => a.species_id === id) : []
+  const { data: userAlertsRaw } = usePriceAlerts(user?.id);
+  const userAlerts = useMemo(
+    () => (id ? (userAlertsRaw || []).filter((a) => a.species_id === id) : []),
+    [userAlertsRaw, id]
   );
-
-  useEffect(() => {
-    if (user && id) {
-      setUserAlerts(getUserPriceAlerts(user.id).filter(a => a.species_id === id));
-    }
-  }, [user, id, alertModalOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,24 +137,20 @@ export default function SpeciesPage() {
 
   const chartId = localSpecies?.id || rawId;
 
+  const { data: allListings } = useListings();
   const speciesListings = useMemo(() => {
-    const base = localSpecies
-      ? getActiveListings({ speciesId: localSpecies.id })
-      : getActiveListings().filter(l => {
-          const name = l.species?.scientific_name;
-          return name ? normalizeSpeciesName(name) === normalizeSpeciesName(display.scientificName) : false;
-        });
-    return base.filter(l => !sizeFilter || l.size_category === sizeFilter);
-  }, [localSpecies, display.scientificName, sizeFilter]);
+    const base = (allListings || []).filter((l) => {
+      if (localSpecies) return l.species?.id === localSpecies.id;
+      const name = l.species?.scientific_name;
+      return name ? normalizeSpeciesName(name) === normalizeSpeciesName(display.scientificName) : false;
+    });
+    return base.filter((l) => !sizeFilter || l.size_category === sizeFilter);
+  }, [allListings, localSpecies, display.scientificName, sizeFilter]);
 
+  const { data: priceSnapshots } = usePriceSnapshots(chartId, sizeFilter, 180);
   const priceData = useMemo(
-    () =>
-      getPriceSnapshotsForSpecies(chartId, sizeFilter, 180).map(ps => ({
-        date: ps.snapshot_date,
-        price: ps.median_price_thb,
-        volume: ps.sale_count,
-      })),
-    [chartId, sizeFilter]
+    () => priceSnapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb, volume: ps.sale_count })),
+    [priceSnapshots]
   );
 
   const fallbackPrice = useMemo(() => {
@@ -191,7 +188,7 @@ export default function SpeciesPage() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search species..."
+              placeholder={t('marketplace:species.searchPlaceholder')}
               className="w-full bg-black border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
             />
           </div>
@@ -199,7 +196,7 @@ export default function SpeciesPage() {
             type="submit"
             className="px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors"
           >
-            Search
+            {t('common:actions.search')}
           </button>
         </form>
         <Link to="/browse" className="text-emerald-400 hover:underline">
@@ -231,7 +228,7 @@ export default function SpeciesPage() {
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search species..."
+                placeholder={t('marketplace:species.searchPlaceholder')}
                 className="w-full sm:w-64 bg-black border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
@@ -239,7 +236,7 @@ export default function SpeciesPage() {
               type="submit"
               className="px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors"
             >
-              Search
+              {t('common:actions.search')}
             </button>
           </form>
         </div>
@@ -284,10 +281,10 @@ export default function SpeciesPage() {
             {display.description && <p className="text-zinc-400 leading-relaxed mb-4">{display.description}</p>}
             <div className="flex flex-wrap gap-2 mb-6">
               {display.family && (
-                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">Family: {display.family}</span>
+                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:species.familyLabel', { family: display.family })}</span>
               )}
               {display.genus && (
-                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">Genus: {display.genus}</span>
+                <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">{t('marketplace:species.genusLabel', { genus: display.genus })}</span>
               )}
               {display.careLevel && (
                 <span className="bg-zinc-800/50 px-3 py-1 rounded-full text-xs">
@@ -353,7 +350,7 @@ export default function SpeciesPage() {
                     onClick={async () => {
                       try {
                         await deletePriceAlert(a.id);
-                        setUserAlerts(prev => prev.filter(x => x.id !== a.id));
+                        if (user?.id) queryClient.invalidateQueries({ queryKey: userKeys.priceAlerts(user.id) });
                         toast.success(t('marketplace:species.alertRemoved'));
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : t('marketplace:species.alertRemoveFailed'));
@@ -454,10 +451,10 @@ export default function SpeciesPage() {
                         threshold_thb: threshold,
                         direction: alertDirection,
                       });
+                      queryClient.invalidateQueries({ queryKey: userKeys.priceAlerts(user.id) });
                       toast.success(t('marketplace:species.alertSet'));
                       setAlertModalOpen(false);
                       setAlertThreshold('');
-                      setUserAlerts(getUserPriceAlerts(user.id).filter(a => a.species_id === id));
                     } catch (err) {
                       toast.error(err instanceof Error ? err.message : t('marketplace:species.alertSetFailed'));
                     }

@@ -1,51 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getTransactionById, PLANT_IMAGES } from '@/data/mockData';
+import { PLANT_IMAGES } from '@/data/mockData';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { updateOrderStatus, uploadDisputeEvidence, hasReviewedTransaction, getTransactionEvents } from '@/lib/api';
 import { verifyQrFromFile } from '@/lib/qr-verify';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { SellerReviewForm } from '@/components/SellerReviewForm';
-import type { Transaction, TransactionEvent } from '@/types';
+import { useTransaction } from '@/hooks/queries/useTransaction';
+import type { TransactionEvent } from '@/types';
 
 export default function OrderPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, i18n } = useTranslation(['checkout', 'common', 'marketplace']);
-  const [tx, setTx] = useState<Transaction | undefined>(getTransactionById(transactionId || ''));
+  const { data: tx, isPending: txPending } = useTransaction(transactionId);
   const [events, setEvents] = useState<TransactionEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
-
-  // Re-fetch transaction from Supabase to get latest status
-  const refreshTx = useCallback(async () => {
-    if (!transactionId) return;
-    try {
-      const { data } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('id', transactionId)
-        .single();
-      if (data) {
-        // Merge with local cache
-        const local = getTransactionById(transactionId);
-        setTx({ ...local, ...data, status: data.status } as Transaction);
-      }
-    } catch {
-      // offline — keep local data
-    }
-  }, [transactionId]);
-
-  useEffect(() => {
-    refreshTx();
-  }, [refreshTx]);
 
   useEffect(() => {
     if (!transactionId) return;
@@ -58,45 +35,13 @@ export default function OrderPage() {
     return () => { cancelled = true; };
   }, [transactionId]);
 
-  useEffect(() => {
-    if (!transactionId) return;
-
-    // Subscribe to realtime updates for this transaction
-    const channel = supabase
-      .channel(`transaction-${transactionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-          filter: `id=eq.${transactionId}`,
-        },
-        (payload) => {
-          const newData = payload.new as Record<string, unknown>;
-          if (!newData) return;
-          const local = getTransactionById(transactionId);
-          const updatedTx = { ...local, ...newData, status: newData.status } as Transaction;
-          setTx((prev) => {
-            const prevStatus = prev?.status;
-            const nextStatus = updatedTx.status;
-            if (prevStatus && nextStatus && prevStatus !== nextStatus) {
-              toast.info(t('checkout:order.statusUpdated', { status: t(`common:status.${nextStatus as string}`) }));
-            }
-            return updatedTx;
-          });
-        }
-      )
-      .subscribe();
-
-    // Fallback polling every 30s
-    const interval = setInterval(refreshTx, 30000);
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [transactionId, refreshTx, t, i18n]);
+  if (txPending) {
+    return (
+      <div className="pt-24 pb-16 px-4 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto" />
+      </div>
+    );
+  }
 
   if (!tx) {
     return (
@@ -116,7 +61,7 @@ export default function OrderPage() {
     { key: 'completed', label: t('checkout:order.timeline.completed'), icon: CheckCircle },
   ];
 
-  const currentStep = statusSteps.findIndex(s => s.key === status);
+  const currentStep = statusSteps.findIndex((s) => s.key === status);
   const effectiveStep = currentStep >= 0 ? currentStep : status === 'completed' ? 3 : 0;
 
   const handleConfirmReceipt = async (file: File, method: 'qr' | 'photo') => {
@@ -135,7 +80,6 @@ export default function OrderPage() {
         status: 'completed',
         completed_at: new Date().toISOString(),
       });
-      await refreshTx();
       toast.success(method === 'qr' ? t('checkout:order.qrVerified') : t('checkout:order.photoVerified'));
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {

@@ -219,7 +219,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
               </div>
               <div className="ml-auto text-xs text-zinc-600 shrink-0">
                 {isGbifResult(species) ? (
-                  <span className="text-emerald-500">from GBIF</span>
+                  <span className="text-emerald-500">{t('common:speciesAutocomplete.fromGbif')}</span>
                 ) : (
                   <span className="capitalize">{species.category}</span>
                 )}

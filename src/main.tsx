@@ -1,10 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
 import * as Sentry from '@sentry/react'
 import './index.css'
 import './i18n/config'
 import App from './App.tsx'
+import { queryClient } from './lib/queryClient.ts'
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 
@@ -29,8 +31,10 @@ if (import.meta.env.PROD && sentryDsn) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
+    <QueryClientProvider client={queryClient}>
+      <HashRouter>
+        <App />
+      </HashRouter>
+    </QueryClientProvider>
   </StrictMode>,
 )

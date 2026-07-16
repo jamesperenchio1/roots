@@ -1,0 +1,235 @@
+# Roots Production Readiness Audit
+
+**Date:** 2026-07-15  
+**Scope:** Full product, codebase, database, and deployment audit for the Roots Thailand plant marketplace.
+
+> This audit was generated before any code changes were made. Each item is prioritized P0 (blocker), P1 (important), or P2 (nice-to-have).
+
+---
+
+## Executive Summary
+
+Roots is a feature-rich React SPA backed by Supabase. It already has lazy loading, PWA support, a comprehensive i18n system, and real-time subscriptions. However, several **P0 blockers** must be fixed before the product can safely serve 100,000+ users:
+
+1. **Security holes** in order/payment functions allow buyers to confirm their own payments and arbitrary status changes.
+2. **Database migrations are incomplete** — core tables (`profiles`, `listings`, `transactions`, etc.) are not under version control, and the `guard_payment_confirmed` trigger claimed in the README does not exist.
+3. **Lint is broken** (`npm run lint` exits 1).
+4. **The live site is behind a Vercel Security Checkpoint**, blocking access for automated tools and potentially some users.
+5. **The global mutable in-memory store** causes hydration races, stale data, and testing fragility.
+6. **No seller/ownership route guards** — any logged-in user can reach seller flows, and edit-listing ownership is checked only inside the page.
+
+---
+
+## Phase 1 — Full Product Audit
+
+### Architecture
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 1.1 | **Global mutable singleton stores** bypass React state. Pages read synchronously from arrays that are hydrated asynchronously, causing empty/not-found flashes and race conditions. | P0 | `src/data/mockData.ts` exports mutable arrays; `src/lib/api.ts` mutates them directly (`LISTINGS.length = 0; LISTINGS.push(...)`). |
+| 1.2 | Pages render "not found" before public data has finished hydrating. | P0 | `ListingPage`, `SellerPage`, `OrderPage` initialize from `getListingById` / `getTransactionById` immediately. |
+| 1.3 | `BrowsePage` fakes loading with a 400 ms `setTimeout` regardless of actual hydration state. | P1 | `src/pages/BrowsePage.tsx` |
+| 1.4 | Duplicated realtime subscriptions — `AuthProvider` and individual pages both open Supabase channels. | P1 | `OrderPage`, `SellerDashboardPage` open their own channels. |
+| 1.5 | Long pages mix many concerns, making them hard to test and maintain. | P1 | `SellerDashboardPage` (921 lines), `CreateListingPage` (722 lines), `MessagesPage` (657 lines), `AdminPage` (498 lines). |
+| 1.6 | No shared `ListingCard` component — each page reimplements card markup. | P1 | `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage` |
+| 1.7 | Inconsistent form controls across create/edit listing. | P1 | `CreateListingPage` uses `ProvinceCombobox` + `MapLocationPicker`; `EditListingPage` uses a plain `<select>`. |
+| 1.8 | `localStorage` is read synchronously during render in several hooks/pages. | P1 | `useOnboarding.ts`, `useRecentlyViewed.ts`, `MarketPage.tsx`, `ShippingGuidePage.tsx` |
+| 1.9 | 17 `eslint-disable react-hooks/exhaustive-deps` comments hide stale-closure risks. | P1 | Across `DashboardPage`, `MessagesPage`, `HomePage`, `CommentSection`, etc. |
+| 1.10 | Many installed shadcn/ui components are unused, increasing bundle and maintenance surface. | P2 | `alert-dialog`, `aspect-ratio`, `breadcrumb`, `chart`, `checkbox`, `collapsible`, `context-menu`, `drawer`, `menubar`, `navigation-menu`, `pagination`, `radio-group`, `resizable`, `scroll-area`, `sheet`, `sidebar`, `slider`, `switch`, `table`, `toggle`, `toggle-group`, etc. |
+
+### Routes & Guards
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 1.11 | No seller role/verification. Any authenticated user can create listings and access the seller dashboard. | P0 | `CreateListingPage` and `SellerDashboardPage` only behind `AuthGuard`. |
+| 1.12 | Edit-listing ownership check happens inside the page, not at the route level. | P0 | `/listing/:id/edit` uses `AuthGuard` only; `EditListingPage` renders `<NotFound />` if not owner. |
+| 1.13 | `AdminGuard` redirects non-admins to `/login`, which can create loops and is confusing. | P1 | `src/components/AdminGuard.tsx` |
+| 1.14 | `/login` and `/signup` are accessible while authenticated. | P2 | No redirect-to-dashboard logic. |
+| 1.15 | "Remember me" checkbox on login is non-functional. | P2 | `src/pages/LoginPage.tsx` |
+
+### State & Data Flow
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 1.16 | `confirmPaymentReceived` does not verify the caller is the seller. | P0 | `src/lib/api.ts:654` |
+| 1.17 | `updateOrderStatus` allows arbitrary field updates with no caller or state-machine validation. | P0 | `src/lib/api.ts:751` |
+| 1.18 | `createOrder` fallback creates split-brain state: if DB insert fails, it still marks the listing `sold` and creates a local-only transaction. | P1 | `src/lib/api.ts:669-749` |
+| 1.19 | `DisputePage` uploads evidence with a hardcoded `'buyer'` user ID. | P0 | `src/pages/DisputePage.tsx` |
+| 1.20 | `markListingSold` does not verify the caller owns the listing and diverges provenance/financial ledgers. | P1 | `src/lib/api.ts` |
+
+---
+
+## Phase 2 — UX Review (Non-Technical Thai User)
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 2.1 | Loading states are inconsistent or fake, leaving users unsure whether content is coming. | P1 | `BrowsePage` fake 400 ms skeleton; `SellerPage` flashes `<NotFound />`. |
+| 2.2 | PromptPay checkout lacks clear explanation when the seller has no PromptPay ID. | P1 | `CheckoutPage` blocks pay without explaining why. |
+| 2.3 | Some static copy is still in English even when Thai is selected. | P1 | `SpeciesPage` "Family:", "Genus:"; `CreateListingPage` "Exact pickup pin", "This can be changed later"; `SellerDashboardPage` "PromptPay". |
+| 2.4 | Mobile touch targets and layouts need verification; the live site is inaccessible for automated testing. | P1 | Vercel Security Checkpoint blocks Playwright. |
+| 2.5 | Empty states are generic and do not guide the user to the next action. | P2 | `common:empty` is used everywhere. |
+
+---
+
+## Phase 3 — Language System
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 3.1 | Several hardcoded English strings remain in JSX and attributes. | P1 | Placeholders in `SpeciesPage`, labels in `CreateListingPage`, `alt` in `HomePage`, `aria-label` in `Footer`, `sr-only` text in `carousel`, `pagination`, `dialog`, etc. |
+| 3.2 | Thai resources are loaded on demand but there is no loading indicator while switching. | P2 | `loadThaiResources()` is fire-and-forget. |
+| 3.3 | No URL locale support; language choice is localStorage only. | P2 | `src/i18n/config.ts` |
+| 3.4 | Currency formatting uses hardcoded "THB" / "บาท" in some places rather than a formatter. | P2 | `plantQr.price`, `identification.catalogueRange` |
+
+---
+
+## Phase 4 — Visual Polish
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 4.1 | PageLoader is a plain spinner with low contrast and no brand personality. | P2 | `src/App.tsx` |
+| 4.2 | Empty states, error states, and skeletons are not visually consistent. | P2 | Spread across pages. |
+| 4.3 | Card markups differ across pages, creating inconsistent hover/focus/loading behavior. | P2 | No shared `ListingCard`. |
+
+---
+
+## Phase 5 — User Flows
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 5.1 | Buyer can buy their own listing. | P1 | `CheckoutPage` |
+| 5.2 | Dirty form navigation in `EditListingPage` only warns on `beforeunload`, not React Router navigation. | P1 | `src/pages/EditListingPage.tsx` |
+| 5.3 | Contact form messages go nowhere (no email backend). | P1 | `ContactPage` |
+| 5.4 | Card payment tab in checkout is non-functional placeholder. | P2 | `CheckoutPage` |
+| 5.5 | No undo actions for destructive operations (withdraw listing, reject offer, etc.). | P2 | Across dashboards. |
+
+---
+
+## Phase 6 — Performance
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 6.1 | `hydratePublicData` loads entire public datasets without pagination. | P1 | `src/lib/api.ts` — profiles, active listings, reviews. |
+| 6.2 | N+1 profile fetching in `mapListing`. | P1 | `src/lib/api.ts:80-94` |
+| 6.3 | Large vendor chunks: `vendor-react` (~512 KB / 169 KB gzip), `vendor-recharts` (~387 KB / 105 KB gzip), `html5-qrcode-scanner` (~335 KB / 99 KB gzip). | P2 | Build output. |
+| 6.4 | No responsive image optimization / srcset; full-size Supabase images are loaded everywhere. | P2 | Build output, `ListingPage`, `BrowsePage`. |
+| 6.5 | `recharts` is loaded even when charts are below the fold. | P2 | `MarketPage`, `ListingPage` |
+
+---
+
+## Phase 7 — Accessibility
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 7.1 | Some icon-only buttons have English-only `aria-label` / `sr-only` text. | P1 | `carousel.tsx`, `pagination.tsx`, `dialog.tsx`, `sheet.tsx`, `sidebar.tsx`. |
+| 7.2 | Focus management for modals and drawers depends on Radix defaults; no explicit focus traps reviewed. | P2 | shadcn/ui wrappers. |
+| 7.3 | Reduce-motion preference is not explicitly handled. | P2 | `framer-motion` unused; Tailwind `animate-*` classes present. |
+
+---
+
+## Phase 8 — Database
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 8.1 | **Core base tables are not under version control.** `profiles`, `listings`, `transactions`, `notifications`, `messages`, `price_alerts`, `disputes`, `reviews`, `watchlist`, `species` have no `CREATE TABLE` migration. | P0 | Earliest migration is `ALTER TABLE transactions`; grep for `CREATE TABLE public.profiles` returns nothing. |
+| 8.2 | **`guard_payment_confirmed` trigger referenced in README does not exist.** | P0 | Grep across migrations returns no matches. |
+| 8.3 | `transactions` has no CHECK constraint on `status` in migrations. | P1 | Schema audit. |
+| 8.4 | FKs missing for `transactions.listing_id`, `transactions.buyer_id`, `transactions.seller_id`, `notifications.user_id`, `price_alerts.user_id/species_id`, `disputes.transaction_id`. | P1 | Migrations audit. |
+| 8.5 | Storage buckets `listing-photos` and `payment-slips` are not defined or locked down in migrations. | P0 | `src/lib/api.ts` creates `listing-photos` client-side; `payment-slips` referenced but no policy migration. |
+| 8.6 | `qr_scans` INSERT policy is too permissive (any authenticated user can spam). | P1 | `20260708000001_provenance.sql` |
+| 8.7 | `offers` UPDATE policy lacks state-machine validation. | P1 | `20260708000011_create_offers.sql` |
+| 8.8 | `listings` UPDATE policy allows sellers to change status to anything. | P1 | `20260716000000_listings_rls_and_plant_trigger.sql` |
+| 8.9 | `listings` INSERT does not block banned users. | P1 | Missing `is_banned` check. |
+| 8.10 | Trigger `refresh_price_snapshot` recomputes aggregates on every listing/transaction change. | P2 | Performance concern at scale. |
+
+---
+
+## Phase 9 — Security
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 9.1 | `confirmPaymentReceived` lacks authorization. | P0 | `src/lib/api.ts:654` |
+| 9.2 | `updateOrderStatus` lacks authorization and state-machine validation. | P0 | `src/lib/api.ts:751` |
+| 9.3 | `guard_payment_confirmed` trigger missing. | P0 | README claim, no migration. |
+| 9.4 | Storage bucket policies missing for listing photos and payment slips. | P0 | No migration. |
+| 9.5 | Hardcoded `'buyer'` in dispute evidence upload. | P0 | `src/pages/DisputePage.tsx` |
+| 9.6 | `loginAsLocalAdmin()` dev bypass is present in production. | P0 | README production checklist; `src/hooks/useAuth.tsx` likely exposes it. |
+| 9.7 | `cleanup_seed_data` historically allowed authenticated callers; superseded migrations remain in history. | P1 | `20260715000001/0002` |
+| 9.8 | CORS allows localhost in edge function shared code. | P2 | `supabase/functions/_shared/cors.ts` |
+
+---
+
+## Phase 10 — Codebase Quality
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 10.1 | `npm run lint` fails (1 error, 4 warnings). | P0 | `src/lib/api.test.ts` unused `beforeEach`; `CommentSection.tsx`; `useOnboarding.ts`; seed script eslint-disable. |
+| 10.2 | Unused production dependencies bloat the bundle and install. | P1 | `@sentry/browser`, `@hookform/resolvers`, `zod`, `framer-motion`, `dompurify`, `@types/dompurify`, `react-hotkeys-hook`, `tw-animate-css`. |
+| 10.3 | Missing dependency: `dotenv` is used in `scripts/seed-database.cjs` but not declared. | P1 | package.json vs script. |
+| 10.4 | Missing `@vitest/coverage-v8` means configured coverage reporting is broken. | P1 | `vitest.config.ts` references it. |
+| 10.5 | `.env.example` is missing required server/edge variables. | P1 | `SUPABASE_SERVICE_ROLE_KEY`, `SLIPOK_API_KEY`, `SLIPOK_BRANCH_ID`, `APP_URL`. |
+| 10.6 | `.env.example` documents unused analytics/payment variables. | P2 | `VITE_PLAUSIBLE_DOMAIN`, `VITE_GA_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_OMISE_PUBLIC_KEY`. |
+| 10.7 | Heavy use of `as` casts in `src/lib/api.ts` (~629) bypasses generated types. | P1 | `src/lib/api.ts` |
+| 10.8 | Test coverage is low (17 test files for 181 source files). | P2 | Coverage report missing. |
+| 10.9 | `SellerDashboardPage.test.tsx` lives in `src/pages/` instead of a test directory. | P2 | Project structure. |
+| 10.10 | `innerHTML` used in `SellerReviewCard.tsx` for a fallback icon. | P2 | `src/components/SellerReviewCard.tsx:101` |
+
+---
+
+## Phase 11 — Production Readiness
+
+| # | Issue | Severity | Evidence |
+|---|---|---|---|
+| 11.1 | Live deployment behind Vercel Security Checkpoint (HTTP 403). | P0 | `https://roots-rho-two.vercel.app` returns checkpoint page. |
+| 11.2 | Build succeeds, but lint fails, so CI would reject the release. | P0 | `npm run build` ✓, `npm run lint` ✗. |
+| 11.3 | Sentry source-map upload configured but Sentry logger is not wired. | P2 | `src/lib/logger.ts` |
+| 11.4 | No mobile viewport in Playwright config. | P2 | `playwright.config.ts` |
+
+---
+
+## Immediate Action Plan
+
+### P0 — Fix First
+
+1. Fix `npm run lint` (remove unused `beforeEach`, clean eslint-disable directives).
+2. Add missing env vars to `.env.example`.
+3. Harden `confirmPaymentReceived` and `updateOrderStatus` in `src/lib/api.ts`.
+4. Add the missing `guard_payment_confirmed` database trigger.
+5. Fix hardcoded `'buyer'` in `src/pages/DisputePage.tsx`.
+6. Add `SellerGuard` / `OwnershipGuard` for seller and edit-listing routes.
+7. Fix `AdminGuard` redirect target.
+8. Create base schema migrations (`CREATE TABLE IF NOT EXISTS`) for core tables.
+9. Define storage buckets and policies in migrations.
+10. Remove or hide `loginAsLocalAdmin()` dev bypass.
+
+### P1 — Next
+
+11. Refactor global mutable store to use explicit hydration loading state (quick win).
+12. Remove duplicate realtime subscriptions in pages.
+13. Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
+14. Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
+15. Fix hardcoded UI strings found in i18n audit.
+16. Add indexes for common query patterns.
+17. Batch profile lookups to fix N+1.
+18. Add RLS policy tests.
+
+### P2 — Polish
+
+19. Create shared `ListingCard`, `EmptyState`, `Skeleton` patterns.
+20. Lazy-load charts below the fold.
+21. Add responsive image transforms.
+22. Expand test coverage.
+23. Clean up unused shadcn/ui components.
+
+---
+
+## Verification Checklist
+
+- [ ] `npm run lint` passes with no errors or warnings.
+- [ ] `npm run build` passes.
+- [ ] `npm test` passes.
+- [ ] `npm run test:e2e` passes (against local dev server).
+- [ ] No hardcoded user-facing English strings remain in pages/components.
+- [ ] All route guards enforce role/ownership at the route level.
+- [ ] Payment/order functions validate caller authorization.
+- [ ] Database migrations can reproduce the live schema from scratch.
+- [ ] Storage buckets have restrictive RLS policies.

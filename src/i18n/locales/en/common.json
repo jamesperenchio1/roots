@@ -121,7 +121,8 @@
   "speciesAutocomplete": {
     "useCustom": "Use \"{{query}}\" as custom species",
     "customHint": "This species will be added to our database",
-    "noMatches": "No matches found. Keep typing to add as custom."
+    "noMatches": "No matches found. Keep typing to add as custom.",
+    "fromGbif": "from GBIF"
   },
   "weather": {
     "unavailable": "Weather unavailable for {{city}}",
@@ -277,6 +278,12 @@
     "confirm": "Confirm pin"
   },
   "identification": {
+    "evidenceChecklist": "Evidence checklist",
+    "dragDropHint": "Drag & drop or click to browse",
+    "uploading": "Uploading…",
+    "previewAlt": "Preview",
+    "maxFiles": "Maximum {{maxFiles}} files for this step.",
+    "uploadFailed": "Upload failed",
     "confidence": "confidence",
     "nativeRegion": "Native region",
     "growthHabit": "Growth habit",
@@ -391,6 +398,7 @@
     }
   },
   "admin": {
+    "loading": "Loading admin access…",
     "localAdminWarning": "Local dev admin session — disable ENABLE_LOCAL_ADMIN before deploying",
     "title": "Admin Dashboard",
     "tabs": {

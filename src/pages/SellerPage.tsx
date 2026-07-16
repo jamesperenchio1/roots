@@ -1,15 +1,27 @@
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Star, Store, MapPin, Calendar } from 'lucide-react';
-import { getUserById, getActiveListings, PLANT_IMAGES } from '@/data/mockData';
+import { ArrowLeft, Star, Store, MapPin, Calendar, Leaf } from 'lucide-react';
+import { PLANT_IMAGES } from '@/data/mockData';
+import { useSeller } from '@/hooks/queries/useSeller';
+import { useListings } from '@/hooks/queries/useListings';
 import { getProvinceLabel } from '@/lib/provinces';
 import { SellerReviewsSection } from '@/components/SellerReviewsSection';
 
 export default function SellerPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
-  const seller = getUserById(id || '');
-  const listings = getActiveListings().filter(l => l.seller_id === id);
+  const { data: seller, isPending: sellerLoading } = useSeller(id);
+  const { data: allListings, isPending: listingsLoading } = useListings();
+  const listings = (allListings || []).filter((l) => l.seller_id === id);
+
+  if (sellerLoading || listingsLoading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-black text-white">
+        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
+        <p className="text-sm text-zinc-500">{t('common:actions.loading')}</p>
+      </div>
+    );
+  }
 
   if (!seller) {
     return (

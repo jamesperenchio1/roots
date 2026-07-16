@@ -1,21 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
 import { getProvinceLabel } from '@/lib/provinces';
 import {
-  getMarketOverview,
-  getPriceSnapshotsForSpecies,
   getMarketSpecies,
   getActiveListings,
   getSpeciesById,
+  getPriceSnapshotsForSpecies,
 } from '@/data/mockData';
 import { PriceChart, Sparkline } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
-import { subscribePublicDataHydration } from '@/lib/api';
+import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
+import { useListings } from '@/hooks/queries/useListings';
 import type { LucideIcon } from 'lucide-react';
-import type { Species, Category, SizeCategory } from '@/types';
+import type { Species, Category, SizeCategory, MarketOverview } from '@/types';
 
 function SectionHeader({ icon: Icon, titleKey, color }: { icon: LucideIcon; titleKey: string; color: string }) {
   const { t } = useTranslation('marketplace');
@@ -53,7 +54,7 @@ function SkeletonTableRow() {
   );
 }
 
-function SpeciesCard({ item }: { item: ReturnType<typeof getMarketOverview>['trending_up'][0] }) {
+function SpeciesCard({ item }: { item: MarketOverview['trending_up'][0] }) {
   const { t } = useTranslation(['marketplace', 'common']);
   return (
     <Link
@@ -89,7 +90,7 @@ function SpeciesSection({
   titleKey: string;
   icon: LucideIcon;
   color: string;
-  items: ReturnType<typeof getMarketOverview>['trending_up'];
+  items: MarketOverview['trending_up'];
 }) {
   return (
     <section>
@@ -155,77 +156,49 @@ function findDefaultSpecies(): Species | undefined {
 
 export default function MarketPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
-  const [hydratedTick, setHydratedTick] = useState(0);
   const [{ species: selectedSpecies, manual: hasManualSelection }, setSelection] = useState(getInitialSelection);
+  void hasManualSelection;
   const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
-
-  useEffect(() => {
-    const unsubscribe = subscribePublicDataHydration(() => {
-      setHydratedTick(t => t + 1);
-    });
-    return unsubscribe;
-  }, []);
-
-  // Only auto-select a fallback when the user has not manually picked a species.
-  useEffect(() => {
-    if (hydratedTick === 0 || hasManualSelection) return;
-    const current = selectedSpecies;
-    const all = getMarketSpecies();
-    if (current && all.some(s => s.id === current.id)) {
-      const hasData =
-        getPriceSnapshotsForSpecies(current.id, undefined, 180).length > 0 ||
-        getActiveListings({ speciesId: current.id }).length > 0;
-      if (hasData) return;
-    }
-    const fallback = findDefaultSpecies();
-    if (fallback && fallback.id !== current?.id) {
-      setSelection(prev => ({ ...prev, species: fallback }));
-    }
-  }, [hydratedTick, selectedSpecies, selectedSpecies?.id, hasManualSelection]);
-
-  const market = getMarketOverview();
+  const { data: market } = useMarketOverview();
+  const { data: allListings } = useListings();
 
   const filteredMarket = useMemo(
     () => ({
       trending_up: categoryFilter
-        ? market.trending_up.filter(i => i.species.category === categoryFilter)
-        : market.trending_up,
+        ? (market?.trending_up ?? []).filter((i) => i.species.category === categoryFilter)
+        : (market?.trending_up ?? []),
       trending_down: categoryFilter
-        ? market.trending_down.filter(i => i.species.category === categoryFilter)
-        : market.trending_down,
+        ? (market?.trending_down ?? []).filter((i) => i.species.category === categoryFilter)
+        : (market?.trending_down ?? []),
       most_traded: categoryFilter
-        ? market.most_traded.filter(i => i.species.category === categoryFilter)
-        : market.most_traded,
+        ? (market?.most_traded ?? []).filter((i) => i.species.category === categoryFilter)
+        : (market?.most_traded ?? []),
       hot_right_now: categoryFilter
-        ? market.hot_right_now.filter(i => i.species.category === categoryFilter)
-        : market.hot_right_now,
-      cold: categoryFilter ? market.cold.filter(i => i.species.category === categoryFilter) : market.cold,
+        ? (market?.hot_right_now ?? []).filter((i) => i.species.category === categoryFilter)
+        : (market?.hot_right_now ?? []),
+      cold: categoryFilter
+        ? (market?.cold ?? []).filter((i) => i.species.category === categoryFilter)
+        : (market?.cold ?? []),
       high_value_sales: categoryFilter
-        ? market.high_value_sales.filter(t => t.listing?.species?.category === categoryFilter)
-        : market.high_value_sales,
+        ? (market?.high_value_sales ?? []).filter((t) => t.listing?.species?.category === categoryFilter)
+        : (market?.high_value_sales ?? []),
     }),
     [market, categoryFilter]
   );
 
+  const { data: priceSnapshots } = usePriceSnapshots(selectedSpecies?.id, sizeFilter || undefined, 90);
   const priceData = useMemo(
-    () =>
-      selectedSpecies
-        ? getPriceSnapshotsForSpecies(selectedSpecies.id, sizeFilter || undefined, 90).map(ps => ({
-            date: ps.snapshot_date,
-            price: ps.median_price_thb,
-            volume: ps.sale_count,
-          }))
-        : [],
-    [selectedSpecies, sizeFilter]
+    () => priceSnapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb, volume: ps.sale_count })),
+    [priceSnapshots]
   );
 
   const speciesListings = useMemo(
     () =>
-      selectedSpecies
-        ? getActiveListings({ speciesId: selectedSpecies.id }).filter(l => !sizeFilter || l.size_category === sizeFilter)
+      selectedSpecies && allListings
+        ? allListings.filter((l) => l.species?.id === selectedSpecies.id && (!sizeFilter || l.size_category === sizeFilter))
         : [],
-    [selectedSpecies, sizeFilter]
+    [selectedSpecies, allListings, sizeFilter]
   );
 
   const handleSpeciesChange = (_value: string, entry?: { id: string }) => {

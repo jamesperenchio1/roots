@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, ImageIcon, X } from 'lucide-react';
 import { uploadIdentificationMedia, validateIdentificationFile } from '@/lib/identification/upload';
 import { saveUploadedMedia } from '@/lib/identification/api-identification';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function MediaUploader({ requestId, evidenceType, label, onMediaUploaded, uploadedCount = 0, maxFiles = 4 }: Props) {
+  const { t } = useTranslation('common');
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -27,7 +29,7 @@ export function MediaUploader({ requestId, evidenceType, label, onMediaUploaded,
     const remaining = maxFiles - uploadedCount;
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) {
-      toast.info(`Maximum ${maxFiles} files for this step.`);
+      toast.info(t('identification.maxFiles', { maxFiles }));
       return;
     }
 
@@ -45,7 +47,7 @@ export function MediaUploader({ requestId, evidenceType, label, onMediaUploaded,
         if (file.type.startsWith('image/')) setPreviewUrl(saved.url || null);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      toast.error(err instanceof Error ? err.message : t('identification.uploadFailed'));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -94,13 +96,13 @@ export function MediaUploader({ requestId, evidenceType, label, onMediaUploaded,
         ) : (
           <ImageIcon className="w-8 h-8 text-zinc-500 mx-auto mb-2" />
         )}
-        <p className="text-sm text-zinc-300">{uploading ? 'Uploading…' : label}</p>
-        <p className="text-xs text-zinc-500 mt-1">Drag & drop or click to browse</p>
+        <p className="text-sm text-zinc-300">{uploading ? t('identification.uploading') : label}</p>
+        <p className="text-xs text-zinc-500 mt-1">{t('identification.dragDropHint')}</p>
       </div>
 
       {previewUrl && (
         <div className="relative inline-block">
-          <img src={previewUrl} alt="Preview" className="h-24 w-auto rounded-lg border border-white/5" />
+          <img src={previewUrl} alt={t('identification.previewAlt')} className="h-24 w-auto rounded-lg border border-white/5" />
           <button
             type="button"
             onClick={() => setPreviewUrl(null)}

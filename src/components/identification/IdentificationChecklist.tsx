@@ -1,4 +1,5 @@
 import { Check, Circle, Camera } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { EvidenceType } from '@/types';
 import { evidenceTypeLabel } from '@/lib/identification';
 
@@ -9,9 +10,10 @@ interface IdentificationChecklistProps {
 }
 
 export function IdentificationChecklist({ steps, currentStepIndex, className = '' }: IdentificationChecklistProps) {
+  const { t } = useTranslation('common');
   return (
     <div className={`bg-zinc-900/30 border border-white/5 rounded-xl p-5 ${className}`}>
-      <h3 className="text-sm font-medium mb-4">Evidence checklist</h3>
+      <h3 className="text-sm font-medium mb-4">{t('identification.evidenceChecklist')}</h3>
       <ol className="space-y-3">
         {steps.map((step, index) => {
           const done = index < currentStepIndex;

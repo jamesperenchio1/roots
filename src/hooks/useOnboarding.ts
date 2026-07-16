@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -48,7 +48,10 @@ export function useOnboarding(): UseOnboardingReturn {
   const { user, refreshProfile, freshSignup, acknowledgeFreshSignup } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const status = (user?.onboarding_status ?? {}) as OnboardingStatus;
+  const status = useMemo(
+    () => (user?.onboarding_status ?? {}) as OnboardingStatus,
+    [user?.onboarding_status]
+  );
   const isProfileEmpty = !status || Object.keys(status).length === 0;
   const shouldShowTutorial = user
     ? (isProfileEmpty || (!status.completed && !status.skipped && !status.dontShowAgain))

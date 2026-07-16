@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { getActiveListings, PLANT_IMAGES } from '@/data/mockData';
-import { subscribeListings, getListingsVersion } from '@/lib/api';
+import { PLANT_IMAGES } from '@/data/mockData';
+import { useListings } from '@/hooks/queries/useListings';
 
 function seededRandom(seed: string, index: number): number {
   let hash = 0;
@@ -50,28 +50,19 @@ export default function BrowsePage() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>('newest');
-  const [isLoading, setIsLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const q = (searchParams.get('q') || '').toLowerCase().trim();
   const showAll = searchParams.get('all') === '1';
 
-  // Re-render when realtime listings change.
-  useSyncExternalStore(subscribeListings, getListingsVersion);
-
-  // Simulate data loading for skeleton demo (removes after mount)
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 400);
-    return () => clearTimeout(timer);
-  }, []);
+  const { data: allListings, isPending: isLoading } = useListings();
 
   const listings = useMemo(() => {
-    let result = getActiveListings({
-      category: category || undefined,
-      size: size || undefined,
-      province: province || undefined,
-      minPrice: minPrice ? parseInt(minPrice) : undefined,
-      maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
-    });
+    let result = allListings ? [...allListings] : [];
+    if (category) result = result.filter((l) => l.species?.category === category);
+    if (size) result = result.filter((l) => l.size_category === size);
+    if (province) result = result.filter((l) => l.pickup_province === province);
+    if (minPrice) result = result.filter((l) => l.price_thb >= parseInt(minPrice));
+    if (maxPrice) result = result.filter((l) => l.price_thb <= parseInt(maxPrice));
 
     if (q) {
       result = result.filter((l) => {
@@ -93,7 +84,7 @@ export default function BrowsePage() {
       default: result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return result;
-  }, [category, size, province, minPrice, maxPrice, sortBy, q]);
+  }, [allListings, category, size, province, minPrice, maxPrice, sortBy, q]);
 
   const { visibleItems, hasMore, loadMore, total } = usePagination(listings, { pageSize: showAll ? listings.length : PAGE_SIZE });
   const itemsToRender = showAll ? listings : visibleItems;

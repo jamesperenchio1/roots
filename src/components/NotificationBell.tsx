@@ -1,7 +1,7 @@
-import { useState, useCallback, useSyncExternalStore } from 'react';
+import { useState, useCallback } from 'react';
 import { Bell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getUnreadCount, subscribeNotifications, getNotificationsVersion } from '@/lib/api';
+import { useNotifications } from '@/hooks/queries/useUserData';
 import NotificationPanel from './NotificationPanel';
 
 interface NotificationBellProps {
@@ -11,17 +11,16 @@ interface NotificationBellProps {
 export default function NotificationBell({ userId }: NotificationBellProps) {
   const { t } = useTranslation(['common']);
   const [open, setOpen] = useState(false);
+  const { data: items = [] } = useNotifications(userId);
+  const unread = items.filter((n) => !n.read).length;
 
   const toggle = useCallback(() => {
-    setOpen(prev => !prev);
+    setOpen((prev) => !prev);
   }, []);
 
   const close = useCallback(() => {
     setOpen(false);
   }, []);
-
-  useSyncExternalStore(subscribeNotifications, getNotificationsVersion);
-  const unread = getUnreadCount(userId);
 
   return (
     <div className="relative">

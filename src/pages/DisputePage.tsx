@@ -1,9 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, Upload, Camera, Loader2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { createDispute, uploadDisputeEvidence } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
+import { useTransaction } from '@/hooks/queries/useTransaction';
 import { toast } from 'sonner';
 
 const REASONS = [
@@ -20,6 +22,8 @@ export default function DisputePage() {
   const { transactionId } = useParams<{ transactionId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation(['checkout', 'common']);
+  const { user } = useAuth();
+  const { data: tx, isPending: txPending } = useTransaction(transactionId);
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
@@ -28,7 +32,21 @@ export default function DisputePage() {
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const reasonOptions = REASONS.map(r => ({
+  const txError = useMemo(() => {
+    if (txPending || !transactionId) return null;
+    if (!tx) return t('checkout:dispute.orderNotFound');
+    if (tx.buyer_id !== user?.id && tx.seller_id !== user?.id) return t('common:errors.unauthorized');
+    return null;
+  }, [txPending, tx, transactionId, user?.id, t]);
+
+  const openedBy = useMemo(() => {
+    if (!tx || !user) return null;
+    if (tx.buyer_id === user.id) return 'buyer' as const;
+    if (tx.seller_id === user.id) return 'seller' as const;
+    return null;
+  }, [tx, user]);
+
+  const reasonOptions = REASONS.map((r) => ({
     value: r.value,
     label: t(`checkout:dispute.reasons.${r.value}` as const),
   }));
@@ -40,10 +58,11 @@ export default function DisputePage() {
       toast.error(t('checkout:dispute.maxEvidence'));
       return;
     }
+    if (!user) return;
     setUploading(true);
     try {
-      const url = await uploadDisputeEvidence(file, 'buyer');
-      setEvidenceUrls(prev => [...prev, url]);
+      const url = await uploadDisputeEvidence(file, user.id);
+      setEvidenceUrls((prev) => [...prev, url]);
       toast.success(t('checkout:dispute.evidenceUploaded'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('checkout:dispute.uploadFailed'));
@@ -54,7 +73,7 @@ export default function DisputePage() {
   };
 
   const removeEvidence = (idx: number) => {
-    setEvidenceUrls(prev => prev.filter((_, i) => i !== idx));
+    setEvidenceUrls((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,11 +82,15 @@ export default function DisputePage() {
       toast.error(t('common:errors.required'));
       return;
     }
+    if (!openedBy || !transactionId) {
+      toast.error(t('common:errors.unauthorized'));
+      return;
+    }
     setSubmitting(true);
     try {
       await createDispute({
-        transaction_id: transactionId || '',
-        opened_by: 'buyer',
+        transaction_id: transactionId,
+        opened_by: openedBy,
         reason,
         description,
         evidence_urls: evidenceUrls,
@@ -79,6 +102,27 @@ export default function DisputePage() {
       setSubmitting(false);
     }
   };
+
+  if (txPending) {
+    return (
+      <div className="pt-24 pb-16 px-4 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto" />
+      </div>
+    );
+  }
+
+  if (txError) {
+    return (
+      <div className="pt-24 pb-16 px-4 text-center">
+        <div className="max-w-md mx-auto">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-light mb-2">{t('common:errors.generic')}</h1>
+          <p className="text-zinc-500 mb-6">{txError}</p>
+          <Link to={`/order/${transactionId}`} className="text-emerald-400 hover:underline text-sm">{t('checkout:dispute.backToOrder')}</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -121,7 +165,7 @@ export default function DisputePage() {
               required
             >
               <option value="">{t('checkout:dispute.selectReason')}</option>
-              {reasonOptions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              {reasonOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
 

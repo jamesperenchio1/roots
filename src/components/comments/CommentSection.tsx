@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,13 +39,9 @@ export function CommentSection({ speciesId, listingId }: CommentSectionProps) {
     return subscribeToComments(targetId, isListing);
   }, [targetId, isListing]);
 
-  // version bumps on manual refresh; storeVersion bumps on realtime inserts.
-  const storeVersion = useSyncExternalStore(subscribeCommentsStore, getCommentsStoreVersion);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const comments = useMemo(
-    () => (isListing ? getCommentsForListing(targetId) : getCommentsForSpecies(targetId)),
-    [targetId, isListing, version, storeVersion]
-  );
+  // version bumps on manual refresh; the store subscription above bumps on realtime inserts.
+  void version;
+  const comments = isListing ? getCommentsForListing(targetId) : getCommentsForSpecies(targetId);
 
   const hydrate = useCallback(async () => {
     if (isListing) {

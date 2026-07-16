@@ -1,8 +1,9 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import { hydratePublicData } from '@/lib/api';
+import { usePublicData } from '@/hooks/queries/usePublicData';
+import i18n from '@/i18n/config';
 import { Leaf } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import Navbar from '@/components/Navbar';
@@ -11,6 +12,8 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import ScrollToTop from '@/components/ScrollToTop';
 import AuthGuard from '@/components/AuthGuard';
 import AdminGuard from '@/components/AdminGuard';
+import SellerGuard from '@/components/SellerGuard';
+import OwnershipGuard from '@/components/OwnershipGuard';
 import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
 import TutorialModal from '@/components/TutorialModal';
 
@@ -50,7 +53,7 @@ function PageLoader() {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-black text-white">
       <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
-      <p className="text-sm text-zinc-500">Loading…</p>
+      <p className="text-sm text-zinc-500">{i18n.t('common:actions.loading')}</p>
     </div>
   );
 }
@@ -81,7 +84,7 @@ function AppContent() {
             <Route path="/browse/:category" element={<BrowsePage />} />
             <Route path="/market" element={<MarketPage />} />
             <Route path="/listing/:id" element={<ListingPage />} />
-            <Route path="/listing/:id/edit" element={<AuthGuard><EditListingPage /></AuthGuard>} />
+            <Route path="/listing/:id/edit" element={<OwnershipGuard><EditListingPage /></OwnershipGuard>} />
             <Route path="/species/:id" element={<SpeciesPage />} />
             <Route path="/p/:plantId" element={<PlantQRPage />} />
             <Route path="/seller/:id" element={<SellerPage />} />
@@ -107,9 +110,9 @@ function AppContent() {
             <Route path="/dashboard/:tab" element={<AuthGuard><DashboardPage /></AuthGuard>} />
 
             {/* Seller Pages */}
-            <Route path="/seller-dashboard/listings/new" element={<AuthGuard><CreateListingPage /></AuthGuard>} />
-            <Route path="/seller-dashboard/:tab" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
-            <Route path="/seller-dashboard" element={<AuthGuard><SellerDashboardPage /></AuthGuard>} />
+            <Route path="/seller-dashboard/listings/new" element={<SellerGuard><CreateListingPage /></SellerGuard>} />
+            <Route path="/seller-dashboard/:tab" element={<SellerGuard><SellerDashboardPage /></SellerGuard>} />
+            <Route path="/seller-dashboard" element={<SellerGuard><SellerDashboardPage /></SellerGuard>} />
 
             {/* Messages */}
             <Route path="/messages" element={<AuthGuard><MessagesPage /></AuthGuard>} />
@@ -138,19 +141,21 @@ function AppContent() {
 }
 
 function BootGate({ children }: { children: React.ReactNode }) {
-  const [bootError, setBootError] = useState(false);
-  useEffect(() => {
-    let mounted = true;
-    hydratePublicData().catch(() => {
-      if (mounted) setBootError(true);
-    });
-    return () => { mounted = false; };
-  }, []);
+  const { isPending, isFetched, error } = usePublicData();
+
+  if (isPending && !isFetched) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-black text-white">
+        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
+        <p className="text-sm text-zinc-500">{i18n.t('common:actions.loading')}</p>
+      </div>
+    );
+  }
 
   return (
     <>
       {children}
-      {bootError && (
+      {error && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
           <p className="text-xs text-amber-200">
             Connection issue detected. Some features may be limited until the server responds.

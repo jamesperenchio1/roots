@@ -3,18 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getTransactionsWithDetails, WATCHLIST, DISPUTES, getSpeciesById, getListingById } from '@/data/mockData';
-import {
-  updateProfile, toggleWatch, getOffersForBuyer, withdrawOffer, respondToOffer,
-  getUserPriceAlerts, deletePriceAlert, getUserThreads, hydrateUserOffers,
-  hydrateUserDisputes, hydrateUserMessages, subscribeOffers, getOffersVersion,
-  subscribeWatchlist, getWatchlistVersion
-} from '@/lib/api';
+import { updateProfile, toggleWatch, withdrawOffer, respondToOffer, deletePriceAlert, getUserThreads, hydrateUserMessages } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText, isValidPromptPayId } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
 import { subscribeConversations, getConversationsVersion } from '@/lib/messaging';
 import SavedPlacesManager from '@/components/SavedPlacesManager';
+import { useUserTransactions, useOffers, useWatchlist, usePriceAlerts, useDisputes } from '@/hooks/queries/useUserData';
 
 const getTabs = (t: (key: string) => string) => [
   { id: 'purchases', label: t('dashboard:buyer.purchases'), icon: ShoppingBag },
@@ -30,24 +25,25 @@ export default function DashboardPage() {
   const { tab } = useParams<{ tab?: string }>();
   const { t, i18n } = useTranslation(['dashboard', 'common', 'marketplace', 'messages']);
   const tabs = getTabs(t);
-  const [activeTab, setActiveTab] = useState(tab && tabs.some(ta => ta.id === tab) ? tab : 'purchases');
+  const [activeTab, setActiveTab] = useState(tab && tabs.some((ta) => ta.id === tab) ? tab : 'purchases');
   const [saving, setSaving] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     display_name: user?.display_name || '',
     promptpay_id: user?.promptpay_id || '',
     language_preference: user?.language_preference || 'en',
   });
-  const [localWatchlist, setLocalWatchlist] = useState(WATCHLIST.filter(w => w.user_id === user?.id));
-  const [offersRefreshKey, setOffersRefreshKey] = useState(0);
-  const [priceAlerts, setPriceAlerts] = useState(() => getUserPriceAlerts(user?.id || ''));
 
-  // Re-render when realtime offers / watchlist / conversations change.
-  useSyncExternalStore(subscribeOffers, getOffersVersion);
-  useSyncExternalStore(subscribeWatchlist, getWatchlistVersion);
+  const { data: transactions = [] } = useUserTransactions(user?.id);
+  const { data: offers = [] } = useOffers(user?.id);
+  const { data: watchlist = [] } = useWatchlist(user?.id);
+  const { data: priceAlerts = [] } = usePriceAlerts(user?.id);
+  const { data: disputes = [] } = useDisputes(user?.id);
+
+  // Re-render when conversation store changes (messages tab).
   useSyncExternalStore(subscribeConversations, getConversationsVersion);
 
   useEffect(() => {
-    if (tab && tabs.some(ta => ta.id === tab)) {
+    if (tab && tabs.some((ta) => ta.id === tab)) {
       setActiveTab(tab);
     }
   }, [tab, tabs]);
@@ -60,42 +56,14 @@ export default function DashboardPage() {
         promptpay_id: user.promptpay_id || '',
         language_preference: user.language_preference || 'en',
       });
-      setLocalWatchlist(WATCHLIST.filter(w => w.user_id === user.id));
-      setPriceAlerts(getUserPriceAlerts(user.id));
-      // Make sure watchlist is hydrated in case we landed here directly.
-      import('@/lib/api').then(({ hydrateUserWatchlist }) => hydrateUserWatchlist(user.id));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, offersRefreshKey]);
-
-  // Re-fetch offers when the Purchases tab opens
-  useEffect(() => {
-    if (activeTab !== 'purchases' || !user) return;
-    let cancelled = false;
-    hydrateUserOffers().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.id]);
-
-  // Re-fetch disputes when the Disputes tab opens
-  useEffect(() => {
-    if (activeTab !== 'disputes' || !user) return;
-    let cancelled = false;
-    hydrateUserDisputes().then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.id]);
+  }, [user]);
 
   // Re-fetch messages when the Messages tab opens
   useEffect(() => {
     if (activeTab !== 'messages' || !user) return;
-    let cancelled = false;
-    hydrateUserMessages(user.id).then(() => { if (!cancelled) setOffersRefreshKey(k => k + 1); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.id]);
-
-  const transactions = getTransactionsWithDetails().filter(t => t.buyer_id === user?.id);
+    hydrateUserMessages(user.id).then(() => { /* conversation store bumps itself */ });
+  }, [activeTab, user]);
 
   const handleSaveSettings = async () => {
     if (!user) return;
@@ -121,9 +89,8 @@ export default function DashboardPage() {
     }
   };
 
-  const handleRemoveWatch = async (watchId: string, targetId: string, type: 'species' | 'listing') => {
+  const handleRemoveWatch = async (targetId: string, type: 'species' | 'listing') => {
     if (!user) return;
-    setLocalWatchlist(prev => prev.filter(w => w.id !== watchId));
     try {
       await toggleWatch(user.id, type, targetId, false);
       toast.success(t('marketplace:listing.removedFromWatchlist'));
@@ -135,13 +102,13 @@ export default function DashboardPage() {
   const renderContent = () => {
     switch (activeTab) {
       case 'purchases': {
-        const myOffers = user ? getOffersForBuyer(user.id) : [];
+        const myOffers = offers;
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.offers')} ({myOffers.filter(o => o.status === 'pending').length} {t('common:status.pending').toLowerCase()})</h2>
+              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.offers')} ({myOffers.filter((o) => o.status === 'pending').length} {t('common:status.pending').toLowerCase()})</h2>
               <div className="space-y-3">
-                {myOffers.length > 0 ? myOffers.map(o => (
+                {myOffers.length > 0 ? myOffers.map((o) => (
                   <OfferCard
                     key={o.id}
                     offer={o}
@@ -150,7 +117,6 @@ export default function DashboardPage() {
                       try {
                         await withdrawOffer(o.id);
                         toast.success(t('dashboard:buyer.offerWithdrawn'));
-                        setOffersRefreshKey(k => k + 1);
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : t('dashboard:buyer.offerWithdrawFailed'));
                       }
@@ -159,7 +125,6 @@ export default function DashboardPage() {
                       try {
                         await respondToOffer(o.id, status);
                         toast.success(t('dashboard:seller.offerResponded'));
-                        setOffersRefreshKey(k => k + 1);
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
                       }
@@ -173,7 +138,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.purchases')} ({transactions.length})</h2>
               <div className="space-y-3">
-                {transactions.length > 0 ? transactions.map(tx => (
+                {transactions.length > 0 ? transactions.map((tx) => (
                   <Link to={`/order/${tx.id}`} key={tx.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center">
@@ -209,7 +174,7 @@ export default function DashboardPage() {
       case 'plants':
         return (
           <div className="grid sm:grid-cols-2 gap-4">
-            {getTransactionsWithDetails().filter(t => t.buyer_id === user?.id && t.status === 'completed' && t.plant_id).map(tx => (
+            {transactions.filter((t) => t.buyer_id === user?.id && t.status === 'completed' && t.plant_id).map((tx) => (
               <div key={tx.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
                 <p className="text-sm font-medium mb-1">{t('dashboard:buyer.plantLabel', { id: tx.plant_id!.slice(-4) })}</p>
                 <p className="text-xs text-zinc-500 mb-2">{t('dashboard:buyer.purchasedFor', { amount: tx.sale_price_thb.toLocaleString(), currency: t('common:currency') })}</p>
@@ -219,7 +184,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-            {getTransactionsWithDetails().filter(t => t.buyer_id === user?.id && t.status === 'completed').length === 0 && (
+            {transactions.filter((t) => t.buyer_id === user?.id && t.status === 'completed').length === 0 && (
               <div className="text-center py-12 col-span-2">
                 <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noPlants')}</p>
                 <Link to="/browse" className="text-emerald-400 text-sm hover:underline">{t('dashboard:buyer.startCollecting')}</Link>
@@ -233,7 +198,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.priceAlerts')} ({priceAlerts.length})</h2>
               <div className="space-y-3">
-                {priceAlerts.length > 0 ? priceAlerts.map(pa => (
+                {priceAlerts.length > 0 ? priceAlerts.map((pa) => (
                   <div key={pa.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
@@ -248,7 +213,6 @@ export default function DashboardPage() {
                       onClick={async () => {
                         try {
                           await deletePriceAlert(pa.id);
-                          setPriceAlerts(prev => prev.filter(p => p.id !== pa.id));
                           toast.success(t('dashboard:buyer.priceAlertDeleted'));
                         } catch (err) {
                           toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
@@ -265,11 +229,11 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.watchlist')} ({localWatchlist.length})</h2>
+              <h2 className="text-lg font-medium mb-1">{t('dashboard:buyer.watchlist')} ({watchlist.length})</h2>
               <div className="space-y-3">
-                {localWatchlist.length > 0 ? localWatchlist.map(w => {
-                  const species = w.watch_type === 'species' ? (w.species || getSpeciesById(w.target_id)) : null;
-                  const listing = w.watch_type === 'listing' ? (w.listing || getListingById(w.target_id)) : null;
+                {watchlist.length > 0 ? watchlist.map((w) => {
+                  const species = w.watch_type === 'species' ? w.species : null;
+                  const listing = w.watch_type === 'listing' ? w.listing : null;
                   const label = species?.common_name_en || species?.scientific_name || listing?.species?.common_name_en || listing?.species?.scientific_name || w.target_id;
                   return (
                     <div key={w.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
@@ -301,7 +265,7 @@ export default function DashboardPage() {
                         )}
                         <button
                           type="button"
-                          onClick={() => handleRemoveWatch(w.id, w.target_id, w.watch_type)}
+                          onClick={() => handleRemoveWatch(w.target_id, w.watch_type)}
                           className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
                         >
                           <X className="w-3 h-3" /> {t('common:actions.remove')}
@@ -324,7 +288,7 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {(() => {
               const threads = getUserThreads(user?.id || '');
-              const totalUnread = threads.reduce((sum, t) => sum + t.unreadCount, 0);
+              const totalUnread = threads.reduce((sum, th) => sum + th.unreadCount, 0);
               if (threads.length === 0) {
                 return (
                   <div className="text-center py-12">
@@ -335,7 +299,7 @@ export default function DashboardPage() {
               }
               return (
                 <>
-                  {threads.slice(0, 3).map(thread => (
+                  {threads.slice(0, 3).map((thread) => (
                     <Link to={`/messages/${thread.threadId}`} key={thread.threadId} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden">
@@ -374,7 +338,7 @@ export default function DashboardPage() {
       case 'disputes':
         return (
           <div className="space-y-3">
-            {DISPUTES.filter(d => d.status === 'open').map(d => (
+            {disputes.filter((d) => d.status === 'open').map((d) => (
               <div key={d.id} className="bg-zinc-900/30 border border-red-500/10 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">{t('dashboard:buyer.disputeLabel', { id: d.id.slice(-4) })}</span>
@@ -384,7 +348,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-zinc-400">{d.description}</p>
               </div>
             ))}
-            {DISPUTES.filter(d => d.status === 'open').length === 0 && (
+            {disputes.filter((d) => d.status === 'open').length === 0 && (
               <div className="text-center py-12">
                 <p className="text-zinc-500 mb-2">{t('dashboard:buyer.noDisputes')}</p>
                 <p className="text-zinc-600 text-sm">{t('dashboard:buyer.noDisputesSubtitle')}</p>
@@ -400,7 +364,7 @@ export default function DashboardPage() {
               <input
                 type="text"
                 value={settingsForm.display_name}
-                onChange={e => setSettingsForm({ ...settingsForm, display_name: e.target.value })}
+                onChange={(e) => setSettingsForm({ ...settingsForm, display_name: e.target.value })}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
               />
             </div>
@@ -409,7 +373,7 @@ export default function DashboardPage() {
               <input
                 type="text"
                 value={settingsForm.promptpay_id}
-                onChange={e => setSettingsForm({ ...settingsForm, promptpay_id: e.target.value })}
+                onChange={(e) => setSettingsForm({ ...settingsForm, promptpay_id: e.target.value })}
                 placeholder={t('dashboard:buyer.promptpayPlaceholder')}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
@@ -418,7 +382,7 @@ export default function DashboardPage() {
               <label className="text-sm text-zinc-400 mb-1.5 block">{t('dashboard:buyer.languageLabel')}</label>
               <select
                 value={settingsForm.language_preference}
-                onChange={e => setSettingsForm({ ...settingsForm, language_preference: e.target.value as 'th' | 'en' })}
+                onChange={(e) => setSettingsForm({ ...settingsForm, language_preference: e.target.value as 'th' | 'en' })}
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
               >
                 <option value="th">{t('common:language.th')}</option>
@@ -448,15 +412,15 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-light tracking-tight mb-6">{t('common:nav.dashboard')}</h1>
 
         <div className="flex overflow-x-auto gap-1 mb-6 pb-2 scrollbar-hide">
-          {tabs.map(tab => (
+          {tabs.map((ta) => (
             <button
-              key={tab.id}
+              key={ta.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab === tab.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              onClick={() => setActiveTab(ta.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab === ta.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
+              <ta.icon className="w-4 h-4" />
+              {ta.label}
             </button>
           ))}
         </div>

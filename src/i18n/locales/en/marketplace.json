@@ -210,6 +210,9 @@
     "deliveryLabel": "Delivery Options *",
     "pickupAreaLabel": "Pickup Area",
     "pickupAreaPlaceholder": "e.g. Chatuchak Market, Bangkok",
+    "exactPickupPinLabel": "Exact pickup pin",
+    "exactPickupPinNote": "Buyers will only see the exact pin after purchase.",
+    "shippingChangeableNote": "This can be changed later",
     "updatePin": "Update pin",
     "useLocation": "Use my location",
     "pinned": "Pinned:",
@@ -318,8 +321,11 @@
     }
   },
   "species": {
+    "searchPlaceholder": "Search species...",
     "notFound": "Species not found",
     "backToBrowse": "Back to browse",
+    "familyLabel": "Family: {{family}}",
+    "genusLabel": "Genus: {{genus}}",
     "careLevel": "Care: {{level}}",
     "lightRequirement": "Light: {{light}}",
     "priceHistorySubtitle": "All sales data for this species",

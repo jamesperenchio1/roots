@@ -7,13 +7,7 @@ import i18n from '@/i18n/config';
 import {
   mapProfile,
   ensureProfile,
-  hydrateUserTransactions,
-  hydrateUserNotifications,
-  hydrateUserOffers,
-  hydrateUserPriceAlerts,
-  hydrateUserDisputes,
   hydrateUserMessages,
-  hydrateUserWatchlist,
   subscribeToNotifications,
   subscribeToOffers,
   subscribeToListings,
@@ -21,6 +15,8 @@ import {
   subscribeToPriceSnapshots,
   subscribeToWatchlist,
 } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { publicKeys, userKeys } from '@/lib/queryKeys';
 import { subscribeToConversations } from '@/lib/messaging';
 
 interface SignupInput {
@@ -148,13 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (active && p) {
             setUser(p);
-            hydrateUserTransactions();
-            hydrateUserNotifications(uid);
-            hydrateUserOffers();
-            hydrateUserPriceAlerts();
-            hydrateUserDisputes();
+            queryClient.invalidateQueries({ queryKey: publicKeys.all() });
+            queryClient.invalidateQueries({ queryKey: userKeys.all(uid) });
             hydrateUserMessages(uid);
-            hydrateUserWatchlist(uid);
             startSubscriptions(uid);
           }
         }
@@ -176,6 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (p) {
             setUser(p);
+            queryClient.invalidateQueries({ queryKey: publicKeys.all() });
+            queryClient.invalidateQueries({ queryKey: userKeys.all(session.user.id) });
             startSubscriptions(session.user.id);
             const returnPath = consumeOAuthReturnPath();
             if (returnPath) applyOAuthReturnPath(returnPath);
@@ -184,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setFreshSignup(false);
           stopSubscriptions();
+          queryClient.removeQueries({ queryKey: ['user'] });
         }
       } catch (err) {
         logger.warn('auth state change handler failed', { error: err instanceof Error ? err.message : String(err) });
@@ -213,13 +208,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (p) {
         setUser(p);
-        await hydrateUserTransactions();
-        await hydrateUserNotifications(p.id);
-        await hydrateUserOffers();
-        await hydrateUserPriceAlerts();
-        await hydrateUserDisputes();
+        queryClient.invalidateQueries({ queryKey: publicKeys.all() });
+        queryClient.invalidateQueries({ queryKey: userKeys.all(p.id) });
         await hydrateUserMessages(p.id);
-        await hydrateUserWatchlist(p.id);
         startSubscriptions(p.id);
         return { ok: true };
       }

@@ -179,6 +179,7 @@
     "submit": "Submit Review"
   },
   "dispute": {
+    "orderNotFound": "Order not found or you do not have access to it.",
     "maxEvidence": "Maximum 5 evidence photos allowed.",
     "evidenceUploaded": "Evidence uploaded.",
     "uploadFailed": "Upload failed.",

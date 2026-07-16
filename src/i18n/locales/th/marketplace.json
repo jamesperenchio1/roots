@@ -209,6 +209,9 @@
     "deliveryLabel": "ตัวเลือกการจัดส่ง *",
     "pickupAreaLabel": "พื้นที่รับเอง",
     "pickupAreaPlaceholder": "เช่น ตลาดนัดจตุจักร, กรุงเทพฯ",
+    "exactPickupPinLabel": "ตำแหน่งรับเองที่แน่นอน",
+    "exactPickupPinNote": "ผู้ซื้อจะเห็นตำแหน่งที่แน่นอนหลังจากชำระเงิน",
+    "shippingChangeableNote": "สามารถเปลี่ยนแปลงได้ภายหลัง",
     "updatePin": "อัปเดตตำแหน่ง",
     "useLocation": "ใช้ตำแหน่งของฉัน",
     "pinned": "บันทึกตำแหน่งแล้ว:",
@@ -317,8 +320,11 @@
     }
   },
   "species": {
+    "searchPlaceholder": "ค้นหาสายพันธุ์...",
     "notFound": "ไม่พบสายพันธุ์",
     "backToBrowse": "กลับไปหน้าค้นหา",
+    "familyLabel": "วงศ์: {{family}}",
+    "genusLabel": "สกุล: {{genus}}",
     "careLevel": "การดูแล: {{level}}",
     "lightRequirement": "แสง: {{light}}",
     "priceHistorySubtitle": "ข้อมูลการขายทั้งหมดของสายพันธุ์นี้",

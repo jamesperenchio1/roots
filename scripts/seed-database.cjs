@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 /**
  * Seed the live Supabase project with realistic, relational fake data.
  *

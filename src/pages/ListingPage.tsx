@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, ChevronLeft, ChevronRight, X, ZoomIn, MessageSquare } from 'lucide-react';
+import { Heart, MessageCircle, ShoppingCart, Shield, Truck, MapPin, QrCode, Tag, ChevronLeft, ChevronRight, X, ZoomIn, MessageSquare, Leaf } from 'lucide-react';
 import PlantCareCard from '@/components/PlantCareCard';
 import WeatherWidget from '@/components/WeatherWidget';
 import { PROVINCE_CITIES } from '@/lib/weather';
 import { getProvinceLabel } from '@/lib/provinces';
 import { toast } from 'sonner';
-import { getListingById, getPriceSnapshotsForSpecies, PLANT_IMAGES } from '@/data/mockData';
+import { PLANT_IMAGES } from '@/data/mockData';
+import { useListing } from '@/hooks/queries/useListings';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { PriceChart } from '@/components/PriceChart';
 import { StatsPanel } from '@/components/PriceChart';
 import { Button } from '@/components/ui/button';
@@ -25,7 +27,9 @@ import { CommentSection } from '@/components/comments/CommentSection';
 export default function ListingPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
-  const listing = getListingById(id || '');
+  const { data: listing, isPending } = useListing(id);
+  const speciesIdForListing = listing?.species?.id || listing?.plant_id?.replace('p-', 'sp-') || '';
+  const { data: snapshots } = usePriceSnapshots(speciesIdForListing, listing?.size_category, 365);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [watched, setWatched] = useState(false);
@@ -74,6 +78,34 @@ export default function ListingPage() {
     navigate(`/messages/${threadId}`);
   };
 
+  const priceData = useMemo(() => {
+    if (snapshots.length > 0) {
+      return snapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb, volume: ps.sale_count }));
+    }
+    if (!listing) return [];
+    // No market history yet — draw a flat line across a year so every range button shows data.
+    const price = listing.price_thb ?? 0;
+    const today = new Date();
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const synthetic: { date: string; price: number; volume: number }[] = [];
+    for (let i = 365; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      synthetic.push({ date: fmt(d), price, volume: 0 });
+    }
+    return synthetic;
+  }, [snapshots, listing]);
+
+  if (isPending) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-black text-white">
+        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
+        <p className="text-sm text-zinc-500">{t('common:actions.loading')}</p>
+      </div>
+    );
+  }
+
   if (!listing) {
     return (
       <div className="pt-24 pb-16 px-4 text-center">
@@ -93,28 +125,6 @@ export default function ListingPage() {
   const goTo = (i: number) => setActiveImage((i + gallery.length) % gallery.length);
   const goNext = () => goTo(activeImage + 1);
   const goPrev = () => goTo(activeImage - 1);
-  const priceData = (() => {
-    // Load a full year so the chart range selector (30d/90d/6m/1y/all) has data to filter.
-    const snapshots = getPriceSnapshotsForSpecies(speciesId, listing.size_category, 365).map(ps => ({
-      date: ps.snapshot_date,
-      price: ps.median_price_thb,
-      volume: ps.sale_count
-    }));
-    if (snapshots.length > 0) return snapshots;
-
-    // No market history yet — draw a flat line across a year so every range button shows data.
-    const price = listing.price_thb ?? 0;
-    const today = new Date();
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const synthetic: { date: string; price: number; volume: number }[] = [];
-    for (let i = 365; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      synthetic.push({ date: fmt(d), price, volume: 0 });
-    }
-    return synthetic;
-  })();
 
   const median30d = priceData.length > 0
     ? priceData.slice(-30).reduce((s, d) => s + d.price, 0) / Math.min(30, priceData.length)

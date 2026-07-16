@@ -2,13 +2,17 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Shield, AlertTriangle, Users as UsersIcon, DollarSign, Leaf, CheckCircle, XCircle, Ban, Hammer, MessageSquare, ScanSearch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { getDashboardStats, getTransactionsWithDetails, DISPUTES, USERS, getMarketSpecies } from '@/data/mockData';
-import { updateOrderStatus, hydrateUserDisputes, hydratePublicData, adminUpdateUser } from '@/lib/api';
+import { getMarketSpecies } from '@/data/mockData';
+import { updateOrderStatus, adminUpdateUser } from '@/lib/api';
 import { fetchPendingListings, adminReviewListing } from '@/lib/listing-review';
 import { getMessageReports, resolveMessageReport, getMessageById } from '@/lib/messaging';
 import { toast } from 'sonner';
 import { useState, useEffect, useCallback } from 'react';
 import type { Listing } from '@/types';
+import { useDashboardStats } from '@/hooks/queries/useDashboardStats';
+import { useDisputes } from '@/hooks/queries/useUserData';
+import { useUserTransactions } from '@/hooks/queries/useUserData';
+import { usePublicData } from '@/hooks/queries/usePublicData';
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation(['common']);
@@ -29,7 +33,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
         <h1 className="text-2xl font-light tracking-tight mb-6">{t('common:admin.title')}</h1>
 
         <div className="flex overflow-x-auto gap-1 mb-6 pb-2 scrollbar-hide">
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <Link
               key={tab.id}
               to={`/admin/${tab.id}`}
@@ -49,16 +53,16 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 
 function Overview() {
   const { t } = useTranslation(['common']);
-  const stats = getDashboardStats();
+  const { data: stats } = useDashboardStats();
   const statItems = [
-    { labelKey: 'gmvToday', value: `${stats.gmv_today.toLocaleString()} ${t('common:currency')}`, color: 'text-emerald-400' },
-    { labelKey: 'gmvWeek', value: `${stats.gmv_week.toLocaleString()} ${t('common:currency')}`, color: 'text-white' },
-    { labelKey: 'gmvMonth', value: `${stats.gmv_month.toLocaleString()} ${t('common:currency')}`, color: 'text-white' },
-    { labelKey: 'activeListings', value: stats.active_listings.toString(), color: 'text-blue-400' },
-    { labelKey: 'disputeRate', value: `${stats.dispute_rate}%`, color: 'text-red-400' },
-    { labelKey: 'totalUsers', value: stats.user_count.toString(), color: 'text-purple-400' },
-    { labelKey: 'pendingDisputes', value: stats.pending_disputes.toString(), color: 'text-amber-400' },
-    { labelKey: 'pendingPayouts', value: stats.pending_payouts.toString(), color: 'text-cyan-400' },
+    { labelKey: 'gmvToday', value: `${(stats?.gmv_today ?? 0).toLocaleString()} ${t('common:currency')}`, color: 'text-emerald-400' },
+    { labelKey: 'gmvWeek', value: `${(stats?.gmv_week ?? 0).toLocaleString()} ${t('common:currency')}`, color: 'text-white' },
+    { labelKey: 'gmvMonth', value: `${(stats?.gmv_month ?? 0).toLocaleString()} ${t('common:currency')}`, color: 'text-white' },
+    { labelKey: 'activeListings', value: (stats?.active_listings ?? 0).toString(), color: 'text-blue-400' },
+    { labelKey: 'disputeRate', value: `${stats?.dispute_rate ?? 0}%`, color: 'text-red-400' },
+    { labelKey: 'totalUsers', value: (stats?.user_count ?? 0).toString(), color: 'text-purple-400' },
+    { labelKey: 'pendingDisputes', value: (stats?.pending_disputes ?? 0).toString(), color: 'text-amber-400' },
+    { labelKey: 'pendingPayouts', value: (stats?.pending_payouts ?? 0).toString(), color: 'text-cyan-400' },
   ];
 
   return (
@@ -77,16 +81,11 @@ function Overview() {
 
 function Disputes() {
   const { t } = useTranslation(['common']);
-  const [disputes, setDisputes] = useState(DISPUTES);
-
-  useEffect(() => {
-    let cancelled = false;
-    hydrateUserDisputes().then(() => { if (!cancelled) setDisputes([...DISPUTES]); });
-    return () => { cancelled = true; };
-  }, []);
+  const { user } = useAuth();
+  const { data: disputes = [], refetch } = useDisputes(user?.id);
 
   const handleResolve = async (disputeId: string, resolution: 'buyer' | 'seller' | 'partial') => {
-    const dispute = disputes.find(d => d.id === disputeId);
+    const dispute = disputes.find((d) => d.id === disputeId);
     if (!dispute) return;
 
     try {
@@ -94,17 +93,8 @@ function Disputes() {
         status: resolution === 'buyer' ? 'refunded' : 'completed',
       });
 
-      setDisputes(prev => prev.map(d =>
-        d.id === disputeId
-          ? {
-              ...d,
-              status: resolution === 'partial' ? 'resolved_partial' : resolution === 'buyer' ? 'resolved_buyer' : 'resolved_seller',
-              resolved_at: new Date().toISOString(),
-              resolution_amount_thb: resolution === 'buyer' ? d.transaction?.sale_price_thb : resolution === 'partial' ? Math.round((d.transaction?.sale_price_thb || 0) / 2) : 0,
-            }
-          : d
-      ));
       toast.success(t('common:admin.disputes.resolvedToast', { resolution: t(`common:admin.disputes.resolutions.${resolution}`) }));
+      await refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:admin.disputes.resolveError'));
     }
@@ -112,7 +102,7 @@ function Disputes() {
 
   return (
     <div className="space-y-3">
-      {disputes.map(d => (
+      {disputes.map((d) => (
         <div key={d.id} className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">{t('common:admin.disputes.id', { id: d.id.slice(-4) })}</span>
@@ -162,23 +152,20 @@ function Disputes() {
 
 function UsersPage() {
   const { t } = useTranslation(['common']);
-  const [users, setUsers] = useState(USERS);
+  const { data: publicData } = usePublicData();
+  const [users, setUsers] = useState(publicData?.users ?? []);
 
   useEffect(() => {
-    let cancelled = false;
-    hydratePublicData().then(() => {
-      if (!cancelled) setUsers([...USERS]);
-    });
-    return () => { cancelled = true; };
-  }, []);
+    if (publicData?.users) setUsers(publicData.users);
+  }, [publicData?.users]);
 
   const handleStrike = async (userId: string) => {
-    const target = users.find(u => u.id === userId);
+    const target = users.find((u) => u.id === userId);
     if (!target) return;
     const nextCount = target.strike_count + 1;
     try {
       await adminUpdateUser(userId, { strike_count: nextCount });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, strike_count: nextCount } : u));
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, strike_count: nextCount } : u));
       toast.success(t('common:admin.users.strikeToast'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
@@ -188,7 +175,7 @@ function UsersPage() {
   const handleBan = async (userId: string) => {
     try {
       await adminUpdateUser(userId, { is_banned: true });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: true } : u));
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, is_banned: true } : u));
       toast.success(t('common:admin.users.banToast'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
@@ -197,7 +184,7 @@ function UsersPage() {
 
   return (
     <div className="space-y-2">
-      {users.filter(u => !u.is_admin).map(u => (
+      {users.filter((u) => !u.is_admin).map((u) => (
         <div key={u.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-medium">
@@ -236,10 +223,11 @@ function UsersPage() {
 
 function Transactions() {
   const { t } = useTranslation(['common']);
-  const txs = getTransactionsWithDetails();
+  const { user } = useAuth();
+  const { data: txs = [] } = useUserTransactions(user?.id);
   return (
     <div className="space-y-2">
-      {txs.map(tx => (
+      {txs.map((tx) => (
         <div key={tx.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div>
             <p className="text-sm font-medium">{tx.sale_price_thb.toLocaleString()} {t('common:currency')}</p>
@@ -261,7 +249,7 @@ function SpeciesAdmin() {
   const species = getMarketSpecies();
   return (
     <div className="space-y-2">
-      {species.slice(0, 10).map(s => (
+      {species.slice(0, 10).map((s) => (
         <div key={s.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <div>
             <p className="text-sm font-medium">{s.scientific_name}</p>

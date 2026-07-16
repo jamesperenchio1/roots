@@ -557,7 +557,7 @@ export default function CreateListingPage() {
           {delivery.includes('pickup') && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Exact pickup pin</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('marketplace:create.exactPickupPinLabel')}</label>
                 <MapLocationPicker
                   value={pickupCoords ?? null}
                   onChange={(value) => {
@@ -596,7 +596,7 @@ export default function CreateListingPage() {
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
               />
               <p className="text-xs text-zinc-500 mt-1">{t('marketplace:create.freeShippingNote')}</p>
-              <p className="text-xs text-emerald-400/80 mt-1">This can be changed later</p>
+              <p className="text-xs text-emerald-400/80 mt-1">{t('marketplace:create.shippingChangeableNote')}</p>
             </div>
           )}
 

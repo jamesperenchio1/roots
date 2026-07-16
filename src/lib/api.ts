@@ -1,12 +1,14 @@
-// Supabase-backed data access. Live rows (real users, listings and orders) are
-// merged into the in-memory seed stores at boot so the existing synchronous
-// getters in mockData.ts transparently include them. The rich seed catalog and
-// market price history remain as demo content.
+// Supabase-backed data access. Public reads return fresh mapped rows and are
+// cached via TanStack Query; the legacy in-memory seed stores remain only as
+// fallback initial data for a handful of un-migrated getters.
 import { supabase, PHOTO_BUCKET } from './supabase';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, DISPUTES, WATCHLIST, getListingByPlantId, getListingById, PRICE_SNAPSHOTS, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
-import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType } from '@/types';
+import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, WATCHLIST, getListingByPlantId, getListingById, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
+import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
+import { queryClient } from './queryClient';
+import { publicKeys, userKeys } from './queryKeys';
+import i18n from '@/i18n/config';
 import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './messaging';
 
 // Messaging v2 re-exports for backward compatibility.
@@ -21,6 +23,18 @@ export {
 } from './messaging';
 
 const FALLBACK_IMG = '/images/plants/monstera-thai.jpg';
+
+function invalidatePublicQueries() {
+  queryClient.invalidateQueries({ queryKey: publicKeys.all() });
+}
+
+function invalidateUserQueries(userId: string) {
+  queryClient.invalidateQueries({ queryKey: userKeys.all(userId) });
+}
+
+function invalidateTransactionDetail(transactionId: string) {
+  queryClient.invalidateQueries({ queryKey: ['transaction', transactionId] });
+}
 
 function upsertById<T extends { id: string }>(arr: T[], row: T) {
   const i = arr.findIndex((x) => x.id === row.id);
@@ -203,64 +217,6 @@ async function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Prom
 // ---------- boot hydration ----------
 let profileCache: Record<string, Profile> = {};
 
-let publicDataHydrated = false;
-const publicDataListeners = new Set<() => void>();
-function bumpPublicData() {
-  publicDataHydrated = true;
-  publicDataListeners.forEach((cb) => cb());
-}
-export function isPublicDataHydrated(): boolean { return publicDataHydrated; }
-export function subscribePublicDataHydration(cb: () => void): () => void {
-  publicDataListeners.add(cb);
-  return () => { publicDataListeners.delete(cb); };
-}
-
-const PUBLIC_DATA_CACHE_KEY = 'root_public_data_v1';
-const PUBLIC_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
-
-type PublicDataCache = {
-  timestamp: number;
-  users: Profile[];
-  listings: Listing[];
-  sellerReviews: SellerReview[];
-};
-
-function loadPublicDataCache(): PublicDataCache | null {
-  try {
-    const raw = localStorage.getItem(PUBLIC_DATA_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PublicDataCache;
-    if (Date.now() - parsed.timestamp > PUBLIC_DATA_CACHE_TTL_MS) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function savePublicDataCache(users: Profile[], listings: Listing[], sellerReviews: SellerReview[]) {
-  try {
-    localStorage.setItem(PUBLIC_DATA_CACHE_KEY, JSON.stringify({
-      timestamp: Date.now(),
-      users,
-      listings,
-      sellerReviews,
-    }));
-  } catch {
-    // Private mode / quota exceeded — ignore.
-  }
-}
-
-function applyPublicDataCache(cache: PublicDataCache) {
-  profileCache = {};
-  USERS.length = 0;
-  USERS.push(...cache.users);
-  LISTINGS.length = 0;
-  LISTINGS.push(...cache.listings);
-  SELLER_REVIEWS.length = 0;
-  SELLER_REVIEWS.push(...cache.sellerReviews);
-  USERS.forEach((u) => { profileCache[u.id] = u; });
-}
-
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
@@ -270,43 +226,105 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   ]);
 }
 
-export async function hydratePublicData(): Promise<void> {
-  // Show cached data instantly on first paint, then revalidate in the background.
-  const cache = loadPublicDataCache();
-  if (cache) {
-    applyPublicDataCache(cache);
-    bumpPublicData();
-    bumpListings();
-  }
+export type PublicData = {
+  users: Profile[];
+  listings: Listing[];
+  sellerReviews: SellerReview[];
+  priceSnapshots: PriceSnapshot[];
+  transactions: Transaction[];
+};
 
+export async function fetchPublicData(): Promise<PublicData> {
+  const data = await fetchPublicDataRaw();
+  // Keep an in-memory profile cache for mappers, but do not write back to the
+  // legacy mutable arrays now that readers use TanStack Query.
+  profileCache = data.users.reduce((acc, u) => {
+    acc[u.id] = u;
+    return acc;
+  }, {} as Record<string, Profile>);
+  return data;
+}
+
+async function fetchProfileMap(): Promise<Record<string, Profile>> {
   try {
-    const timeoutMs = 8000;
-    const profileReq = supabase.from('profiles').select('*').then((r) => r);
-    const listingsReq = supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }).then((r) => r);
-    const sellerReviewsReq = supabase.from('seller_reviews').select('*').eq('status', 'visible').order('created_at', { ascending: false }).then((r) => r);
-    const [{ data: profs }, { data: rows }, { data: sellerReviewRows }] = await Promise.all([
-      withTimeout(profileReq, timeoutMs),
-      withTimeout(listingsReq, timeoutMs),
-      withTimeout(sellerReviewsReq, timeoutMs),
-    ]);
-    profileCache = {};
-    (profs || []).forEach((p: DbRow) => {
-      const mapped = mapProfile(p);
-      profileCache[mapped.id] = mapped;
-      upsertById(USERS, mapped);
+    const { data, error } = await supabase.from('profiles').select('*');
+    if (error) throw error;
+    const map: Record<string, Profile> = {};
+    (data || []).forEach((r) => {
+      const p = mapProfile(r);
+      map[p.id] = p;
     });
-    await Promise.all((rows || []).map(async (r: DbRow) => upsertById(LISTINGS, await mapListing(r, profileCache))));
-    SELLER_REVIEWS.length = 0;
-    (sellerReviewRows || []).forEach((r: DbRow) => upsertById(SELLER_REVIEWS, mapSellerReview(r)));
-    savePublicDataCache(USERS, LISTINGS, SELLER_REVIEWS);
-    await hydratePriceSnapshots();
-    await hydratePublicTransactions();
-    bumpListings();
+    return map;
   } catch (e) {
-    // Offline / not configured — keep any cached data or fall back to seed-only catalog.
-    logger.warn('hydratePublicData failed, using seed data only', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchProfileMap failed', { error: e instanceof Error ? e.message : String(e) });
+    return {};
   }
-  bumpPublicData();
+}
+
+async function fetchPublicDataRaw(): Promise<PublicData> {
+  const timeoutMs = 8000;
+  const profileReq = supabase.from('profiles').select('*').then((r) => r);
+  const listingsReq = supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }).then((r) => r);
+  const sellerReviewsReq = supabase.from('seller_reviews').select('*').eq('status', 'visible').order('created_at', { ascending: false }).then((r) => r);
+  const [{ data: profs }, { data: rows }, { data: sellerReviewRows }] = await Promise.all([
+    withTimeout(profileReq, timeoutMs),
+    withTimeout(listingsReq, timeoutMs),
+    withTimeout(sellerReviewsReq, timeoutMs),
+  ]);
+
+  const cache: Record<string, Profile> = {};
+  const users: Profile[] = [];
+  (profs || []).forEach((p: DbRow) => {
+    const mapped = mapProfile(p);
+    cache[mapped.id] = mapped;
+    users.push(mapped);
+  });
+
+  const listings: Listing[] = [];
+  await Promise.all((rows || []).map(async (r: DbRow) => {
+    listings.push(await mapListing(r, cache));
+  }));
+
+  const sellerReviews: SellerReview[] = [];
+  (sellerReviewRows || []).forEach((r: DbRow) => sellerReviews.push(mapSellerReview(r)));
+
+  const priceSnapshots = await fetchPriceSnapshots();
+  const transactions = await fetchPublicTransactions(cache);
+
+  return { users, listings, sellerReviews, priceSnapshots, transactions };
+}
+
+async function fetchPriceSnapshots(): Promise<PriceSnapshot[]> {
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 365);
+    const { data, error } = await supabase
+      .from('price_snapshots')
+      .select('*')
+      .gte('snapshot_date', cutoff.toISOString().split('T')[0])
+      .order('snapshot_date', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => mapPriceSnapshot(r));
+  } catch (e) {
+    logger.warn('fetchPriceSnapshots failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+async function fetchPublicTransactions(profileMap: Record<string, Profile>): Promise<Transaction[]> {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, listings(*)')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return await Promise.all((data || []).map(async (r) => mapTransaction(r, profileMap)));
+  } catch (e) {
+    logger.warn('fetchPublicTransactions failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
 }
 
 export function mapPriceSnapshot(r: DbRow): PriceSnapshot {
@@ -324,51 +342,150 @@ export function mapPriceSnapshot(r: DbRow): PriceSnapshot {
   };
 }
 
-export async function hydratePriceSnapshots(): Promise<void> {
-  try {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 365);
-    const { data, error } = await supabase
-      .from('price_snapshots')
-      .select('*')
-      .gte('snapshot_date', cutoff.toISOString().split('T')[0])
-      .order('snapshot_date', { ascending: false });
-    if (error) throw error;
-    PRICE_SNAPSHOTS.length = 0;
-    (data || []).forEach((r) => PRICE_SNAPSHOTS.push(mapPriceSnapshot(r)));
-  } catch (e) {
-    logger.warn('hydratePriceSnapshots failed', { error: e instanceof Error ? e.message : String(e) });
-  }
-}
-
-export async function hydratePublicTransactions(): Promise<void> {
-  try {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*, listings(*)')
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(100);
-    if (error) throw error;
-    await Promise.all((data || []).map(async (r) => upsertById(TRANSACTIONS, await mapTransaction(r, profileCache))));
-  } catch (e) {
-    logger.warn('hydratePublicTransactions failed', { error: e instanceof Error ? e.message : String(e) });
-  }
-}
-
-export async function hydrateUserTransactions(): Promise<void> {
+export async function fetchUserTransactions(): Promise<Transaction[]> {
   try {
     const { data } = await supabase
       .from('transactions')
       .select('*, listings(*)')
       .order('created_at', { ascending: false });
-    await Promise.all((data || []).map(async (r) => upsertById(TRANSACTIONS, await mapTransaction(r, profileCache))));
+    const profiles = await fetchProfileMap();
+    profileCache = { ...profileCache, ...profiles };
+    return await Promise.all((data || []).map(async (r) => mapTransaction(r, profiles)));
   } catch (e) {
-    logger.warn('hydrateUserTransactions failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchUserTransactions failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
   }
 }
 
-export async function hydrateUserNotifications(userId: string): Promise<void> {
+export async function fetchTransactionById(id: string): Promise<Transaction | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*, listings(*)')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    if (!data) return null;
+    const profiles = await fetchProfileMap();
+    profileCache = { ...profileCache, ...profiles };
+    return await mapTransaction(data, profiles);
+  } catch (e) {
+    logger.warn('fetchTransactionById failed', { error: e instanceof Error ? e.message : String(e) });
+    return null;
+  }
+}
+
+function getPriceSnapshotsForSpeciesFromData(
+  snapshots: PriceSnapshot[],
+  speciesId: string,
+  sizeCategory?: string,
+  days: number = 90
+): PriceSnapshot[] {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return snapshots
+    .filter((ps) =>
+      ps.species_id === speciesId &&
+      (sizeCategory ? ps.size_category === sizeCategory : ps.size_category == null) &&
+      new Date(ps.snapshot_date) >= cutoff
+    )
+    .sort((a, b) => new Date(a.snapshot_date).getTime() - new Date(b.snapshot_date).getTime());
+}
+
+function getSpeciesPriceStatsFromData(
+  snapshots: PriceSnapshot[],
+  listings: Listing[],
+  speciesId: string,
+  days: number = 30
+) {
+  const data = getPriceSnapshotsForSpeciesFromData(snapshots, speciesId, undefined, days);
+  if (data.length === 0) {
+    const live = listings.filter((l) => l.status === 'active' && l.species?.id === speciesId);
+    if (live.length === 0) return null;
+    const prices = live.map((l) => l.price_thb).sort((a, b) => a - b);
+    const mid = Math.floor(prices.length / 2);
+    const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
+    const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
+    return { median, mean, min: prices[0], max: prices[prices.length - 1], totalSales: 0 };
+  }
+  const prices = data.map((d) => d.median_price_thb);
+  const sorted = [...prices].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const mean = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const totalSales = data.reduce((s, d) => s + d.sale_count, 0);
+  return { median, mean, min, max, totalSales };
+}
+
+export function getMarketOverviewFromData(data: PublicData): MarketOverview {
+  const { listings, priceSnapshots, transactions } = data;
+  const speciesIds = Array.from(
+    new Set([
+      ...priceSnapshots.map((s) => s.species_id),
+      ...listings.filter((l) => l.status === 'active' && l.species?.id).map((l) => l.species!.id),
+    ])
+  );
+
+  const allStats = speciesIds
+    .map((sid) => {
+      const last30 = getSpeciesPriceStatsFromData(priceSnapshots, listings, sid, 30);
+      const prev60to30 = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 60).slice(0, 30);
+      const prevMedian =
+        prev60to30.length > 0
+          ? Math.round(prev60to30.reduce((s, p) => s + p.median_price_thb, 0) / prev60to30.length)
+          : last30?.median || 0;
+      const sales30d = last30?.totalSales || 0;
+      const sparkline = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 30).map(
+        (d) => d.median_price_thb
+      );
+      const species = getSpeciesById(sid);
+      if (!species) return null;
+      return {
+        species,
+        current_median: last30?.median || 0,
+        previous_median: prevMedian,
+        percent_change: prevMedian > 0 ? ((last30?.median || 0) - prevMedian) / prevMedian * 100 : 0,
+        sales_count: sales30d,
+        sparkline_data: sparkline,
+      };
+    })
+    .filter((s): s is TrendingSpecies => !!s);
+
+  const trending_up = allStats
+    .filter((s) => s.percent_change > 5)
+    .sort((a, b) => b.percent_change - a.percent_change)
+    .slice(0, 5);
+
+  const trending_down = allStats
+    .filter((s) => s.percent_change < -3)
+    .sort((a, b) => a.percent_change - b.percent_change)
+    .slice(0, 4);
+
+  const most_traded = [...allStats].sort((a, b) => b.sales_count - a.sales_count).slice(0, 4);
+
+  const hot_right_now = allStats
+    .filter((s) => s.percent_change > 2)
+    .sort((a, b) => b.sales_count - a.sales_count)
+    .slice(0, 5);
+
+  const cold = allStats
+    .filter((s) => s.percent_change < -2)
+    .sort((a, b) => a.percent_change - b.percent_change)
+    .slice(0, 4);
+
+  return {
+    trending_up,
+    trending_down,
+    most_traded,
+    high_value_sales: transactions.filter((t) => t.status === 'completed' && t.sale_price_thb >= 5000),
+    hot_right_now,
+    cold,
+  };
+}
+
+export async function fetchUserNotifications(userId: string): Promise<Notification[]> {
   try {
     const { data, error } = await supabase
       .from('notifications')
@@ -377,21 +494,19 @@ export async function hydrateUserNotifications(userId: string): Promise<void> {
       .order('created_at', { ascending: false })
       .limit(100);
     if (error) throw error;
-    (data || []).forEach((r) =>
-      upsertById(NOTIFICATIONS, {
-        id: r.id as string,
-        user_id: r.user_id as string,
-        type: r.type as Notification['type'],
-        title: r.title as string,
-        message: (r.message as string) || '',
-        link: (r.link as string | undefined) || undefined,
-        read: !!r.read,
-        created_at: r.created_at as string,
-      })
-    );
-    bumpNotifications();
+    return (data || []).map((r) => ({
+      id: r.id as string,
+      user_id: r.user_id as string,
+      type: r.type as Notification['type'],
+      title: r.title as string,
+      message: (r.message as string) || '',
+      link: (r.link as string | undefined) || undefined,
+      read: !!r.read,
+      created_at: r.created_at as string,
+    }));
   } catch (e) {
-    logger.warn('hydrateUserNotifications failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchUserNotifications failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
   }
 }
 
@@ -411,7 +526,7 @@ function mapOffer(r: DbRow): Offer {
   };
 }
 
-export async function hydrateUserOffers(): Promise<void> {
+export async function fetchUserOffers(): Promise<Offer[]> {
   // RLS limits the result to offers where the caller is buyer or seller.
   try {
     const { data, error } = await supabase
@@ -419,9 +534,10 @@ export async function hydrateUserOffers(): Promise<void> {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    (data || []).forEach((r) => upsertById(OFFERS, mapOffer(r)));
+    return (data || []).map((r) => mapOffer(r));
   } catch (e) {
-    logger.warn('hydrateUserOffers failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchUserOffers failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
   }
 }
 
@@ -462,14 +578,15 @@ function mapPriceAlert(r: DbRow): PriceAlert {
   };
 }
 
-export async function hydrateUserPriceAlerts(): Promise<void> {
+export async function fetchUserPriceAlerts(): Promise<PriceAlert[]> {
   // RLS limits the result to the caller's own alerts.
   try {
     const { data, error } = await supabase.from('price_alerts').select('*');
     if (error) throw error;
-    (data || []).forEach((r) => upsertById(PRICE_ALERTS, mapPriceAlert(r)));
+    return (data || []).map((r) => mapPriceAlert(r));
   } catch (e) {
-    logger.warn('hydrateUserPriceAlerts failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchUserPriceAlerts failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
   }
 }
 
@@ -489,7 +606,7 @@ function mapDispute(r: DbRow): Dispute {
   };
 }
 
-export async function hydrateUserDisputes(): Promise<void> {
+export async function fetchUserDisputes(): Promise<Dispute[]> {
   // RLS returns disputes where the caller is a party to the transaction, or all
   // disputes if the caller is an admin.
   try {
@@ -498,9 +615,10 @@ export async function hydrateUserDisputes(): Promise<void> {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    (data || []).forEach((r) => upsertById(DISPUTES, mapDispute(r)));
+    return (data || []).map((r) => mapDispute(r));
   } catch (e) {
-    logger.warn('hydrateUserDisputes failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchUserDisputes failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
   }
 }
 
@@ -559,6 +677,8 @@ export async function createListing(input: NewListingInput, seller: Profile): Pr
   if (!profileCache[seller.id]) profileCache[seller.id] = seller;
   const listing = await mapListing(data, profileCache);
   upsertById(LISTINGS, listing);
+  invalidatePublicQueries();
+  invalidateUserQueries(seller.id);
   return listing;
 }
 
@@ -652,18 +772,45 @@ export async function requestSlipVerification(transactionId: string): Promise<'v
 // the real verification step — it unlocks shipping. A SlipOK/EasySlip API call
 // could perform this automatically in the future.
 export async function confirmPaymentReceived(txId: string): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id, seller_id, buyer_id, payment_confirmed')
+    .eq('id', txId)
+    .single();
+  if (txError || !tx) throw txError || new Error('Transaction not found');
+
+  const profile = await fetchProfile(userData.user.id);
+  const isSeller = tx.seller_id === userData.user.id;
+  const isAdmin = !!profile?.is_admin;
+  if (!isSeller && !isAdmin) {
+    throw new Error('Only the seller can confirm payment');
+  }
+
+  if (tx.payment_confirmed) return;
+
   const confirmedAt = new Date().toISOString();
   const { error } = await supabase
     .from('transactions')
     .update({ payment_confirmed: true, payment_confirmed_at: confirmedAt })
     .eq('id', txId);
-  if (error) logger.warn('confirmPaymentReceived failed', { error: error.message });
-  const tx = TRANSACTIONS.find((t) => t.id === txId);
-  if (tx) {
-    tx.payment_confirmed = true;
-    tx.payment_confirmed_at = confirmedAt;
-    notifyPaymentConfirmed(tx.buyer_id, txId);
+  if (error) {
+    logger.warn('confirmPaymentReceived failed', { error: error.message });
+    throw error;
   }
+  const localTx = TRANSACTIONS.find((t) => t.id === txId);
+  if (localTx) {
+    localTx.payment_confirmed = true;
+    localTx.payment_confirmed_at = confirmedAt;
+    notifyPaymentConfirmed(localTx.buyer_id, txId);
+  } else {
+    notifyPaymentConfirmed(tx.buyer_id as string, txId);
+  }
+  invalidateTransactionDetail(txId);
+  invalidateUserQueries(tx.buyer_id as string);
+  invalidateUserQueries(tx.seller_id as string);
 }
 
 export async function createOrder(input: NewOrderInput): Promise<Transaction> {
@@ -674,102 +821,158 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const sellerId = input.listing.seller_id;
   const cover = input.listing.photos?.[0]?.storage_path;
 
-  let txData: Record<string, unknown> | null = null;
-  let supabaseError: Error | null = null;
-
-  try {
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
-        listing_id: input.listing.id,
-        buyer_id: input.buyer.id,
-        seller_id: sellerId,
-        species_label: input.listing.species?.common_name_en || 'Plant',
-        image_url: cover || null,
-        sale_price_thb: total,
-        platform_fee_thb: fee,
-        seller_payout_thb: total - fee,
-        shipping_cost_thb: shipping,
-        status: 'paid_in_escrow',
-        delivery_method: input.delivery_method,
-        shipping_address: input.shipping_address || null,
-        seller_promptpay_id: input.listing.seller?.promptpay_id || null,
-        payment_slip_path: input.payment_slip_path || null,
-        payment_ref: input.payment_ref || null,
-        payment_confirmed: false,
-      })
-      .select('*')
-      .single();
-    if (error) throw error;
-    txData = data;
-    // Mark the listing sold.
-    await supabase.from('listings').update({ status: 'sold' }).eq('id', input.listing.id);
-  } catch (err) {
-    supabaseError = err instanceof Error ? err : new Error(String(err));
-    logger.warn(`Supabase order creation failed, falling back to local: ${supabaseError.message}`);
-  }
-
-  // Fallback: create transaction locally if Supabase failed
-  if (!txData) {
-    const fallbackId = `tx-local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    txData = {
-      id: fallbackId,
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert({
       listing_id: input.listing.id,
       buyer_id: input.buyer.id,
       seller_id: sellerId,
-      plant_id: input.listing.plant_id,
+      species_label: input.listing.species?.common_name_en || 'Plant',
+      image_url: cover || null,
       sale_price_thb: total,
       platform_fee_thb: fee,
       seller_payout_thb: total - fee,
       shipping_cost_thb: shipping,
       status: 'paid_in_escrow',
       delivery_method: input.delivery_method,
+      shipping_address: input.shipping_address || null,
+      seller_promptpay_id: input.listing.seller?.promptpay_id || null,
       payment_slip_path: input.payment_slip_path || null,
       payment_ref: input.payment_ref || null,
       payment_confirmed: false,
-      tracking_number: null,
-      courier: null,
-      shipped_at: null,
-      delivered_at: null,
-      escrow_release_at: null,
-      completed_at: null,
-      created_at: new Date().toISOString(),
-    };
+    })
+    .select('*')
+    .single();
+  if (error) {
+    logger.error('createOrder failed', error as Error);
+    throw error;
+  }
+
+  // Mark the listing sold.
+  const { error: listingError } = await supabase.from('listings').update({ status: 'sold' }).eq('id', input.listing.id);
+  if (listingError) {
+    logger.error('createOrder: failed to mark listing sold', listingError as Error);
+    throw listingError;
   }
 
   // Update local LISTINGS so the sold item disappears from browse immediately
   const localListing = LISTINGS.find(l => l.id === input.listing.id);
   if (localListing) localListing.status = 'sold';
 
-  const tx = await mapTransaction(txData, { ...profileCache, [input.buyer.id]: input.buyer });
+  const tx = await mapTransaction(data, { ...profileCache, [input.buyer.id]: input.buyer });
   upsertById(TRANSACTIONS, tx);
+  invalidatePublicQueries();
+  invalidateUserQueries(input.buyer.id);
   // Always notify the seller a sale came in — wired here so no call site can forget.
   notifyNewOrder(sellerId, tx.id, input.listing.species?.common_name_en || 'plant', total);
   return tx;
 }
 
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  pending_payment: ['paid_in_escrow', 'cancelled'],
+  paid_in_escrow: ['shipped', 'disputed', 'cancelled'],
+  shipped: ['delivered', 'disputed', 'cancelled'],
+  delivered: ['completed', 'disputed'],
+  completed: ['disputed'],
+  disputed: ['refunded', 'completed', 'cancelled'],
+  refunded: [],
+  cancelled: [],
+};
+
+function canTransition(current: string, next: string): boolean {
+  return VALID_STATUS_TRANSITIONS[current]?.includes(next) ?? false;
+}
+
 export async function updateOrderStatus(id: string, patch: Partial<Record<string, unknown>>): Promise<void> {
-  await supabase.from('transactions').update(patch).eq('id', id);
-  const tx = TRANSACTIONS.find((t) => t.id === id);
-  if (tx) Object.assign(tx, patch);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id, buyer_id, seller_id, status')
+    .eq('id', id)
+    .single();
+  if (txError || !tx) throw txError || new Error('Transaction not found');
+
+  const profile = await fetchProfile(userData.user.id);
+  const isAdmin = !!profile?.is_admin;
+  const isBuyer = tx.buyer_id === userData.user.id;
+  const isSeller = tx.seller_id === userData.user.id;
+
+  if (!isBuyer && !isSeller && !isAdmin) {
+    throw new Error(i18n.t('common:errors.unauthorized'));
+  }
+
+  const newStatus = patch.status as string | undefined;
+  const currentStatus = tx.status as string;
+  if (newStatus && newStatus !== currentStatus) {
+    if (!canTransition(currentStatus, newStatus)) {
+      throw new Error(`Cannot transition order from ${currentStatus} to ${newStatus}`);
+    }
+    const roleAllowed = (() => {
+      if (isAdmin) return true;
+      if (isSeller && newStatus === 'shipped' && currentStatus === 'paid_in_escrow') return true;
+      if (isBuyer && newStatus === 'completed' && ['shipped', 'delivered'].includes(currentStatus)) return true;
+      if (isBuyer && newStatus === 'delivered' && currentStatus === 'shipped') return true;
+      if ((isBuyer || isSeller) && ['disputed', 'cancelled'].includes(newStatus)) return true;
+      return false;
+    })();
+    if (!roleAllowed) {
+      throw new Error(i18n.t('common:errors.unauthorized'));
+    }
+  }
+
+  const { error } = await supabase.from('transactions').update(patch).eq('id', id);
+  if (error) throw error;
+
+  const localTx = TRANSACTIONS.find((t) => t.id === id);
+  if (localTx) Object.assign(localTx, patch);
+  invalidateTransactionDetail(id);
+  invalidateUserQueries(tx.buyer_id as string);
+  invalidateUserQueries(tx.seller_id as string);
   // Notify the buyer when their order is marked shipped.
-  if (patch.status === 'shipped' && tx) {
-    const courier = (patch.courier as string | undefined) || tx.courier || 'courier';
-    notifyOrderShipped(tx.buyer_id, id, courier);
+  if (newStatus === 'shipped' && localTx) {
+    const courier = (patch.courier as string | undefined) || localTx.courier || 'courier';
+    notifyOrderShipped(localTx.buyer_id, id, courier);
   }
 }
 
 export async function markOrderDelivered(id: string): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id, buyer_id, seller_id, status')
+    .eq('id', id)
+    .single();
+  if (txError || !tx) throw txError || new Error('Transaction not found');
+
+  const profile = await fetchProfile(userData.user.id);
+  const isSeller = tx.seller_id === userData.user.id;
+  const isAdmin = !!profile?.is_admin;
+  if (!isSeller && !isAdmin) {
+    throw new Error('Only the seller can mark an order delivered');
+  }
+
+  if (tx.status !== 'shipped') {
+    throw new Error('Only shipped orders can be marked delivered');
+  }
+
+  const deliveredAt = new Date().toISOString();
   const { error } = await supabase
     .from('transactions')
-    .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+    .update({ status: 'delivered', delivered_at: deliveredAt })
     .eq('id', id);
   if (error) throw error;
-  const tx = TRANSACTIONS.find((t) => t.id === id);
-  if (tx) {
-    tx.status = 'delivered';
-    tx.delivered_at = new Date().toISOString();
+  const localTx = TRANSACTIONS.find((t) => t.id === id);
+  if (localTx) {
+    localTx.status = 'delivered';
+    localTx.delivered_at = deliveredAt;
   }
+  invalidateTransactionDetail(id);
+  invalidateUserQueries(tx.buyer_id as string);
+  invalidateUserQueries(tx.seller_id as string);
 }
 
 export async function getTransactionEvents(transactionId: string): Promise<TransactionEvent[]> {
@@ -797,6 +1000,8 @@ export async function updateListing(id: string, patch: Partial<NewListingInput>)
   if (error) throw error;
   const updated = await mapListing(data, profileCache);
   upsertById(LISTINGS, updated);
+  invalidatePublicQueries();
+  invalidateUserQueries(updated.seller_id);
   return updated;
 }
 
@@ -804,14 +1009,22 @@ export async function withdrawListing(id: string): Promise<void> {
   const { error } = await supabase.from('listings').update({ status: 'withdrawn' }).eq('id', id);
   if (error) throw error;
   const local = LISTINGS.find(l => l.id === id);
-  if (local) local.status = 'withdrawn';
+  if (local) {
+    local.status = 'withdrawn';
+    invalidatePublicQueries();
+    invalidateUserQueries(local.seller_id);
+  }
 }
 
 export async function markListingSold(id: string, buyerId?: string): Promise<void> {
   const { error } = await supabase.from('listings').update({ status: 'sold' }).eq('id', id);
   if (error) throw error;
   const local = LISTINGS.find(l => l.id === id);
-  if (local) local.status = 'sold';
+  if (local) {
+    local.status = 'sold';
+    invalidatePublicQueries();
+    invalidateUserQueries(local.seller_id);
+  }
   // If a buyer is provided, record a manual transfer so provenance stays intact.
   if (buyerId && local) {
     const { data: plant, error: plantError } = await supabase
@@ -1020,6 +1233,8 @@ export async function createDispute(input: {
   if (dtx) {
     const recipientId = input.opened_by === 'buyer' ? dtx.seller_id : dtx.buyer_id;
     notifyDisputeOpened(recipientId, input.transaction_id, input.transaction_id);
+    invalidateUserQueries(dtx.buyer_id);
+    invalidateUserQueries(dtx.seller_id);
   }
 }
 
@@ -1036,6 +1251,8 @@ export async function updateProfile(userId: string, patch: Partial<Profile>): Pr
   if (error) throw error;
   const user = USERS.find(u => u.id === userId);
   if (user) Object.assign(user, cleanPatch);
+  queryClient.invalidateQueries({ queryKey: userKeys.profile(userId) });
+  invalidatePublicQueries();
 }
 
 /** Admin-only profile update. Persists strike/ban/admin flags and normal fields. */
@@ -1055,6 +1272,8 @@ export async function adminUpdateUser(userId: string, patch: Partial<Profile>): 
   if (error) throw error;
   const user = USERS.find(u => u.id === userId);
   if (user) Object.assign(user, cleanPatch);
+  queryClient.invalidateQueries({ queryKey: userKeys.profile(userId) });
+  invalidatePublicQueries();
 }
 
 /** Ensure a profiles row exists for a freshly created user. This is a safety net
@@ -1132,7 +1351,7 @@ function mapWatchlistItem(r: DbRow): WatchlistItem {
   };
 }
 
-export async function hydrateUserWatchlist(userId: string): Promise<void> {
+export async function fetchUserWatchlist(userId: string): Promise<WatchlistItem[]> {
   try {
     const { data, error } = await supabase
       .from('watchlist')
@@ -1140,11 +1359,27 @@ export async function hydrateUserWatchlist(userId: string): Promise<void> {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    WATCHLIST.length = 0;
-    (data || []).forEach((r) => WATCHLIST.push(mapWatchlistItem(r)));
-    bumpWatchlist();
+    return (data || []).map((r) => mapWatchlistItem(r));
   } catch (e) {
-    logger.warn('hydrateUserWatchlist failed', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('fetchUserWatchlist failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+export async function fetchSellerListings(sellerId: string): Promise<Listing[]> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const profiles = await fetchProfileMap();
+    profileCache = { ...profileCache, ...profiles };
+    return await Promise.all((data || []).map((r) => mapListing(r, profiles)));
+  } catch (e) {
+    logger.warn('fetchSellerListings failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
   }
 }
 
@@ -1170,7 +1405,11 @@ export function subscribeToWatchlist(userId: string): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'watchlist', filter: `user_id=eq.${userId}` },
-        () => { hydrateUserWatchlist(userId); }
+        () => {
+          bumpWatchlist();
+          invalidateUserQueries(userId);
+          invalidatePublicQueries();
+        }
       )
       .subscribe()
   );
@@ -1211,6 +1450,7 @@ export async function toggleWatch(
     if (idx >= 0) WATCHLIST.splice(idx, 1);
   }
   bumpWatchlist();
+  invalidateUserQueries(userId);
 }
 
 // ---------- notifications ----------
@@ -1249,6 +1489,7 @@ export async function markNotificationRead(notificationId: string): Promise<void
   const local = NOTIFICATIONS.find(n => n.id === notificationId);
   if (local) local.read = true;
   bumpNotifications();
+  invalidateUserQueries(local?.user_id || '');
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
@@ -1259,6 +1500,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
   if (error) logger.warn('markAllNotificationsRead failed', { error: error.message });
   NOTIFICATIONS.filter(n => n.user_id === userId).forEach(n => { n.read = true; });
   bumpNotifications();
+  invalidateUserQueries(userId);
 }
 
 export async function deleteNotification(notificationId: string): Promise<void> {
@@ -1268,8 +1510,12 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     .eq('id', notificationId);
   if (error) logger.warn('deleteNotification failed', { error: error.message });
   const idx = NOTIFICATIONS.findIndex(n => n.id === notificationId);
-  if (idx >= 0) NOTIFICATIONS.splice(idx, 1);
-  bumpNotifications();
+  if (idx >= 0) {
+    const n = NOTIFICATIONS[idx];
+    NOTIFICATIONS.splice(idx, 1);
+    bumpNotifications();
+    invalidateUserQueries(n.user_id);
+  }
 }
 
 export async function createNotification(
@@ -1399,21 +1645,9 @@ export function subscribeToNotifications(userId: string): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const n = payload.new as Notification;
-            upsertById(NOTIFICATIONS, n);
-          } else if (payload.eventType === 'UPDATE') {
-            const n = payload.new as Notification;
-            const local = NOTIFICATIONS.find(x => x.id === n.id);
-            if (local) Object.assign(local, n);
-            else NOTIFICATIONS.push(n);
-          } else if (payload.eventType === 'DELETE') {
-            const id = (payload.old as Notification).id;
-            const idx = NOTIFICATIONS.findIndex(n => n.id === id);
-            if (idx >= 0) NOTIFICATIONS.splice(idx, 1);
-          }
+        () => {
           bumpNotifications();
+          invalidateUserQueries(userId);
         }
       )
       .subscribe()
@@ -1442,12 +1676,12 @@ export function subscribeToOffers(userId: string): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'offers', filter: `buyer_id=eq.${userId}` },
-        () => { hydrateUserOffers().then(() => bumpOffers()); }
+        () => { bumpOffers(); invalidateUserQueries(userId); }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'offers', filter: `seller_id=eq.${userId}` },
-        () => { hydrateUserOffers().then(() => bumpOffers()); }
+        () => { bumpOffers(); invalidateUserQueries(userId); }
       )
       .subscribe()
   );
@@ -1475,17 +1709,10 @@ export function subscribeToListings(): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'listings' },
-        async (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const row = payload.new as Record<string, unknown>;
-            const mapped = await mapListing(row, profileCache);
-            upsertById(LISTINGS, mapped);
-          } else if (payload.eventType === 'DELETE') {
-            const id = (payload.old as Record<string, unknown>).id as string;
-            const idx = LISTINGS.findIndex(l => l.id === id);
-            if (idx >= 0) LISTINGS.splice(idx, 1);
-          }
+        () => {
           bumpListings();
+          invalidatePublicQueries();
+          queryClient.invalidateQueries({ queryKey: ['user'] });
         }
       )
       .subscribe()
@@ -1499,7 +1726,11 @@ export function subscribeToPriceSnapshots(): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'price_snapshots' },
-        () => { hydratePriceSnapshots().then(() => bumpPriceSnapshots()); }
+        () => {
+          bumpPriceSnapshots();
+          queryClient.invalidateQueries({ queryKey: publicKeys.priceSnapshots(undefined, undefined) });
+          queryClient.invalidateQueries({ queryKey: publicKeys.marketOverview() });
+        }
       )
       .subscribe()
   );
@@ -1512,12 +1743,20 @@ export function subscribeToTransactions(userId: string): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'transactions', filter: `buyer_id=eq.${userId}` },
-        () => { hydrateUserTransactions(); }
+        (payload) => {
+          invalidateUserQueries(userId);
+          const changedId = (payload.new as { id?: string } | undefined)?.id;
+          if (changedId) invalidateTransactionDetail(changedId);
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'transactions', filter: `seller_id=eq.${userId}` },
-        () => { hydrateUserTransactions(); }
+        (payload) => {
+          invalidateUserQueries(userId);
+          const changedId = (payload.new as { id?: string } | undefined)?.id;
+          if (changedId) invalidateTransactionDetail(changedId);
+        }
       )
       .subscribe()
   );
@@ -1592,6 +1831,7 @@ export async function createSellerReview(
     seller.rating = stats.average;
   }
   notifySellerReview(review.seller_id);
+  invalidatePublicQueries();
   return review;
 }
 
@@ -2112,6 +2352,8 @@ export async function createOffer(
 
   const offerListingName = LISTINGS.find(l => l.id === data.listing_id)?.species?.common_name_en || 'plant';
   notifyOfferReceived(data.seller_id, offer.id, offerListingName, data.offer_price_thb);
+  invalidateUserQueries(data.buyer_id);
+  invalidateUserQueries(data.seller_id);
   return offer;
 }
 
@@ -2134,6 +2376,8 @@ export async function respondToOffer(
     logger.warn('respondToOffer supabase failed, using local only', { error: error.message });
   }
   Object.assign(offer, patch);
+  invalidateUserQueries(offer.buyer_id);
+  invalidateUserQueries(offer.seller_id);
   return offer;
 }
 
@@ -2146,6 +2390,8 @@ export async function withdrawOffer(offerId: string): Promise<void> {
   }
   offer.status = 'withdrawn';
   offer.responded_at = new Date().toISOString();
+  invalidateUserQueries(offer.buyer_id);
+  invalidateUserQueries(offer.seller_id);
 }
 
 // ---------- price alerts ----------
@@ -2179,6 +2425,7 @@ export async function createPriceAlert(
     ? mapPriceAlert(row)
     : { ...data, id: `pa-${crypto.randomUUID().slice(0, 8)}`, created_at: new Date().toISOString() };
   upsertById(PRICE_ALERTS, alert);
+  invalidateUserQueries(data.user_id);
   return alert;
 }
 
@@ -2188,7 +2435,11 @@ export async function deletePriceAlert(alertId: string): Promise<void> {
     logger.warn('deletePriceAlert supabase failed, using local only', { error: error.message });
   }
   const idx = PRICE_ALERTS.findIndex(pa => pa.id === alertId);
-  if (idx >= 0) PRICE_ALERTS.splice(idx, 1);
+  if (idx >= 0) {
+    const alert = PRICE_ALERTS[idx];
+    PRICE_ALERTS.splice(idx, 1);
+    invalidateUserQueries(alert.user_id);
+  }
 }
 
 export function checkPriceAlerts(speciesId: string, currentPrice: number): PriceAlert[] {

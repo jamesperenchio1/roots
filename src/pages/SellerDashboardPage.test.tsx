@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@/test/test-utils';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import SellerDashboardPage from './SellerDashboardPage';
 import { USERS, LISTINGS, TRANSACTIONS } from '@/data/mockData';
@@ -26,7 +26,14 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
-    user: { id: 'seller-1', email: 'seller@example.com' },
+    user: {
+      id: 'seller-1',
+      email: 'seller@example.com',
+      display_name: 'Plant Seller',
+      rating: 4.8,
+      sales_count: 12,
+      location: 'Bangkok',
+    },
     isRestoring: false,
     refreshProfile: vi.fn(),
   }),

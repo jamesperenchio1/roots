@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, QrCode, Truck, Lock, Upload, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { getListingById, PLANT_IMAGES } from '@/data/mockData';
+import { PLANT_IMAGES } from '@/data/mockData';
+import { useListing } from '@/hooks/queries/useListings';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { createOrder, uploadPaymentSlip, requestSlipVerification } from '@/lib/api';
@@ -12,7 +13,7 @@ import { validateShippingAddress } from '@/lib/validation';
 
 export default function CheckoutPage() {
   const { listingId } = useParams<{ listingId: string }>();
-  const listing = getListingById(listingId || '');
+  const { data: listing } = useListing(listingId);
   const { user } = useAuth();
   const { t } = useTranslation(['checkout', 'common']);
   const navigate = useNavigate();

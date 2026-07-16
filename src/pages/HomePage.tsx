@@ -1,9 +1,11 @@
-import { useEffect, useState, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
-import { getActiveListings, getMarketOverview, getPriceSnapshotsForSpecies, PLANT_IMAGES, getListingById, subscribePriceSnapshots, getPriceSnapshotsVersion } from '@/data/mockData';
-import { subscribeListings, getListingsVersion } from '@/lib/api';
+import { PLANT_IMAGES, getListingById } from '@/data/mockData';
+import { useListings } from '@/hooks/queries/useListings';
+import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
+import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { PriceChart } from '@/components/PriceChart';
 import { LazyImage } from '@/components/LazyImage';
 import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
@@ -12,34 +14,19 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 export default function HomePage() {
   const { t } = useTranslation(['home', 'common']);
   const [heroLoaded, setHeroLoaded] = useState(false);
-  const [listings, setListings] = useState(() => getActiveListings().slice(0, 8));
-  const market = getMarketOverview();
-
-  // Re-render when realtime listings change.
-  const listingsVersion = useSyncExternalStore(subscribeListings, getListingsVersion);
-
-  // Re-render when price snapshots are hydrated or updated.
-  const snapshotsVersion = useSyncExternalStore(subscribePriceSnapshots, getPriceSnapshotsVersion);
-
-  useEffect(() => {
-    setListings(getActiveListings().slice(0, 8));
-  }, [listingsVersion]);
+  const { data: listingsData } = useListings();
+  const listings = useMemo(() => (listingsData ?? []).slice(0, 8), [listingsData]);
+  const { data: market } = useMarketOverview();
   const { getRecentlyViewed } = useRecentlyViewed();
   const recentlyViewedIds = getRecentlyViewed().slice(0, 4);
   const recentlyViewed = recentlyViewedIds.map(id => getListingById(id)).filter(Boolean);
 
   // Price history for the most-listed species, derived from real snapshots only.
-  const featuredSpeciesId = market.trending_up[0]?.species?.id ?? market.most_traded[0]?.species?.id;
-  const chartData = useMemo(() =>
-    featuredSpeciesId
-      ? getPriceSnapshotsForSpecies(featuredSpeciesId, undefined, 90).map(ps => ({
-          date: ps.snapshot_date,
-          price: ps.median_price_thb,
-        }))
-      : [],
-    // snapshotsVersion is required because getPriceSnapshotsForSpecies reads mutable PRICE_SNAPSHOTS.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [featuredSpeciesId, snapshotsVersion]
+  const featuredSpeciesId = market?.trending_up[0]?.species?.id ?? market?.most_traded[0]?.species?.id;
+  const { data: featuredSnapshots } = usePriceSnapshots(featuredSpeciesId, undefined, 90);
+  const chartData = useMemo(
+    () => featuredSnapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb })),
+    [featuredSnapshots]
   );
 
   useEffect(() => {
@@ -47,10 +34,10 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const featuredSpeciesName = market.trending_up[0]?.species?.common_name_en
-    || market.trending_up[0]?.species?.scientific_name
-    || market.most_traded[0]?.species?.common_name_en
-    || market.most_traded[0]?.species?.scientific_name
+  const featuredSpeciesName = market?.trending_up[0]?.species?.common_name_en
+    || market?.trending_up[0]?.species?.scientific_name
+    || market?.most_traded[0]?.species?.common_name_en
+    || market?.most_traded[0]?.species?.scientific_name
     || '';
 
   return (
@@ -59,7 +46,7 @@ export default function HomePage() {
       <section className="relative min-h-[92vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-black" />
         <div className={`absolute right-0 top-0 w-full lg:w-[60%] h-full transition-all duration-1500 ease-out ${heroLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}>
-          <img src="/images/hero.jpg" alt="Plants" className="w-full h-full object-cover" />
+          <img src="/images/hero.jpg" alt={t('home:hero.alt')} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full py-20">
@@ -187,11 +174,11 @@ export default function HomePage() {
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 {t('marketplace:market.trendingUp')}
               </h3>
-              {market.trending_up.length === 0 ? (
+              {(market?.trending_up.length ?? 0) === 0 ? (
                 <p className="text-zinc-600 text-sm py-8 text-center">{t('home:noPriceHistory')}</p>
               ) : (
                 <div className="space-y-3">
-                  {market.trending_up.slice(0, 5).map((item, i) => (
+                  {market?.trending_up.slice(0, 5).map((item, i) => (
                     <Link to={`/species/${item.species.id}`} key={i} className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-colors">
                       <div>
                         <p className="font-medium text-sm">{item.species.common_name_en || item.species.scientific_name}</p>

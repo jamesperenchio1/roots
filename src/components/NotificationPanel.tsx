@@ -1,4 +1,4 @@
-import { useRef, useEffect, useSyncExternalStore } from 'react';
+import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -16,13 +16,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { Notification, NotificationType } from '@/types';
 import {
-  getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
-  subscribeNotifications,
-  getNotificationsVersion,
 } from '@/lib/api';
+import { useNotifications } from '@/hooks/queries/useUserData';
 import { toast } from 'sonner';
 
 const ICON_MAP: Record<NotificationType, React.ElementType> = {
@@ -36,8 +34,6 @@ const ICON_MAP: Record<NotificationType, React.ElementType> = {
   system: Info,
 };
 
-
-
 interface NotificationPanelProps {
   userId: string;
   open: boolean;
@@ -48,6 +44,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
   const { t } = useTranslation(['common']);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { data: items = [] } = useNotifications(userId);
 
   const formatRelativeTime = (dateStr: string): string => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -61,8 +58,6 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
     if (days < 7) return t('common:notifications.time.daysAgo', { count: days });
     return new Date(dateStr).toLocaleDateString();
   };
-  useSyncExternalStore(subscribeNotifications, getNotificationsVersion);
-  const items = getNotifications(userId);
 
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -106,7 +101,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <h3 className="text-sm font-semibold text-white">{t('common:nav.notifications')}</h3>
-        {items.some(n => !n.read) && (
+        {items.some((n) => !n.read) && (
           <button
             onClick={handleMarkAll}
             className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"

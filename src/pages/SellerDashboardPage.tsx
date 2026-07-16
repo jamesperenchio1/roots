@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -9,15 +9,11 @@ import {
   Copy, Printer, Archive, Rocket, ScanSearch
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  LISTINGS, getTransactionsWithDetails, USERS, getSpeciesPriceStats,
-} from '@/data/mockData';
+import { getSpeciesPriceStats } from '@/data/mockData';
 import {
   getOffersForSeller, respondToOffer, notifyOfferResponse, confirmPaymentReceived,
-  getSignedSlipUrl, withdrawListing, markListingSold, markOrderDelivered, updateProfile,
-  hydrateUserTransactions, hydrateUserOffers, subscribeOffers, getOffersVersion
+  getSignedSlipUrl, withdrawListing, markListingSold, markOrderDelivered, updateProfile
 } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import OfferCard from '@/components/OfferCard';
 
@@ -26,7 +22,10 @@ import { Sparkline } from '@/components/PriceChart';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 import { generateQR } from '@/lib/promptpay';
 import { isValidPromptPayId } from '@/lib/validation';
-import type { Listing, Transaction } from '@/types';
+import type { Listing, Transaction, Profile } from '@/types';
+import { useSellerListings } from '@/hooks/queries/useSellerListings';
+import { useUserTransactions } from '@/hooks/queries/useUserData';
+import { useOffers } from '@/hooks/queries/useUserData';
 
 interface TransactionPayoutItem {
   orderId: string;
@@ -66,49 +65,27 @@ export default function SellerDashboardPage() {
     { id: 'account', label: t('dashboard:seller.account'), icon: Store },
   ], [t]);
 
-  const [activeTab, setActiveTab] = useState(tab && TABS_DEF.some(t => t.id === tab) ? tab : 'listings');
+  const [activeTab, setActiveTab] = useState(tab && TABS_DEF.some((ta) => ta.id === tab) ? tab : 'listings');
   const [shipModalOrder, setShipModalOrder] = useState<string | null>(null);
   const [withdrawConfirm, setWithdrawConfirm] = useState<string | null>(null);
   const [markSoldConfirm, setMarkSoldConfirm] = useState<string | null>(null);
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState<string>('all');
-  const [, setRefreshKey] = useState(0);
 
-  useSyncExternalStore(subscribeOffers, getOffersVersion);
-
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
+  const { data: listings = [] } = useSellerListings(user?.id);
+  const { data: transactions = [] } = useUserTransactions(user?.id);
+  const { data: offers = [] } = useOffers(user?.id);
 
   useEffect(() => {
-    if (tab && TABS_DEF.some(t => t.id === tab)) {
+    if (tab && TABS_DEF.some((ta) => ta.id === tab)) {
       setActiveTab(tab);
     }
   }, [tab, TABS_DEF]);
 
-  useEffect(() => {
-    if (activeTab !== 'orders' || !user) return;
-    let cancelled = false;
-    hydrateUserTransactions().then(() => { if (!cancelled) refresh(); });
-    const channel = supabase
-      .channel(`seller-transactions-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `seller_id=eq.${user.id}` }, () => {
-        hydrateUserTransactions().then(() => { if (!cancelled) { refresh(); toast.info(t('dashboard:seller.newOrder')); } });
-      })
-      .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(channel); };
-  }, [activeTab, user, refresh, t]);
-
-  useEffect(() => {
-    if (activeTab !== 'offers' || !user) return;
-    let cancelled = false;
-    hydrateUserOffers().then(() => { if (!cancelled) refresh(); });
-    return () => { cancelled = true; };
-  }, [activeTab, user, refresh]);
-
-  const me = USERS.find(u => u.id === user?.id);
-  const listings = LISTINGS.filter(l => l.seller_id === user?.id);
-  const allSales = getTransactionsWithDetails().filter(t => t.seller_id === user?.id);
-  const completedSales = allSales.filter(s => s.status === 'completed');
-  const pendingSales = allSales.filter(s => ['paid_in_escrow', 'shipped', 'disputed'].includes(s.status));
+  const me = user ?? undefined;
+  const allSales = transactions.filter((t) => t.seller_id === user?.id);
+  const completedSales = allSales.filter((s) => s.status === 'completed');
+  const pendingSales = allSales.filter((s) => ['paid_in_escrow', 'shipped', 'disputed'].includes(s.status));
   const totalRevenue = completedSales.reduce((s, t) => s + t.seller_payout_thb, 0);
   const pendingRevenue = pendingSales.reduce((s, t) => s + t.seller_payout_thb, 0);
 
@@ -122,15 +99,13 @@ export default function SellerDashboardPage() {
   const handleConfirmPayment = useCallback(async (orderId: string) => {
     await confirmPaymentReceived(orderId);
     toast.success(t('checkout:order.confirmPayment'));
-    refresh();
-  }, [refresh, t]);
+  }, [t]);
 
   const handleWithdraw = async (id: string) => {
     try {
       await withdrawListing(id);
       toast.success(t('common:actions.withdraw'));
       setWithdrawConfirm(null);
-      refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
     }
@@ -141,7 +116,6 @@ export default function SellerDashboardPage() {
       await markListingSold(id);
       toast.success(t('dashboard:seller.markedSold'));
       setMarkSoldConfirm(null);
-      refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
     }
@@ -151,7 +125,6 @@ export default function SellerDashboardPage() {
     try {
       await markOrderDelivered(orderId);
       toast.success(t('dashboard:seller.markedDelivered'));
-      refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
     }
@@ -161,9 +134,9 @@ export default function SellerDashboardPage() {
     toast.info(t('dashboard:seller.duplicateComingSoon'));
   }, [t]);
 
-  const filteredOrders = orderFilter === 'all' ? allSales : allSales.filter(o => o.status === orderFilter);
+  const filteredOrders = orderFilter === 'all' ? allSales : allSales.filter((o) => o.status === orderFilter);
 
-  const payouts = completedSales.map(sale => ({
+  const payouts = completedSales.map((sale) => ({
     id: sale.id,
     date: (sale.completed_at || sale.created_at).slice(0, 10),
     status: 'completed' as const,
@@ -203,7 +176,7 @@ export default function SellerDashboardPage() {
           />
         )}
         {shipModalOrder && (
-          <MarkShippedModal orderId={shipModalOrder} onClose={() => setShipModalOrder(null)} onShipped={refresh} />
+          <MarkShippedModal orderId={shipModalOrder} onClose={() => setShipModalOrder(null)} onShipped={() => {}} />
         )}
 
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 mb-6">
@@ -231,14 +204,14 @@ export default function SellerDashboardPage() {
         </div>
 
         <div className="flex overflow-x-auto gap-1 mb-6 pb-2 scrollbar-hide">
-          {TABS_DEF.map(t => (
+          {TABS_DEF.map((ta) => (
             <button
-              key={t.id}
-              onClick={() => { setActiveTab(t.id); navigate(`/seller-dashboard/${t.id}`, { replace: true }); }}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab === t.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              key={ta.id}
+              onClick={() => { setActiveTab(ta.id); navigate(`/seller-dashboard/${ta.id}`, { replace: true }); }}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab === ta.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              <t.icon className="w-4 h-4" />
-              {t.label}
+              <ta.icon className="w-4 h-4" />
+              {ta.label}
             </button>
           ))}
         </div>
@@ -249,12 +222,12 @@ export default function SellerDashboardPage() {
         {activeTab === 'orders' && (
           <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onViewSlip={handleViewSlip} onConfirmPayment={handleConfirmPayment} onShip={setShipModalOrder} onDeliver={handleMarkDelivered} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
         )}
-        {activeTab === 'offers' && <OffersTab currentUserId={user?.id || ''} refresh={refresh} t={t} />}
+        {activeTab === 'offers' && <OffersTab offers={offers} currentUserId={user?.id || ''} t={t} />}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} expandedPayout={expandedPayout} setExpandedPayout={setExpandedPayout} totalRevenue={totalRevenue} completedSales={completedSales} pendingRevenue={pendingRevenue} pendingSales={pendingSales} t={t} />}
         {activeTab === 'analytics' && <AnalyticsTab listings={listings} allSales={allSales} t={t} />}
         {activeTab === 'performance' && <PerformanceTab allSales={allSales} t={t} />}
         {activeTab === 'inventory' && <InventoryTab listings={listings} t={t} />}
-        {activeTab === 'qr' && <QrManagementTab listings={listings.filter(l => l.has_qr_provenance !== false && l.plant_id)} t={t} />}
+        {activeTab === 'qr' && <QrManagementTab listings={listings.filter((l) => l.has_qr_provenance !== false && l.plant_id)} t={t} />}
         {activeTab === 'account' && <AccountTab me={me} t={t} />}
       </div>
     </div>
@@ -298,11 +271,11 @@ function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplicate, t }
       </div>
 
       <div className="grid gap-3">
-        {listings.map(l => {
-          const speciesData = ALL_SPECIES.find(s => l.plant_id?.includes(s.id));
+        {listings.map((l) => {
+          const speciesData = ALL_SPECIES.find((s) => l.plant_id?.includes(s.id));
           const price30d = getSpeciesPriceStats(l.plant_id?.replace('p-', 'sp-') || '', 30);
           const vsMarket = price30d ? ((l.price_thb - price30d.median) / price30d.median * 100).toFixed(0) : '0';
-          const sale = sales.find(s => s.listing_id === l.id);
+          const sale = sales.find((s) => s.listing_id === l.id);
           const soldTo = sale?.buyer?.display_name;
           return (
             <div key={l.id} className="group bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/15 hover:-translate-y-0.5 transition-all">
@@ -444,7 +417,7 @@ function OrdersTab({ orders, orderFilter, setOrderFilter, onViewSlip, onConfirmP
           <p className="text-xs text-zinc-500 mb-2">{t('dashboard:seller.filterByStatus')}</p>
           <div className="flex flex-wrap gap-2">
             <button onClick={() => setOrderFilter('all')} className={`text-xs px-3 py-1.5 rounded-full border ${orderFilter === 'all' ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-zinc-400 hover:text-white'}`}>{t('dashboard:seller.all')}</button>
-            {statusOptions.map(s => (
+            {statusOptions.map((s) => (
               <button key={s} onClick={() => setOrderFilter(s)} className={`text-xs px-3 py-1.5 rounded-full border ${orderFilter === s ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-zinc-400 hover:text-white'}`}>{t(`common:status.${s}`)}</button>
             ))}
           </div>
@@ -519,10 +492,10 @@ function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, onDeliver, t }
   );
 }
 
-function OffersTab({ currentUserId, refresh, t }: { currentUserId: string; refresh: () => void; t: TFunction }) {
-  const offers = getOffersForSeller(currentUserId);
-  const pendingOffers = offers.filter(o => o.status === 'pending');
-  const otherOffers = offers.filter(o => o.status !== 'pending');
+function OffersTab({ offers, currentUserId, t }: { offers: ReturnType<typeof getOffersForSeller>; currentUserId: string; t: TFunction }) {
+  const sellerOffers = offers.filter((o) => o.seller_id === currentUserId);
+  const pendingOffers = sellerOffers.filter((o) => o.status === 'pending');
+  const otherOffers = sellerOffers.filter((o) => o.status !== 'pending');
 
   return (
     <div className="space-y-6">
@@ -530,7 +503,7 @@ function OffersTab({ currentUserId, refresh, t }: { currentUserId: string; refre
         <h2 className="text-lg font-medium mb-1">{t('dashboard:seller.incomingOffers')} ({pendingOffers.length} {t('common:status.pending')})</h2>
         <p className="text-xs text-zinc-500 mb-3">{t('dashboard:seller.respondToOffers')}</p>
         <div className="space-y-3">
-          {pendingOffers.length > 0 ? pendingOffers.map(o => (
+          {pendingOffers.length > 0 ? pendingOffers.map((o) => (
             <OfferCard key={o.id} offer={o} mode="seller" onRespond={async (status: 'accepted' | 'rejected' | 'countered', counterPrice?: number) => {
               try {
                 await respondToOffer(o.id, status, counterPrice);
@@ -538,7 +511,6 @@ function OffersTab({ currentUserId, refresh, t }: { currentUserId: string; refre
                   await notifyOfferResponse(o.buyer_id || '', o.id, status);
                 }
                 toast.success(t('dashboard:seller.offerResponded'));
-                refresh();
               } catch (err) {
                 toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
               }
@@ -552,7 +524,7 @@ function OffersTab({ currentUserId, refresh, t }: { currentUserId: string; refre
         <div>
           <h2 className="text-lg font-medium mb-1">{t('dashboard:seller.pastOffers')}</h2>
           <div className="space-y-3">
-            {otherOffers.map(o => <OfferCard key={o.id} offer={o} mode="seller" />)}
+            {otherOffers.map((o) => <OfferCard key={o.id} offer={o} mode="seller" />)}
           </div>
         </div>
       )}
@@ -581,7 +553,7 @@ function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRevenue, 
         </div>
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.payoutMethod')}</p>
-          <p className="text-xl font-semibold">PromptPay</p>
+          <p className="text-xl font-semibold">{t('dashboard:seller.payoutMethodValue')}</p>
           <p className="text-xs text-zinc-600 mt-1 truncate">{payouts[0]?.destination || t('dashboard:seller.notSet')}</p>
         </div>
       </div>
@@ -640,7 +612,7 @@ function AnalyticsTab({ listings, allSales, t }: { listings: Listing[]; allSales
   const conversionRate = totalViews > 0 ? ((allSales.length / totalViews) * 100).toFixed(1) : '0';
 
   const catSales: Record<string, number> = {};
-  allSales.forEach(s => {
+  allSales.forEach((s) => {
     const cat = s.plant_id?.includes('aroid') ? 'aroid' : s.plant_id?.includes('hoya') ? 'hoya' : s.plant_id?.includes('succulent') ? 'succulent' : s.plant_id?.includes('fern') ? 'fern' : s.plant_id?.includes('orchid') ? 'orchid' : 'other';
     catSales[cat] = (catSales[cat] || 0) + 1;
   });
@@ -666,7 +638,7 @@ function AnalyticsTab({ listings, allSales, t }: { listings: Listing[]; allSales
 
       <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
         <h3 className="font-medium mb-4">{t('dashboard:seller.popularListings')}</h3>
-        {listings.length > 0 ? listings.slice(0, 5).map(l => (
+        {listings.length > 0 ? listings.slice(0, 5).map((l) => (
           <div key={l.id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{l.species?.common_name_en}</p>
@@ -697,11 +669,11 @@ function PerformanceTab({ allSales, t }: { allSales: Transaction[]; t: TFunction
   const avgRating = '5.0';
   const months = t('dashboard:seller.monthLabels', { returnObjects: true }) as string[];
   const monthly = Array(12).fill(0);
-  allSales.forEach(s => { const d = new Date(s.created_at); monthly[d.getMonth()]++; });
+  allSales.forEach((s) => { const d = new Date(s.created_at); monthly[d.getMonth()]++; });
   const maxMonth = Math.max(...monthly, 1);
 
   const buyerMap: Record<string, { name: string; count: number; total: number }> = {};
-  allSales.forEach(s => {
+  allSales.forEach((s) => {
     const id = s.buyer_id || 'unknown';
     if (!buyerMap[id]) buyerMap[id] = { name: s.buyer?.display_name || t('common:unknownUser'), count: 0, total: 0 };
     buyerMap[id].count++; buyerMap[id].total += s.sale_price_thb;
@@ -722,7 +694,7 @@ function PerformanceTab({ allSales, t }: { allSales: Transaction[]; t: TFunction
               { label: t('dashboard:seller.plantCondition'), score: Math.min(98, 75 + allSales.length * 1.5) },
               { label: t('dashboard:seller.communication'), score: Math.min(98, 80 + allSales.length) },
               { label: t('dashboard:seller.valueForMoney'), score: Math.min(98, 72 + allSales.length * 1.2) },
-            ].map(item => (
+            ].map((item) => (
               <div key={item.label} className="flex items-center gap-3">
                 <span className="text-xs text-zinc-500 w-32">{item.label}</span>
                 <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${item.score}%` }} /></div>
@@ -748,7 +720,7 @@ function PerformanceTab({ allSales, t }: { allSales: Transaction[]; t: TFunction
       <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5">
         <h3 className="font-medium mb-3">{t('dashboard:seller.topBuyers')}</h3>
         <div className="space-y-2">
-          {topBuyers.length > 0 ? topBuyers.map(b => (
+          {topBuyers.length > 0 ? topBuyers.map((b) => (
             <div key={b.name} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium">{b.name.charAt(0)}</div>
@@ -768,7 +740,7 @@ function InventoryTab({ listings, t }: { listings: Listing[]; t: TFunction }) {
     <div>
       <h2 className="text-lg font-medium mb-4">{t('dashboard:seller.inventory')}</h2>
       <div className="space-y-3">
-        {listings.map(l => (
+        {listings.map((l) => (
           <div key={l.id} className="flex items-center justify-between bg-zinc-900/30 border border-white/5 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt="" className="w-12 h-12 rounded-lg object-cover" />
@@ -833,7 +805,7 @@ function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction })
     <div>
       <h2 className="text-lg font-medium mb-4">{t('dashboard:seller.qrManagement')}</h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {listings.map(l => {
+        {listings.map((l) => {
           const plantId = l.plant_id || l.id;
           const signature = signatures[plantId] || '';
           return (
@@ -858,9 +830,7 @@ function QrManagementTab({ listings, t }: { listings: Listing[]; t: TFunction })
   );
 }
 
-
-
-function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
+function AccountTab({ me, t }: { me?: Profile; t: TFunction }) {
   const { user, refreshProfile } = useAuth();
   const [promptpayId, setPromptpayId] = useState(user?.promptpay_id ?? '');
   const [location, setLocation] = useState(me?.location ?? '');
@@ -893,7 +863,7 @@ function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
         <div className="space-y-4">
           <div>
             <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.promptpayId')}</label>
-            <input type="text" value={promptpayId} onChange={e => setPromptpayId(e.target.value)} placeholder={t('dashboard:seller.promptpayPlaceholder')} className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
+            <input type="text" value={promptpayId} onChange={(e) => setPromptpayId(e.target.value)} placeholder={t('dashboard:seller.promptpayPlaceholder')} className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
             <p className="text-xs text-zinc-600 mt-1">{t('dashboard:seller.payoutDestination')}</p>
           </div>
         </div>
@@ -903,7 +873,7 @@ function AccountTab({ me, t }: { me?: typeof USERS[0]; t: TFunction }) {
         <h3 className="font-medium mb-4">{t('dashboard:seller.shippingSettings')}</h3>
         <div>
           <label className="text-sm text-zinc-400 mb-1.5 block">{t('auth:signup.location')}</label>
-          <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder={t('auth:signup.location')} className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
+          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('auth:signup.location')} className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50" />
         </div>
       </div>
 
