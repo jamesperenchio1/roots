@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, ImagePlus, X, CornerDownRight } from 'lucide-react';
@@ -5,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { createComment, uploadUserImage } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import type { Comment, Profile } from '@/types';
 
 interface CommentComposerProps {

@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +11,7 @@ export default function CreateListingHeader() {
   return (
     <>
       <Link
-        to="/seller-dashboard"
+        href="/seller-dashboard"
         className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" /> {t('common:nav.sellerDashboard')}

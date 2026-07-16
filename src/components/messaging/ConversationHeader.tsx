@@ -1,5 +1,8 @@
+'use client'
+
+import Link from 'next/link';
 import { ArrowLeft, Search, MoreVertical, Phone, Pin, Archive, VolumeX } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,7 +68,7 @@ export default function ConversationHeader({
         </p>
         {listingLink && (
           <Link
-            to={listingLink}
+            href={listingLink}
             className="text-xs text-emerald-400 hover:underline truncate block"
           >
             {t('messages:reLabel', { name: listingLabelName })}

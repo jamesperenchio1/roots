@@ -1,6 +1,9 @@
+'use client'
+
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+const supabase = createSupabaseBrowserClient();
 import type { Provider } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 import i18n from '@/i18n/config';
@@ -86,7 +89,7 @@ function consumeOAuthReturnPath(): string | null {
 }
 
 function applyOAuthReturnPath(path: string) {
-  const target = path === '/' || path === '' ? '/#/' : `/#${path}`;
+  const target = path === '/' || path === '' ? '/' : path;
   window.location.replace(target);
 }
 
@@ -322,7 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPassword = useCallback(async (email: string): Promise<{ ok: boolean; error?: string }> => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/#/reset-password`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) return { ok: false, error: error.message };
       return { ok: true };

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 
 const ONBOARDING_STORAGE_KEY = 'roots-onboarding-completed';

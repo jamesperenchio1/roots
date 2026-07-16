@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from 'vitest';
+import { supabase } from './supabase/client';
 
-vi.mock('./supabase', () => ({
+vi.mock('./supabase/client', () => ({
   supabase: {
     from: vi.fn(),
     channel: vi.fn(),

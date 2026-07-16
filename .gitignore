@@ -29,6 +29,9 @@ dist-ssr
 *.sw?
 .vercel
 
+# Next.js
+.next/
+
 # Playwright
 test-results/
 playwright-report/

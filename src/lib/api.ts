@@ -1,7 +1,7 @@
 // Supabase-backed data access. Public reads return fresh mapped rows and are
 // cached via TanStack Query; the legacy in-memory seed stores remain only as
 // fallback initial data for a handful of un-migrated getters.
-import { supabase, PHOTO_BUCKET } from './supabase';
+import { supabase, PHOTO_BUCKET } from './supabase/client';
 import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, WATCHLIST, getListingByPlantId, getListingById, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies, DashboardStats } from '@/types';

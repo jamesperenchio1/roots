@@ -7,7 +7,7 @@ const mockUpdate = vi.fn().mockReturnValue({
 const mockInsert = vi.fn().mockResolvedValue({ error: null });
 const mockFrom = vi.fn().mockReturnValue({ update: mockUpdate, insert: mockInsert });
 
-vi.mock('./supabase', () => ({
+vi.mock('./supabase/client', () => ({
   supabase: { from: mockFrom },
   SUPABASE_URL: 'https://test.supabase.co',
 }));

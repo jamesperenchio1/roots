@@ -1,5 +1,8 @@
+'use client'
+
+import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
 import { useTranslation } from 'react-i18next';
 import type { ConversationWithDetails } from '@/lib/messaging';
 import type { UserPresence } from '@/types';
@@ -33,7 +36,7 @@ export default function MessagesSidebar({
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-lg font-medium">{t('messages:title')}</h2>
         <Link
-          to="/dashboard"
+          href="/dashboard"
           className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
         >
           <ArrowLeft className="w-3 h-3" />

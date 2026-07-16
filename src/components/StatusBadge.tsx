@@ -1,3 +1,5 @@
+'use client'
+
 import type { OfferStatus } from '@/types';
 
 const OFFER_STATUS_STYLES: Record<OfferStatus, string> = {

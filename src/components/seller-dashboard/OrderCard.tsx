@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import type { TFunction } from 'i18next';
 import { Package } from 'lucide-react';
 import type { Transaction } from '@/types';
@@ -60,7 +63,7 @@ export function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, onDeliv
         {order.status === 'shipped' && order.tracking_number && (
           <span className="text-zinc-500">{t('checkout:order.tracking')}: {order.tracking_number}</span>
         )}
-        <Link to={`/order/${order.id}`} className="ml-auto text-emerald-400 hover:underline">{t('common:actions.view')} {t('checkout:order.title')}</Link>
+        <Link href={`/order/${order.id}`} className="ml-auto text-emerald-400 hover:underline">{t('common:actions.view')} {t('checkout:order.title')}</Link>
       </div>
     </div>
   );

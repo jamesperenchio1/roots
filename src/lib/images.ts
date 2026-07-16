@@ -1,4 +1,4 @@
-import { SUPABASE_URL } from './supabase';
+import { SUPABASE_URL } from './supabase/client';
 
 export interface ImageTransformOptions {
   width?: number;

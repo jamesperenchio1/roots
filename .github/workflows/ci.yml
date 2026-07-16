@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: TypeScript type check
-        run: npx tsc -b --noEmit
+        run: npx tsc --noEmit
 
       - name: Lint
         run: npm run lint
@@ -32,8 +32,8 @@ jobs:
       - name: Unit tests
         run: npm test
         env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
 
   e2e:
     name: E2E Tests (Playwright)
@@ -58,14 +58,14 @@ jobs:
       - name: Build app
         run: npm run build
         env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
 
       - name: Run E2E tests
         run: npm run test:e2e
         env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           CI: true
 
       - uses: actions/upload-artifact@v4

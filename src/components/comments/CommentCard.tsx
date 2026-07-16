@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';

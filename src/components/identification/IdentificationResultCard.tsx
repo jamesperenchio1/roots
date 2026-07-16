@@ -1,3 +1,5 @@
+'use client'
+
 import { Leaf, TrendingUp, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { IdentificationResult } from '@/types';

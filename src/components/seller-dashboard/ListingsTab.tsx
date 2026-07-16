@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import type { TFunction } from 'i18next';
 import { Package, Plus, ScanSearch, Eye, Heart, QrCode } from 'lucide-react';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
@@ -26,10 +29,10 @@ export function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplica
           <p className="text-xs text-zinc-500">{t('dashboard:seller.manageListings')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/identify?returnTo=/seller-dashboard/listings/new" className="flex items-center gap-1.5 border border-white/10 text-zinc-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors">
+          <Link href="/identify?returnTo=/seller-dashboard/listings/new" className="flex items-center gap-1.5 border border-white/10 text-zinc-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors">
             <ScanSearch className="w-4 h-4" /> {t('dashboard:seller.identify')}
           </Link>
-          <Link to="/seller-dashboard/listings/new" className="flex items-center gap-1.5 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
+          <Link href="/seller-dashboard/listings/new" className="flex items-center gap-1.5 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">
             <Plus className="w-4 h-4" /> {t('dashboard:seller.newListing')}
           </Link>
         </div>
@@ -47,12 +50,12 @@ export function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplica
           return (
             <div key={l.id} className="group bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/15 hover:-translate-y-0.5 transition-all">
               <div className="flex items-start gap-4">
-                <Link to={`/listing/${l.id}`} className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
+                <Link href={`/listing/${l.id}`} className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
                   <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt={l.species?.scientific_name || t('marketplace:listingAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <Link to={`/listing/${l.id}`} className="font-medium truncate hover:text-emerald-400 transition-colors">{l.species?.common_name_en || speciesData?.common_name_en || t('common:unknownPlant')}</Link>
+                    <Link href={`/listing/${l.id}`} className="font-medium truncate hover:text-emerald-400 transition-colors">{l.species?.common_name_en || speciesData?.common_name_en || t('common:unknownPlant')}</Link>
                     <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400 shrink-0">{t(`common:status.${l.status}`)}</span>
                   </div>
                   <p className="text-xs text-zinc-500 truncate mb-2">{l.species?.scientific_name || speciesData?.scientific_name}</p>
@@ -85,7 +88,7 @@ export function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplica
             <Package className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
             <p className="text-zinc-500 mb-1">{t('dashboard:seller.noListings')}</p>
             <p className="text-zinc-600 text-sm mb-4">{t('dashboard:seller.createFirst')}</p>
-            <Link to="/seller-dashboard/listings/new" className="text-emerald-400 text-sm hover:underline">{t('dashboard:seller.newListing')}</Link>
+            <Link href="/seller-dashboard/listings/new" className="text-emerald-400 text-sm hover:underline">{t('dashboard:seller.newListing')}</Link>
           </div>
         )}
       </div>

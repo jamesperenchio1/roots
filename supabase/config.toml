@@ -162,11 +162,11 @@ site_url = "https://roots-rho-two.vercel.app"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
   "https://roots-rho-two.vercel.app/",
-  "https://roots-rho-two.vercel.app/#/reset-password",
+  "https://roots-rho-two.vercel.app/reset-password",
   "https://roots.vercel.app/",
-  "https://roots.vercel.app/#/reset-password",
+  "https://roots.vercel.app/reset-password",
   "http://localhost:5173/",
-  "http://localhost:5173/#/reset-password"
+  "http://localhost:5173/reset-password"
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

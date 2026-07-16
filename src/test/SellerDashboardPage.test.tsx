@@ -1,11 +1,30 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/test-utils';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import SellerDashboardPage from '@/pages/SellerDashboardPage';
+import SellerDashboardPage from '@/page-components/SellerDashboardPage';
 import { USERS, LISTINGS, TRANSACTIONS } from '@/data/mockData';
 import type { Profile, Listing } from '@/types';
 
-vi.mock('@/lib/supabase', () => ({
+const mockNavigation = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  params: { tab: 'listings' } as { tab?: string },
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockNavigation.push,
+    replace: mockNavigation.replace,
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/seller-dashboard/listings',
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => mockNavigation.params,
+}));
+
+vi.mock('@/lib/supabase/client', () => ({
   supabase: {
     channel: vi.fn(() => ({
       on: vi.fn().mockReturnThis(),
@@ -39,22 +58,16 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }));
 
-function SellerDashboardWrapper({ initial = '/seller-dashboard/listings' } = {}) {
-  return (
-    <MemoryRouter initialEntries={[initial]}>
-      <Routes>
-        <Route path="/seller-dashboard/:tab" element={<SellerDashboardPage />} />
-        <Route path="/seller-dashboard" element={<SellerDashboardPage />} />
-      </Routes>
-    </MemoryRouter>
-  );
+function resetMockData() {
+  USERS.length = 0;
+  LISTINGS.length = 0;
+  TRANSACTIONS.length = 0;
 }
 
 describe('SellerDashboardPage', () => {
   beforeEach(() => {
-    USERS.length = 0;
-    LISTINGS.length = 0;
-    TRANSACTIONS.length = 0;
+    resetMockData();
+    mockNavigation.params = { tab: 'listings' };
   });
 
   it('renders seller info and key tabs', async () => {
@@ -85,7 +98,7 @@ describe('SellerDashboardPage', () => {
       last_photo_update_at: new Date().toISOString(),
     } as Listing);
 
-    render(<SellerDashboardWrapper />);
+    render(<SellerDashboardPage />);
 
     expect(await screen.findByText('Plant Seller')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /new listing/i })).toBeInTheDocument();
@@ -104,7 +117,9 @@ describe('SellerDashboardPage', () => {
       updated_at: new Date().toISOString(),
     } as Profile);
 
-    render(<SellerDashboardWrapper initial="/seller-dashboard/orders" />);
+    mockNavigation.params = { tab: 'orders' };
+
+    render(<SellerDashboardPage />);
 
     expect(await screen.findByText(/pending revenue/i)).toBeInTheDocument();
     expect(screen.getByText(/total revenue/i)).toBeInTheDocument();

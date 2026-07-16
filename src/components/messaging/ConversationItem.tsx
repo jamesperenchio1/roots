@@ -1,3 +1,5 @@
+'use client'
+
 import { memo } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

@@ -6,9 +6,7 @@ import { EnsembleProvider } from './providers/ensembleProvider';
 export function getDefaultProviders(): IdentificationProvider[] {
   const providers: IdentificationProvider[] = [new MockProvider()];
 
-  const plantNetKey = typeof import.meta.env !== 'undefined'
-    ? (import.meta.env.VITE_PLANTNET_API_KEY as string | undefined)
-    : undefined;
+  const plantNetKey = process.env.NEXT_PUBLIC_PLANTNET_API_KEY as string | undefined;
 
   if (plantNetKey) {
     providers.unshift(new PlantNetProvider(plantNetKey));

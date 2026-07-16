@@ -1,4 +1,7 @@
-import { Navigate } from 'react-router-dom';
+'use client'
+
+
+import Redirect from '@/components/Redirect';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function PublicOnlyGuard({ children }: { children: React.ReactNode }) {
@@ -9,7 +12,7 @@ export default function PublicOnlyGuard({ children }: { children: React.ReactNod
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Redirect to="/" />;
   }
 
   return children;

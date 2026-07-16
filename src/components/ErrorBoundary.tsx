@@ -1,8 +1,11 @@
+'use client'
+
+import Link from 'next/link';
 import { Component, type ReactNode } from 'react';
 import { Leaf, RefreshCw, Home } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
 import { withTranslation, type WithTranslation } from 'react-i18next';
-import * as Sentry from '@sentry/react';
+import * as Sentry from '@sentry/nextjs';
 
 interface Props extends WithTranslation {
   children: ReactNode;
@@ -25,10 +28,10 @@ class ErrorBoundaryBase extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    if (import.meta.env.DEV) {
+    if (process.env.NODE_ENV === 'development') {
       console.error('ErrorBoundary caught:', error, errorInfo);
     }
-    if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+    if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SENTRY_DSN) {
       Sentry.captureException(error, { contexts: { react: errorInfo as unknown as Record<string, unknown> } });
     }
   }
@@ -61,7 +64,7 @@ class ErrorBoundaryBase extends Component<Props, State> {
                 {t('errorBoundary.refresh')}
               </button>
               <Link
-                to="/"
+                href="/"
                 className="inline-flex items-center gap-2 border border-white/20 text-white px-5 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors"
               >
                 <Home className="w-4 h-4" />

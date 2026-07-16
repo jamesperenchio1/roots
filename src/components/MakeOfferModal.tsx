@@ -1,9 +1,12 @@
+'use client'
+
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { X, Tag, TrendingUp, Clock, Eye, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+
 import type { Listing } from '@/types';
 import { createOffer } from '@/lib/api';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
@@ -21,7 +24,7 @@ interface MakeOfferModalProps {
 
 export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }: MakeOfferModalProps) {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { t } = useTranslation(['marketplace', 'common']);
   const [price, setPrice] = useState('');
   const [message, setMessage] = useState('');
@@ -69,7 +72,7 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
       onSubmitted();
       onClose();
       if (offer.conversation_id) {
-        navigate(`/messages/${offer.conversation_id}`);
+        router.push(`/messages/${offer.conversation_id}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('marketplace:offer.error'));

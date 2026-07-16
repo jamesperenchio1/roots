@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { PLANT_IMAGES } from '@/data/mockData';
 import { LazyImage } from '@/components/LazyImage';
@@ -187,7 +190,7 @@ export function ListingCard({
     : 'text-xs text-zinc-600';
 
   return (
-    <Link to={`/listing/${listing.id}`} className={`${config.wrapper} ${className ?? ''}`.trim()}>
+    <Link href={`/listing/${listing.id}`} className={`${config.wrapper} ${className ?? ''}`.trim()}>
       {image}
       <div className="p-4">
         {topSlot && <div className="mb-2">{topSlot}</div>}

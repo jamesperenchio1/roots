@@ -1,14 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 
 async function waitForAppReady(page: Page) {
-  await page.waitForFunction(() => {
-    return !document.body.innerText.includes('Loading the market');
-  }, { timeout: 15000 });
+  await page.waitForSelector('nav', { timeout: 15000 });
 }
 
 test.describe('Auth pages', () => {
   test('signup page loads', async ({ page }) => {
-    await page.goto('/#/signup');
+    await page.goto('/signup');
     await waitForAppReady(page);
     await expect(page.locator('h1')).toHaveText(/create your account/i);
     await expect(page.getByPlaceholder(/plant lover/i)).toBeVisible();
@@ -17,7 +15,7 @@ test.describe('Auth pages', () => {
   });
 
   test('login page loads', async ({ page }) => {
-    await page.goto('/#/login');
+    await page.goto('/login');
     await waitForAppReady(page);
     await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible();
     await expect(page.getByPlaceholder(/you@example.com/i)).toBeVisible();
@@ -25,7 +23,7 @@ test.describe('Auth pages', () => {
   });
 
   test('can fill signup form without submitting', async ({ page }) => {
-    await page.goto('/#/signup');
+    await page.goto('/signup');
     await waitForAppReady(page);
 
     await page.getByPlaceholder(/plant lover/i).fill('Test User');
@@ -45,7 +43,7 @@ test.describe('Auth pages', () => {
   });
 
   test('login form email field validates format', async ({ page }) => {
-    await page.goto('/#/login');
+    await page.goto('/login');
     await waitForAppReady(page);
     const emailInput = page.getByPlaceholder(/you@example.com/i);
     await emailInput.fill('not-an-email');
@@ -57,20 +55,20 @@ test.describe('Auth pages', () => {
   });
 
   test('login page has forgot password link', async ({ page }) => {
-    await page.goto('/#/login');
+    await page.goto('/login');
     await waitForAppReady(page);
     await expect(page.getByRole('link', { name: /forgot.*password/i })).toBeVisible();
   });
 
   test('forgot password page loads', async ({ page }) => {
-    await page.goto('/#/forgot-password');
+    await page.goto('/forgot-password');
     await waitForAppReady(page);
     await expect(page.getByPlaceholder(/you@example.com/i)).toBeVisible();
   });
 
   test('messages page redirects anonymous users to login', async ({ page }) => {
-    await page.goto('/#/messages');
+    await page.goto('/messages');
     await waitForAppReady(page);
-    await expect(page).toHaveURL(/.*#\/login/);
+    await expect(page).toHaveURL(/.*\/login/);
   });
 });

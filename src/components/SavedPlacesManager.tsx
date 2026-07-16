@@ -1,9 +1,11 @@
+'use client'
+
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, MapPin, Trash2, Star, Check, LocateFixed, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
-import MapLocationPicker, { type MapLocationValue } from '@/components/MapLocationPicker';
+import MapLocationPicker, { type MapLocationValue } from '@/components/MapLocationPickerDynamic';
 import type { UserLocation } from '@/types';
 import {
   getUserLocations,

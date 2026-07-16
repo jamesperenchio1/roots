@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Star, Upload, X, ThumbsUp, ThumbsDown } from 'lucide-react';
@@ -6,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSellerReview, uploadUserImage } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import type { SellerReview } from '@/types';
 
 interface SellerReviewFormProps {

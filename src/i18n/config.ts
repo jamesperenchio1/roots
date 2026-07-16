@@ -1,6 +1,4 @@
 import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 
 import enCommon from './locales/en/common.json';
 import enHome from './locales/en/home.json';
@@ -58,25 +56,40 @@ export async function loadThaiResources() {
 
 export type SupportedLanguage = 'en' | 'th';
 
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'en',
-    defaultNS,
-    interpolation: {
-      escapeValue: true,
-    },
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage'],
-      lookupLocalStorage: 'roots-language',
-    },
-  });
+const baseConfig = {
+  resources,
+  fallbackLng: 'en' as const,
+  defaultNS,
+  interpolation: {
+    escapeValue: true,
+  },
+};
 
-if (i18n.language?.startsWith('th')) {
-  loadThaiResources().catch(() => {});
+// Initialize the core i18next instance on both server and client. React-specific
+// plugins are loaded dynamically in the browser so the config file remains safe
+// for import in server-side code (e.g., App Router Server Components).
+i18n.init(baseConfig);
+
+if (typeof window !== 'undefined') {
+  Promise.all([
+    import('react-i18next'),
+    import('i18next-browser-languagedetector'),
+  ]).then(([{ initReactI18next }, { default: LanguageDetector }]) => {
+    i18n
+      .use(LanguageDetector)
+      .use(initReactI18next)
+      .init({
+        ...baseConfig,
+        detection: {
+          order: ['localStorage', 'navigator', 'htmlTag'],
+          caches: ['localStorage'],
+          lookupLocalStorage: 'roots-language',
+        },
+      });
+    if (i18n.language?.startsWith('th')) {
+      loadThaiResources().catch(() => {});
+    }
+  });
 }
 
 export default i18n;

@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, memo } from 'react';
 import { Check, X, RotateCcw, ArrowLeft, Tag, Clock, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

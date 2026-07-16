@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react';
 import { Printer, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +16,7 @@ export default function PrintTag({ listing, species, onClose }: PrintTagProps) {
   const { t } = useTranslation(['common']);
   const [qrUrl, setQrUrl] = useState('');
   const plantId = listing.plant_id || listing.id;
-  const pageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/#/p/${plantId}`;
+  const pageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${plantId}`;
   const displaySpecies = listing.species || species || null;
 
   useEffect(() => {

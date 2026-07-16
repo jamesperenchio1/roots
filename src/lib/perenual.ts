@@ -1,5 +1,5 @@
 const BASE_URL = 'https://perenual.com/api';
-const API_KEY = (import.meta.env.VITE_PERENUAL_API_KEY as string | undefined) || '';
+const API_KEY = (process.env.NEXT_PUBLIC_PERENUAL_API_KEY as string | undefined) || '';
 
 export interface PerenualPlant {
   id: number;

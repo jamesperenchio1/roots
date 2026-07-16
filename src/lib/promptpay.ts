@@ -1,7 +1,6 @@
 // Generates a valid Thai PromptPay QR payload (EMVCo standard) entirely
 // client-side. Any Thai banking app can scan it to pay the seller the exact
 // amount. No payment gateway or business registration required — free tier.
-import QRCode from 'qrcode';
 
 function tag(id: string, value: string): string {
   const len = value.length.toString().padStart(2, '0');
@@ -53,6 +52,7 @@ export async function generatePromptPayQR(
   promptpayId: string,
   amount?: number
 ): Promise<string> {
+  const { default: QRCode } = await import('qrcode');
   const payload = buildPromptPayPayload(promptpayId, amount);
   return QRCode.toDataURL(payload, {
     width: 320,
@@ -64,6 +64,7 @@ export async function generatePromptPayQR(
 
 /** Render an arbitrary string (e.g. a provenance URL) to a QR data URL. */
 export async function generateQR(text: string, size = 320): Promise<string> {
+  const { default: QRCode } = await import('qrcode');
   return QRCode.toDataURL(text, {
     width: size,
     margin: 1,

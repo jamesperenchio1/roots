@@ -6,9 +6,10 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '.claude', 'node_modules', 'supabase']),
+  globalIgnores(['dist', '.claude', 'node_modules', 'supabase', '.next', '*.d.ts']),
   {
     files: ['**/*.{ts,tsx}'],
+    ignores: ['**/*.d.ts'],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -30,6 +31,12 @@ export default defineConfig([
       '@typescript-eslint/no-explicit-any': 'warn',
       // React Compiler is experimental and flags safe manual memoization; disable false positives.
       'react-hooks/preserve-manual-memoization': 'off',
+    },
+  },
+  {
+    files: ['src/app/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

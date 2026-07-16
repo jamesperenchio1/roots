@@ -1,14 +1,18 @@
+'use client'
+
+import { useParams } from 'next/navigation';
+import Redirect from '@/components/Redirect';
 import { useEffect, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+
 import { Leaf } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 export default function OwnershipGuard({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation('common');
   const { user, isRestoring } = useAuth();
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id?: string }>() ?? {};
   const [checking, setChecking] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
 
@@ -50,11 +54,11 @@ export default function OwnershipGuard({ children }: { children: React.ReactNode
   }
 
   if (!user) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(`/listing/${id}/edit`)}`} replace />;
+    return <Redirect to={`/login?redirect=${encodeURIComponent(`/listing/${id}/edit`)}`} />;
   }
 
   if (!isOwner) {
-    return <Navigate to="/" replace />;
+    return <Redirect to="/" />;
   }
 
   return <>{children}</>;

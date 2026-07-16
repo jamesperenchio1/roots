@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { logger } from './logger';
 
 describe('logger', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
   });

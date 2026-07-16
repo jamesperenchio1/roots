@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase/client';
 import { logger } from './logger';
 
 const DEFAULT_DELAY_MINUTES = 2;

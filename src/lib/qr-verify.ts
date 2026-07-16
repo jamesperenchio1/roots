@@ -1,4 +1,3 @@
-import { Html5Qrcode } from 'html5-qrcode';
 import { verifyQRSignature } from './api';
 import { logger } from './logger';
 
@@ -12,12 +11,17 @@ export interface QrVerifyResult {
 function parseQrUrl(text: string): { plantId: string; signature: string } | null {
   try {
     const url = new URL(text, window.location.origin);
-    const hash = url.hash || '';
-    // HashRouter paths look like #/p/<plantId>?s=<signature>
-    const match = hash.match(/\/p\/([^?]+)(?:\?s=([^&]+))?/);
+    let match = url.pathname.match(/\/p\/([^/]+)\/?/);
+    let signature = '';
+    if (match) {
+      signature = url.searchParams.get('s') || '';
+    } else if (url.hash) {
+      // Legacy HashRouter QR codes looked like #/p/<plantId>?s=<signature>
+      match = url.hash.match(/\/p\/([^?]+)(?:\?s=([^&]+))?/);
+      signature = match?.[2] ? decodeURIComponent(match[2]) : '';
+    }
     if (!match) return null;
     const plantId = decodeURIComponent(match[1]);
-    const signature = match[2] ? decodeURIComponent(match[2]) : '';
     if (!signature) return null;
     return { plantId, signature };
   } catch {
@@ -34,6 +38,7 @@ export async function decodeQrFromFile(file: File): Promise<string | null> {
   el.style.top = '-9999px';
   document.body.appendChild(el);
   try {
+    const { Html5Qrcode } = await import('html5-qrcode');
     const scanner = new Html5Qrcode(id);
     const result = await scanner.scanFile(file, true);
     await scanner.clear();

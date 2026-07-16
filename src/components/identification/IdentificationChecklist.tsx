@@ -1,3 +1,5 @@
+'use client'
+
 import { Check, Circle, Camera } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { EvidenceType } from '@/types';

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase/client';
 import type { UserLocation } from '@/types';
 import { logger } from './logger';
 

@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import type { TFunction } from 'i18next';
 import { ArrowDownLeft } from 'lucide-react';
 import type { Transaction } from '@/types';
@@ -88,7 +91,7 @@ export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRe
                         <div>
                           <p className="font-medium">{tx.plant}</p>
                           <p className="text-xs text-zinc-500">{tx.buyer}</p>
-                          <Link to={`/order/${tx.orderId}`} className="text-xs text-emerald-400 hover:underline">{t('common:actions.view')}</Link>
+                          <Link href={`/order/${tx.orderId}`} className="text-xs text-emerald-400 hover:underline">{t('common:actions.view')}</Link>
                         </div>
                         <div className="text-right">
                           <p>{tx.price.toLocaleString()} {t('common:currency')}</p>

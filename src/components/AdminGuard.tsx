@@ -1,4 +1,7 @@
-import { Navigate } from 'react-router-dom';
+'use client'
+
+
+import Redirect from '@/components/Redirect';
 import { Leaf } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +17,6 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
       </div>
     );
   }
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Redirect to="/" />;
   return <>{children}</>;
 }

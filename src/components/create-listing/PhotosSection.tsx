@@ -1,3 +1,5 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
 import { Camera, CheckCircle, X } from 'lucide-react';
 

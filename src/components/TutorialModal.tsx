@@ -1,3 +1,5 @@
+'use client'
+
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, ShoppingBag, Store, QrCode, MapPin, TrendingUp, Sprout } from 'lucide-react';

@@ -1,3 +1,5 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
 import type { Provider } from '@supabase/supabase-js';
 import { toast } from 'sonner';

@@ -1,6 +1,5 @@
 import { describe, test, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import { ListingCard } from './ListingCard';
 import type { Listing } from '@/types';
 
@@ -28,11 +27,7 @@ const mockListing: Listing = {
 } as Listing;
 
 function renderCard(props: React.ComponentProps<typeof ListingCard>) {
-  return render(
-    <MemoryRouter>
-      <ListingCard {...props} />
-    </MemoryRouter>
-  );
+  return render(<ListingCard {...props} />);
 }
 
 describe('ListingCard', () => {

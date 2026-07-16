@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useCallback, useRef } from 'react';
 import { uploadMessageAttachment } from '@/lib/messaging';
 import type { MessageAttachment } from '@/types';

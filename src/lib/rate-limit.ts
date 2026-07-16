@@ -1,9 +1,9 @@
 import { logger } from './logger';
-import { supabase } from './supabase';
+import { supabase } from './supabase/client';
 
 export type RateLimitType = 'message' | 'upload' | 'search';
 
-const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rate-limit`;
+const FUNCTION_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/rate-limit`;
 
 export async function checkRateLimit(
   type: RateLimitType,
@@ -22,7 +22,7 @@ export async function checkRateLimit(
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
       },
       body: JSON.stringify({ type, identifier }),
     });

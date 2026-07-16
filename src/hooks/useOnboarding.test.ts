@@ -2,13 +2,13 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useOnboarding } from './useOnboarding';
 import * as useAuthModule from './useAuth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 vi.mock('./useAuth', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase', () => ({
+vi.mock('@/lib/supabase/client', () => ({
   supabase: {
     from: vi.fn(() => ({
       update: vi.fn(() => ({

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { HashRouter } from 'react-router-dom';
 import ErrorBoundary from './ErrorBoundary';
 
 // Component that throws
@@ -12,11 +11,9 @@ function Bomb({ shouldThrow }: { shouldThrow: boolean }) {
 describe('ErrorBoundary', () => {
   it('renders children when no error', () => {
     render(
-      <HashRouter>
-        <ErrorBoundary>
-          <div data-testid="child">Hello</div>
-        </ErrorBoundary>
-      </HashRouter>
+      <ErrorBoundary>
+        <div data-testid="child">Hello</div>
+      </ErrorBoundary>
     );
     expect(screen.getByTestId('child')).toBeInTheDocument();
   });
@@ -27,11 +24,9 @@ describe('ErrorBoundary', () => {
     console.error = () => {};
 
     render(
-      <HashRouter>
-        <ErrorBoundary>
-          <Bomb shouldThrow={true} />
-        </ErrorBoundary>
-      </HashRouter>
+      <ErrorBoundary>
+        <Bomb shouldThrow={true} />
+      </ErrorBoundary>
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();

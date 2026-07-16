@@ -1,5 +1,8 @@
+'use client'
+
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+
 import type { TFunction } from 'i18next';
 import { toast } from 'sonner';
 import { generateQR } from '@/lib/promptpay';
@@ -39,7 +42,7 @@ export function QrManagementTab({ listings, t }: QrManagementTabProps) {
     try {
       const plantId = l.plant_id || l.id;
       const signature = signatures[plantId] || '';
-      const url = `${window.location.origin}/#/p/${plantId}${signature ? `?s=${signature}` : ''}`;
+      const url = `${window.location.origin}/p/${plantId}${signature ? `?s=${signature}` : ''}`;
       const qrUrl = await generateQR(url, 512);
       const link = document.createElement('a');
       link.href = qrUrl;
@@ -70,7 +73,7 @@ export function QrManagementTab({ listings, t }: QrManagementTabProps) {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Link to={`/p/${plantId}${signature ? `?s=${signature}` : ''}`} className="flex-1 text-center px-3 py-2 rounded-lg border border-white/10 text-xs hover:bg-white/5">{t('common:actions.view')}</Link>
+                <Link href={`/p/${plantId}${signature ? `?s=${signature}` : ''}`} className="flex-1 text-center px-3 py-2 rounded-lg border border-white/10 text-xs hover:bg-white/5">{t('common:actions.view')}</Link>
                 <button onClick={() => handleDownload(l)} className="flex-1 text-center px-3 py-2 rounded-lg bg-emerald-500 text-black text-xs font-medium hover:bg-emerald-600">{t('common:actions.download')}</button>
               </div>
             </div>

@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Listing } from '@/types';
@@ -20,13 +23,13 @@ export default function SubmittedView({ created }: SubmittedViewProps) {
         </p>
         <div className="flex gap-3 justify-center">
           <Link
-            to="/seller-dashboard"
+            href="/seller-dashboard"
             className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
           >
             {t('marketplace:create.goToDashboard')}
           </Link>
           <Link
-            to={created ? `/listing/${created.id}` : '/browse'}
+            href={created ? `/listing/${created.id}` : '/browse'}
             className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors"
           >
             {t('marketplace:create.viewListing')}

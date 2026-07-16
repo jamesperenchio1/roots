@@ -1,3 +1,5 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserTransactions } from '@/hooks/queries/useUserData';

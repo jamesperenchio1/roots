@@ -1,3 +1,5 @@
+'use client'
+
 import { CheckCircle, Hammer, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';

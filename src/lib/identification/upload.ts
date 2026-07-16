@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 import type { EvidenceType, UploadedMedia } from '@/types';
 

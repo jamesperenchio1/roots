@@ -1,3 +1,5 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { useListingsBySpecies } from '@/hooks/queries/useListings';

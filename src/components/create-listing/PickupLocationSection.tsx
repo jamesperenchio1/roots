@@ -1,5 +1,7 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
-import MapLocationPicker from '@/components/MapLocationPicker';
+import MapLocationPicker from '@/components/MapLocationPickerDynamic';
 
 interface MapValue {
   lat: number;

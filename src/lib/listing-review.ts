@@ -1,5 +1,5 @@
 import { uploadListingPhoto, mapListing } from './api';
-import { supabase } from './supabase';
+import { supabase } from './supabase/client';
 import { verifyQrFromFile, type QrVerifyResult } from './qr-verify';
 import { USERS } from '@/data/mockData';
 import type { Listing, Profile } from '@/types';

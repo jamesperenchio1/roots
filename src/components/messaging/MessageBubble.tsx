@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, memo } from 'react';
 import { Reply, Pencil, Trash2, Copy, Forward, Flag, Check, CheckCheck, File, Download, Image } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

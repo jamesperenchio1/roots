@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Check, Share2, QrCode, X } from 'lucide-react';

@@ -2,7 +2,7 @@
 // Backed by Supabase (conversations, messages, reactions, reads, attachments, presence)
 // and follows the existing in-memory-store + version-pubsub pattern from api.ts.
 
-import { supabase } from './supabase';
+import { supabase } from './supabase/client';
 import {
   MESSAGES,
   CONVERSATIONS,

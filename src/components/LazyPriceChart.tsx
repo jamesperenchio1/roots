@@ -1,3 +1,5 @@
+'use client'
+
 import { Suspense, lazy, useId } from 'react';
 import type { ComponentProps } from 'react';
 import { useInView } from '@/hooks/useInView';

@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CloudRain, Droplets, Sun, Cloud, Wind, Thermometer, Umbrella } from 'lucide-react';

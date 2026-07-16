@@ -1,3 +1,5 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
 import { getMarketSpeciesFromOverview } from '@/lib/api';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';

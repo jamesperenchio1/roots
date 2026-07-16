@@ -1,5 +1,8 @@
+'use client'
+
+import { useRouter } from 'next/navigation';
 import { useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Bell,
   Check,
@@ -43,7 +46,7 @@ interface NotificationPanelProps {
 export default function NotificationPanel({ userId, open, onClose }: NotificationPanelProps) {
   const { t } = useTranslation(['common']);
   const panelRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+  const router = useRouter();
   const { data: items = [] } = useNotifications(userId);
 
   const formatRelativeTime = (dateStr: string): string => {
@@ -88,7 +91,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
 
   const handleClick = (n: Notification) => {
     if (!n.read) markNotificationRead(n.id);
-    if (n.link) navigate(n.link);
+    if (n.link) router.push(n.link);
     onClose();
   };
 

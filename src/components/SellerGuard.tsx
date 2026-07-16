@@ -1,4 +1,8 @@
-import { Navigate, useLocation } from 'react-router-dom';
+'use client'
+
+
+import { usePathname, useSearchParams } from 'next/navigation';
+import Redirect from '@/components/Redirect';
 import { Leaf } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,7 +10,8 @@ import { useAuth } from '@/hooks/useAuth';
 export default function SellerGuard({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation('common');
   const { user, isRestoring } = useAuth();
-  const location = useLocation();
+  const pathname = usePathname();
+const searchParams = useSearchParams();
 
   if (isRestoring) {
     return (
@@ -19,9 +24,8 @@ export default function SellerGuard({ children }: { children: React.ReactNode })
 
   if (!user) {
     return (
-      <Navigate
-        to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`}
-        replace
+      <Redirect
+        to={`/login?redirect=${encodeURIComponent(pathname + (searchParams?.toString() ?? ''))}`}
       />
     );
   }

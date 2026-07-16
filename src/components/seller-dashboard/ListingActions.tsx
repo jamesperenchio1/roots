@@ -1,5 +1,8 @@
+'use client'
+
+import Link from 'next/link';
 import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+
 import type { TFunction } from 'i18next';
 import { MoreHorizontal, Eye, Settings, ScanSearch, DollarSign, Copy, Archive, Printer, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
@@ -56,8 +59,8 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 w-44 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-20 py-1">
-          <Link to={`/listing/${listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Eye className="w-3.5 h-3.5" /> {t('common:actions.view')}</Link>
-          <Link to={`/listing/${listing.id}/edit`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Settings className="w-3.5 h-3.5" /> {t('common:actions.edit')}</Link>
+          <Link href={`/listing/${listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Eye className="w-3.5 h-3.5" /> {t('common:actions.view')}</Link>
+          <Link href={`/listing/${listing.id}/edit`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Settings className="w-3.5 h-3.5" /> {t('common:actions.edit')}</Link>
           {listing.status === 'pending_review' && (
             <button
               onClick={() => { fileRef.current?.click(); setOpen(false); }}
@@ -76,7 +79,7 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
           )}
           <button onClick={() => { onDuplicate(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Copy className="w-3.5 h-3.5" /> {t('common:actions.duplicate')}</button>
           <button onClick={() => { onWithdraw(listing.id); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-white/5"><Archive className="w-3.5 h-3.5" /> {t('common:actions.withdraw')}</button>
-          <Link to={`/p/${listing.plant_id || listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Printer className="w-3.5 h-3.5" /> {t('common:actions.print')} QR</Link>
+          <Link href={`/p/${listing.plant_id || listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Printer className="w-3.5 h-3.5" /> {t('common:actions.print')} QR</Link>
           <button onClick={() => { toast.info(t('dashboard:seller.boostComingSoon')); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Rocket className="w-3.5 h-3.5" /> {t('common:actions.boost')}</button>
         </div>
       )}

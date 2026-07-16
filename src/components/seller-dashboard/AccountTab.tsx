@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react';
 import type { TFunction } from 'i18next';
 import { toast } from 'sonner';

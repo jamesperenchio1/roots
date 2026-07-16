@@ -1,3 +1,5 @@
+'use client'
+
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, ImageIcon, X } from 'lucide-react';

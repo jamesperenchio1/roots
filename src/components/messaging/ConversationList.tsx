@@ -1,5 +1,8 @@
+'use client'
+
+import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
 import type { ConversationWithDetails } from '@/lib/messaging';
 import type { UserPresence } from '@/types';
 import ConversationItem from './ConversationItem';
@@ -39,7 +42,7 @@ export default function ConversationList({
         <div className="text-center py-12 px-4">
           <MessageSquare className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
           <p className="text-zinc-500 text-sm mb-2">{emptyDescription}</p>
-          <Link to="/browse" className="text-emerald-400 text-sm hover:underline">
+          <Link href="/browse" className="text-emerald-400 text-sm hover:underline">
             {emptyCta}
           </Link>
         </div>

@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, Check, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';

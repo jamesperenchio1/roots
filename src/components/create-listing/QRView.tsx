@@ -1,7 +1,11 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import { CheckCircle, QrCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { useClientOrigin } from '@/hooks/useClientOrigin';
 import type { Listing } from '@/types';
 
 interface QRViewProps {
@@ -12,6 +16,7 @@ interface QRViewProps {
 
 export default function QRView({ created, provenanceQR, speciesName }: QRViewProps) {
   const { t } = useTranslation(['marketplace', 'common']);
+  const origin = useClientOrigin();
 
   return (
     <div className="pt-24 pb-16 px-4">
@@ -80,7 +85,7 @@ export default function QRView({ created, provenanceQR, speciesName }: QRViewPro
             </div>
             <p className="text-xs text-zinc-500">{t('marketplace:create.scanInstruction')}</p>
             <p className="text-xs text-zinc-500 mt-1">
-              {window.location.origin}/#/p/{created?.id}
+              {origin}/p/{created?.id}
             </p>
           </div>
         </div>
@@ -97,13 +102,13 @@ export default function QRView({ created, provenanceQR, speciesName }: QRViewPro
 
         <div className="flex gap-3 justify-center">
           <Link
-            to="/seller-dashboard"
+            href="/seller-dashboard"
             className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
           >
             {t('marketplace:create.goToDashboard')}
           </Link>
           <Link
-            to={created ? `/listing/${created.id}` : '/browse'}
+            href={created ? `/listing/${created.id}` : '/browse'}
             className="border border-white/20 px-6 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors"
           >
             {t('marketplace:create.viewListing')}

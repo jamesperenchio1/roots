@@ -1,3 +1,5 @@
+'use client'
+
 import type { TFunction } from 'i18next';
 import { Truck } from 'lucide-react';
 import { OrderCard } from './OrderCard';

@@ -4,7 +4,7 @@
  * Info/debug logs stay local; PII is scrubbed before leaving the browser.
  */
 
-import { Scope, captureException, captureMessage } from '@sentry/react';
+import { Scope, captureException, captureMessage } from '@sentry/nextjs';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -36,11 +36,11 @@ function envBool(value: unknown): boolean {
 }
 
 function isDev(): boolean {
-  return envBool(import.meta.env.DEV);
+  return envBool(process.env.NODE_ENV === 'development');
 }
 
 function sentryEnabled(): boolean {
-  return !isDev() && Boolean(import.meta.env.VITE_SENTRY_DSN);
+  return !isDev() && Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
 }
 
 function isSensitiveKey(key: string): boolean {

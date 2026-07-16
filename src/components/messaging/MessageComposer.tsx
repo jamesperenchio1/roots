@@ -1,3 +1,5 @@
+'use client'
+
 import { useRef, useEffect, useState, lazy, Suspense, useCallback } from 'react';
 import { Send, X, Smile, Paperclip, Image, File, Film, Music, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

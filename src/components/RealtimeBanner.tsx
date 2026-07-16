@@ -1,3 +1,5 @@
+'use client'
+
 import { WifiOff, Loader2 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useTranslation } from 'react-i18next';

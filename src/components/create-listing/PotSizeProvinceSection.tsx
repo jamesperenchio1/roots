@@ -1,3 +1,5 @@
+'use client'
+
 import { useTranslation } from 'react-i18next';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
 import type { ProvinceOption } from '@/lib/provinces';

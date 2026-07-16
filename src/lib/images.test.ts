@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
 
-vi.mock('./supabase', () => ({
+vi.mock('./supabase/client', () => ({
   SUPABASE_URL: 'https://test.supabase.co',
   supabase: {},
 }));

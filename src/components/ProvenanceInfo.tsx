@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+'use client'
+
+
+import Link from 'next/link';
 import { QrCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
@@ -13,7 +16,7 @@ export default function ProvenanceInfo({ label }: { label?: string }) {
   return (
     <HoverCard openDelay={120} closeDelay={80}>
       <HoverCardTrigger asChild>
-        <Link to="/provenance" className="text-emerald-400 hover:underline text-xs cursor-help">
+        <Link href="/provenance" className="text-emerald-400 hover:underline text-xs cursor-help">
           {linkLabel}
         </Link>
       </HoverCardTrigger>
@@ -27,7 +30,7 @@ export default function ProvenanceInfo({ label }: { label?: string }) {
             <p className="text-xs text-zinc-400 leading-relaxed">
               {t('common:provenance.description')}
             </p>
-            <Link to="/provenance" className="inline-block mt-2 text-xs text-emerald-400 hover:underline">
+            <Link href="/provenance" className="inline-block mt-2 text-xs text-emerald-400 hover:underline">
               {t('common:provenance.readMore')}
             </Link>
           </div>

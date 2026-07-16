@@ -1,3 +1,5 @@
+'use client'
+
 import type { TFunction } from 'i18next';
 import { Eye, Heart, Megaphone, TrendingUp } from 'lucide-react';
 import { Sparkline } from '@/components/Sparkline';
