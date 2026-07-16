@@ -1,6 +1,7 @@
 /**
  * Shared CORS helper for Supabase Edge Functions.
- * Allows the configured production origin(s) plus localhost for local dev.
+ * Only origins listed in ALLOWED_ORIGINS (or the static default list) are permitted.
+ * To allow local development, include `http://localhost:3000` in ALLOWED_ORIGINS.
  */
 
 const DEFAULT_ORIGINS = [
@@ -17,7 +18,7 @@ function getAllowedOrigins(): string[] {
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   const allowed = getAllowedOrigins();
-  return allowed.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+  return allowed.includes(origin);
 }
 
 export function corsHeaders(origin: string | null): Record<string, string> {

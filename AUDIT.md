@@ -155,7 +155,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 9.5 | Hardcoded `'buyer'` in dispute evidence upload. | P0 | `src/pages/DisputePage.tsx` |
 | 9.6 | `loginAsLocalAdmin()` dev bypass is present in production. | P0 | README production checklist; `src/hooks/useAuth.tsx` likely exposes it. |
 | 9.7 | `cleanup_seed_data` historically allowed authenticated callers; superseded migrations remain in history. | P1 | `20260715000001/0002` |
-| 9.8 | CORS allows localhost in edge function shared code. | P2 | `supabase/functions/_shared/cors.ts` |
+| 9.8 | ~~CORS allows localhost in edge function shared code.~~ | Done | `isAllowedOrigin` now only permits origins explicitly listed in `ALLOWED_ORIGINS` or the static defaults; localhost must be added to `ALLOWED_ORIGINS` for local dev. |
 
 ---
 
@@ -182,7 +182,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 |---|---|---|---|
 | 11.1 | Live deployment behind Vercel Security Checkpoint (HTTP 403). | P0 | `https://roots-rho-two.vercel.app` returns checkpoint page. |
 | 11.2 | Build succeeds, but lint fails, so CI would reject the release. | P0 | `npm run build` ✓, `npm run lint` ✗. |
-| 11.3 | Sentry source-map upload configured but Sentry logger is not wired. | P2 | `src/lib/logger.ts` |
+| 11.3 | ~~Sentry source-map upload configured but Sentry logger is not wired.~~ | Done | `src/lib/logger.ts` forwards scrubbed warnings/errors to Sentry via `captureException`/`captureMessage`; `vite.config.ts` uploads source maps when Sentry env vars are present. |
 | 11.4 | ~~No mobile viewport in Playwright config.~~ | Done | Added `mobile-chrome` project using `devices['Pixel 5']` alongside desktop Chromium. |
 
 ---
