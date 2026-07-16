@@ -30,7 +30,7 @@ interface SignupInput {
 interface AuthContextType {
   user: Profile | null;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (email: string, password: string, options?: { rememberMe?: boolean }) => Promise<{ ok: boolean; error?: string }>;
   signup: (input: SignupInput) => Promise<{ ok: boolean; error?: string; message?: string }>;
   signInWithOAuth: (provider: Provider, redirectTo?: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
@@ -134,6 +134,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     const restore = async () => {
       try {
+        // Respect "Remember me" preference: if the user unchecked it, clear
+        // the stored session instead of restoring it.
+        try {
+          if (localStorage.getItem('roots.rememberMe') === 'false') {
+            await supabase.auth.signOut({ scope: 'local' });
+            if (active) setIsRestoring(false);
+            return;
+          }
+        } catch {
+          // localStorage may be unavailable.
+        }
         const { data } = await supabase.auth.getSession();
         const uid = data.session?.user?.id;
         if (uid && active) {
@@ -191,9 +202,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [startSubscriptions, stopSubscriptions]);
 
-  const login = useCallback(async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+  const login = useCallback(async (email: string, password: string, options?: { rememberMe?: boolean }): Promise<{ ok: boolean; error?: string }> => {
     setIsLoading(true);
     try {
+      const rememberMe = options?.rememberMe ?? true;
+      try {
+        localStorage.setItem('roots.rememberMe', String(rememberMe));
+      } catch {
+        // localStorage may be unavailable in restricted contexts.
+      }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         return { ok: false, error: isNetworkErrorMessage(error.message) ? networkErrorMessage() : error.message };

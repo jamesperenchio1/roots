@@ -14,6 +14,7 @@ import AuthGuard from '@/components/AuthGuard';
 import AdminGuard from '@/components/AdminGuard';
 import SellerGuard from '@/components/SellerGuard';
 import OwnershipGuard from '@/components/OwnershipGuard';
+import PublicOnlyGuard from '@/components/PublicOnlyGuard';
 import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
 import TutorialModal from '@/components/TutorialModal';
 
@@ -100,8 +101,8 @@ function AppContent() {
             <Route path="/identify" element={<IdentifyPage />} />
 
             {/* Auth Pages */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/login" element={<PublicOnlyGuard><LoginPage /></PublicOnlyGuard>} />
+            <Route path="/signup" element={<PublicOnlyGuard><SignupPage /></PublicOnlyGuard>} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 

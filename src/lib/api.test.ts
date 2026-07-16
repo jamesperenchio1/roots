@@ -1,7 +1,13 @@
 import { describe, test, expect, vi } from 'vitest';
+import { supabase } from './supabase';
 
 vi.mock('./supabase', () => ({
-  supabase: { from: vi.fn(), channel: vi.fn(), removeChannel: vi.fn() },
+  supabase: {
+    from: vi.fn(),
+    channel: vi.fn(),
+    removeChannel: vi.fn(),
+    auth: { getUser: vi.fn() },
+  },
   SUPABASE_URL: 'https://test.supabase.co',
   PHOTO_BUCKET: 'listing-photos',
 }));
@@ -133,6 +139,10 @@ describe('mapListing', () => {
 
 describe('createOrder', () => {
   test('rejects buyer purchasing their own listing before touching the database', async () => {
+    (supabase.auth.getUser as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { user: { id: 'user-1' } },
+      error: null,
+    });
     type Profile = import('./api').Profile;
     type Listing = import('./api').Listing;
     const buyer = { id: 'user-1', display_name: 'Seller', is_admin: false } as unknown as Profile;

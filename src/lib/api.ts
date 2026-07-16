@@ -865,6 +865,10 @@ export async function confirmPaymentReceived(txId: string): Promise<void> {
 }
 
 export async function createOrder(input: NewOrderInput): Promise<Transaction> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+  if (userData.user.id !== input.buyer.id) throw new Error(i18n.t('common:errors.unauthorized'));
+
   const price = input.listing.price_thb;
   const shipping = input.listing.shipping_cost_thb || 0;
   const total = price + shipping;
@@ -873,6 +877,20 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   if (input.buyer.id === sellerId) {
     throw new Error(i18n.t('checkout:errors.ownListing'));
   }
+
+  const { data: listingCheck, error: listingCheckError } = await supabase
+    .from('listings')
+    .select('status, seller_id')
+    .eq('id', input.listing.id)
+    .single();
+  if (listingCheckError || !listingCheck) throw listingCheckError || new Error('Listing not found');
+  if (listingCheck.status !== 'active') {
+    throw new Error(i18n.t('checkout:errors.listingUnavailable'));
+  }
+  if (listingCheck.seller_id !== sellerId) {
+    throw new Error(i18n.t('common:errors.unauthorized'));
+  }
+
   const cover = input.listing.photos?.[0]?.storage_path;
 
   const { data, error } = await supabase
@@ -1100,6 +1118,9 @@ export async function markListingSold(id: string, sellerId: string, buyerId?: st
   const isAdmin = !!callerProfile?.is_admin;
   if (!isOwner && !isAdmin) {
     throw new Error(i18n.t('common:errors.unauthorized'));
+  }
+  if (listing.status !== 'active') {
+    throw new Error(i18n.t('checkout:errors.listingUnavailable'));
   }
 
   const { error } = await supabase.from('listings').update({ status: 'sold' }).eq('id', id);

@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const { ok, error: loginError } = await login(email, password);
+    const { ok, error: loginError } = await login(email, password, { rememberMe });
     if (ok) {
       navigate(redirect);
     } else {
@@ -74,7 +75,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white p-2"
                 aria-label={showPassword ? t('auth:login.hidePassword') : t('auth:login.showPassword')}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -83,7 +84,12 @@ export default function LoginPage() {
           </div>
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer">
-              <input type="checkbox" className="rounded bg-zinc-900 border-white/10" />
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="rounded bg-zinc-900 border-white/10"
+              />
               {t('common:actions.rememberMe')}
             </label>
             <Link to="/forgot-password" className="text-xs text-emerald-400 hover:underline">
