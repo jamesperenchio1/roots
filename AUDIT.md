@@ -172,7 +172,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 10.7 | Heavy use of `as` casts in `src/lib/api.ts` (~629) bypasses generated types. | P1 | `src/lib/api.ts` |
 | 10.8 | Test coverage is low (17 test files for 181 source files). | P2 | Coverage report missing. |
 | 10.9 | `SellerDashboardPage.test.tsx` lives in `src/pages/` instead of a test directory. | P2 | Project structure. |
-| 10.10 | `innerHTML` used in `SellerReviewCard.tsx` for a fallback icon. | P2 | `src/components/SellerReviewCard.tsx:101` |
+| 10.10 | ~~`innerHTML` used in `SellerReviewCard.tsx` for a fallback icon.~~ | Done | Replaced with a React `ReviewImage` component that uses `ImageOff` from `lucide-react` and local error state. |
 
 ---
 

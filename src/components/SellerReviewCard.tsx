@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Star } from 'lucide-react';
+import { Star, ImageOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SellerReview } from '@/types';
@@ -88,19 +89,9 @@ export function SellerReviewCard({ review }: SellerReviewCardProps) {
                   rel="noopener noreferrer"
                   className="relative h-20 w-20 overflow-hidden rounded-lg border border-white/5 hover:border-white/20 transition-colors"
                 >
-                  <img
+                  <ReviewImage
                     src={url}
                     alt={t('common:sellerReviews.reviewImageAlt', { index: idx + 1 })}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.style.display = 'none';
-                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center', 'bg-zinc-800');
-                      const icon = document.createElement('div');
-                      icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500"><line x1="2" y1="2" x2="22" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" y1="6" x2="20" y2="6"/><line x1="17.5" y1="18" x2="20" y2="18"/><path d="M3 3l18 18"/></svg>';
-                      target.parentElement?.appendChild(icon.firstChild as Node);
-                    }}
                   />
                 </a>
               ))}
@@ -109,6 +100,28 @@ export function SellerReviewCard({ review }: SellerReviewCardProps) {
         </div>
       </div>
     </article>
+  );
+}
+
+function ReviewImage({ src, alt }: { src: string; alt: string }) {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-zinc-800">
+        <ImageOff className="h-4 w-4 text-zinc-500" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-full w-full object-cover"
+      loading="lazy"
+      onError={() => setError(true)}
+    />
   );
 }
 
