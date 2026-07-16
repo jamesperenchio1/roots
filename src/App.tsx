@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -138,27 +138,11 @@ function AppContent() {
 }
 
 function BootGate({ children }: { children: React.ReactNode }) {
-  const [bootError, setBootError] = useState(false);
   useEffect(() => {
-    let mounted = true;
-    hydratePublicData().catch(() => {
-      if (mounted) setBootError(true);
-    });
-    return () => { mounted = false; };
+    hydratePublicData();
   }, []);
 
-  return (
-    <>
-      {children}
-      {bootError && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
-          <p className="text-xs text-amber-200">
-            Connection issue detected. Some features may be limited until the server responds.
-          </p>
-        </div>
-      )}
-    </>
-  );
+  return <>{children}</>;
 }
 
 export default function App() {
