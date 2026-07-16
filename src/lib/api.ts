@@ -16,9 +16,6 @@ import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './m
 export {
   mapMessage,
   hydrateUserMessages,
-  getUserThreads,
-  getThreadMessages,
-  markThreadRead,
   getOrCreateThreadId,
   detectContactInfo,
 } from './messaging';
@@ -1480,21 +1477,6 @@ export async function fetchSellerListings(sellerId: string): Promise<Listing[]> 
   }
 }
 
-// External store for watchlist so the dashboard/listing heart reacts immediately.
-let watchlistVersion = 0;
-const watchlistListeners = new Set<() => void>();
-function bumpWatchlist() {
-  watchlistVersion++;
-  watchlistListeners.forEach((l) => l());
-}
-export function subscribeWatchlist(cb: () => void): () => void {
-  watchlistListeners.add(cb);
-  return () => { watchlistListeners.delete(cb); };
-}
-export function getWatchlistVersion(): number {
-  return watchlistVersion;
-}
-
 export function subscribeToWatchlist(userId: string): () => void {
   return ensureRealtimeChannel(`watchlist-${userId}`, () =>
     supabase
@@ -1503,7 +1485,6 @@ export function subscribeToWatchlist(userId: string): () => void {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'watchlist', filter: `user_id=eq.${userId}` },
         () => {
-          bumpWatchlist();
           invalidateUserQueries(userId);
           invalidatePublicQueries();
         }
@@ -1546,27 +1527,10 @@ export async function toggleWatch(
     const idx = WATCHLIST.findIndex(w => w.user_id === userId && w.watch_type === watchType && w.target_id === targetId);
     if (idx >= 0) WATCHLIST.splice(idx, 1);
   }
-  bumpWatchlist();
   invalidateUserQueries(userId);
 }
 
 // ---------- notifications ----------
-// Lightweight external store so the bell/panel re-render when the in-memory
-// NOTIFICATIONS array changes (async hydrate, create, mark-read, delete).
-let notificationsVersion = 0;
-const notificationListeners = new Set<() => void>();
-function bumpNotifications() {
-  notificationsVersion++;
-  notificationListeners.forEach((l) => l());
-}
-export function subscribeNotifications(cb: () => void): () => void {
-  notificationListeners.add(cb);
-  return () => { notificationListeners.delete(cb); };
-}
-export function getNotificationsVersion(): number {
-  return notificationsVersion;
-}
-
 export function getNotifications(userId: string): Notification[] {
   return NOTIFICATIONS
     .filter(n => n.user_id === userId)
@@ -1585,7 +1549,6 @@ export async function markNotificationRead(notificationId: string): Promise<void
   if (error) logger.warn('markNotificationRead failed', { error: error.message });
   const local = NOTIFICATIONS.find(n => n.id === notificationId);
   if (local) local.read = true;
-  bumpNotifications();
   invalidateUserQueries(local?.user_id || '');
 }
 
@@ -1596,7 +1559,6 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .eq('user_id', userId);
   if (error) logger.warn('markAllNotificationsRead failed', { error: error.message });
   NOTIFICATIONS.filter(n => n.user_id === userId).forEach(n => { n.read = true; });
-  bumpNotifications();
   invalidateUserQueries(userId);
 }
 
@@ -1610,7 +1572,6 @@ export async function deleteNotification(notificationId: string): Promise<void> 
   if (idx >= 0) {
     const n = NOTIFICATIONS[idx];
     NOTIFICATIONS.splice(idx, 1);
-    bumpNotifications();
     invalidateUserQueries(n.user_id);
   }
 }
@@ -1632,7 +1593,6 @@ export async function createNotification(
     ...payload,
   };
   NOTIFICATIONS.push(notification);
-  bumpNotifications();
   return notification;
 }
 
@@ -1743,27 +1703,11 @@ export function subscribeToNotifications(userId: string): () => void {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         () => {
-          bumpNotifications();
           invalidateUserQueries(userId);
         }
       )
       .subscribe()
   );
-}
-
-// External store for offers (mirrors the notifications pattern).
-let offersVersion = 0;
-const offerListeners = new Set<() => void>();
-function bumpOffers() {
-  offersVersion++;
-  offerListeners.forEach((l) => l());
-}
-export function subscribeOffers(cb: () => void): () => void {
-  offerListeners.add(cb);
-  return () => { offerListeners.delete(cb); };
-}
-export function getOffersVersion(): number {
-  return offersVersion;
 }
 
 export function subscribeToOffers(userId: string): () => void {
@@ -1773,30 +1717,15 @@ export function subscribeToOffers(userId: string): () => void {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'offers', filter: `buyer_id=eq.${userId}` },
-        () => { bumpOffers(); invalidateUserQueries(userId); }
+        () => { invalidateUserQueries(userId); }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'offers', filter: `seller_id=eq.${userId}` },
-        () => { bumpOffers(); invalidateUserQueries(userId); }
+        () => { invalidateUserQueries(userId); }
       )
       .subscribe()
   );
-}
-
-// External store for listings so Browse/Home/Market react to new/updated listings.
-let listingsVersion = 0;
-const listingListeners = new Set<() => void>();
-function bumpListings() {
-  listingsVersion++;
-  listingListeners.forEach((l) => l());
-}
-export function subscribeListings(cb: () => void): () => void {
-  listingListeners.add(cb);
-  return () => { listingListeners.delete(cb); };
-}
-export function getListingsVersion(): number {
-  return listingsVersion;
 }
 
 export function subscribeToListings(): () => void {
@@ -1807,7 +1736,6 @@ export function subscribeToListings(): () => void {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'listings' },
         () => {
-          bumpListings();
           invalidatePublicQueries();
           queryClient.invalidateQueries({ queryKey: ['user'] });
         }
@@ -1997,21 +1925,6 @@ function mapCommentReaction(r: DbRow): CommentReaction {
 
 const COMMENT_PAGE_SIZE = 20;
 const REPLY_PAGE_SIZE = 10;
-
-// External store for comments so CommentSection can react to realtime inserts.
-let commentsVersion = 0;
-const commentListeners = new Set<() => void>();
-export function bumpCommentsVersion() {
-  commentsVersion++;
-  commentListeners.forEach((l) => l());
-}
-export function subscribeCommentsStore(cb: () => void): () => void {
-  commentListeners.add(cb);
-  return () => { commentListeners.delete(cb); };
-}
-export function getCommentsStoreVersion(): number {
-  return commentsVersion;
-}
 
 export function subscribeToComments(targetId: string, isListing: boolean): () => void {
   const key = `comments-${isListing ? 'listing' : 'species'}-${targetId}`;

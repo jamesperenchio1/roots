@@ -49,15 +49,6 @@ function upsertById<T extends { id: string }>(arr: T[], row: T) {
   else arr.push(row);
 }
 
-export function _withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('timeout')), ms);
-    }),
-  ]);
-}
-
 // ---------- profile resolution ----------
 function resolveProfile(id: string | undefined | null): Profile | undefined {
   if (!id) return undefined;
@@ -209,49 +200,6 @@ export function _mapEmailQueueItem(r: DbRow): EmailQueueItem {
   };
 }
 
-// ---------- external stores ----------
-let conversationsVersion = 0;
-const conversationListeners = new Set<() => void>();
-function bumpConversations() {
-  conversationsVersion++;
-  conversationListeners.forEach((l) => l());
-}
-export function subscribeConversations(cb: () => void): () => void {
-  conversationListeners.add(cb);
-  return () => { conversationListeners.delete(cb); };
-}
-export function getConversationsVersion(): number {
-  return conversationsVersion;
-}
-
-let messagesVersion = 0;
-const messageListeners = new Set<() => void>();
-function bumpMessages() {
-  messagesVersion++;
-  messageListeners.forEach((l) => l());
-}
-export function subscribeMessages(cb: () => void): () => void {
-  messageListeners.add(cb);
-  return () => { messageListeners.delete(cb); };
-}
-export function getMessagesVersion(): number {
-  return messagesVersion;
-}
-
-let presenceVersion = 0;
-const presenceListeners = new Set<() => void>();
-function bumpPresence() {
-  presenceVersion++;
-  presenceListeners.forEach((l) => l());
-}
-export function subscribePresence(cb: () => void): () => void {
-  presenceListeners.add(cb);
-  return () => { presenceListeners.delete(cb); };
-}
-export function getPresenceVersion(): number {
-  return presenceVersion;
-}
-
 // ---------- hydration ----------
 export async function hydrateUserConversations(userId: string): Promise<void> {
   try {
@@ -265,10 +213,7 @@ export async function hydrateUserConversations(userId: string): Promise<void> {
     if (error) throw error;
 
     const conversationIds = (data || []).map((r) => r.conversation_id as string);
-    if (conversationIds.length === 0) {
-      bumpConversations();
-      return;
-    }
+    if (conversationIds.length === 0) return;
 
     const { data: convRows, error: convError } = await supabase
       .from('conversations')
@@ -291,8 +236,6 @@ export async function hydrateUserConversations(userId: string): Promise<void> {
 
     // Hydrate messages for these conversations (latest N each, capped total)
     await hydrateConversationMessages(conversationIds, MESSAGES_LIMIT);
-
-    bumpConversations();
   } catch (e) {
     logger.warn('hydrateUserConversations failed', { error: e instanceof Error ? e.message : String(e) });
   }
@@ -317,31 +260,8 @@ export async function hydrateConversationMessages(
 
     (data || []).reverse().forEach((r) => upsertById(MESSAGES, mapMessage(r)));
     await hydrateMessageExtras((data || []).map((r) => r.id as string));
-    bumpMessages();
   } catch (e) {
     logger.warn('hydrateConversationMessages failed', { error: e instanceof Error ? e.message : String(e) });
-  }
-}
-
-export async function loadOlderMessages(conversationId: string, before: string, limit = MESSAGES_LIMIT): Promise<Message[]> {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .is('deleted_at', null)
-      .lt('created_at', before)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    const mapped = (data || []).reverse().map(mapMessage);
-    mapped.forEach((m) => upsertById(MESSAGES, m));
-    await hydrateMessageExtras(mapped.map((m) => m.id));
-    bumpMessages();
-    return mapped;
-  } catch (e) {
-    logger.warn('loadOlderMessages failed', { error: e instanceof Error ? e.message : String(e) });
-    return [];
   }
 }
 
@@ -365,7 +285,6 @@ export async function hydrateUserPresence(userIds: string[]): Promise<void> {
       .in('id', userIds);
     if (error) throw error;
     (data || []).forEach((r) => upsertById(USER_PRESENCE, mapPresence(r)));
-    bumpPresence();
   } catch (e) {
     logger.warn('hydrateUserPresence failed', { error: e instanceof Error ? e.message : String(e) });
   }
@@ -378,12 +297,6 @@ export function getConversationById(id: string): Conversation | undefined {
 
 export function getConversationParticipants(conversationId: string): ConversationParticipant[] {
   return CONVERSATION_PARTICIPANTS.filter((p) => p.conversation_id === conversationId && !p.left_at);
-}
-
-export function getConversationOtherUserId(conversationId: string, currentUserId: string): string | undefined {
-  const participants = getConversationParticipants(conversationId);
-  const other = participants.find((p) => p.user_id !== currentUserId);
-  return other?.user_id;
 }
 
 export function getConversationMessages(conversationId: string): Message[] {
@@ -451,10 +364,6 @@ export function getUserConversations(userId: string): ConversationWithDetails[] 
     });
 }
 
-export function getUnreadMessageCount(userId: string): number {
-  return getUserConversations(userId).reduce((sum, c) => sum + c.unreadCount, 0);
-}
-
 // ---------- conversation creation ----------
 export interface CreateConversationInput {
   participantIds: string[];
@@ -498,7 +407,6 @@ export async function createConversation(input: CreateConversationInput): Promis
 
     upsertById(CONVERSATIONS, conversation);
     (partRows || []).forEach((r) => upsertById(CONVERSATION_PARTICIPANTS, mapParticipant(r)));
-    bumpConversations();
     return conversation;
   } catch (e) {
     logger.warn('createConversation failed', { error: e instanceof Error ? e.message : String(e) });
@@ -618,7 +526,6 @@ export async function sendMessage(input: SendMessageInput): Promise<Message> {
   }
 
   upsertById(MESSAGES, message);
-  bumpMessages();
 
   // Notify other participants
   const participants = getConversationParticipants(conversationId);
@@ -686,7 +593,6 @@ export async function editMessage(messageId: string, senderId: string, newConten
     logger.warn('editMessage supabase failed', { error: e instanceof Error ? e.message : String(e) });
   }
 
-  bumpMessages();
   return getMessageById(messageId)!;
 }
 
@@ -707,8 +613,6 @@ export async function deleteMessage(messageId: string, userId: string): Promise<
   } catch (e) {
     logger.warn('deleteMessage supabase failed', { error: e instanceof Error ? e.message : String(e) });
   }
-
-  bumpMessages();
 }
 
 // ---------- reactions ----------
@@ -737,7 +641,6 @@ export async function addReaction(messageId: string, userId: string, reaction: s
     if (error) throw error;
     if (data) {
       upsertById(MESSAGE_REACTIONS, mapReaction(data));
-      bumpMessages();
       return;
     }
   } catch (e) {
@@ -745,7 +648,6 @@ export async function addReaction(messageId: string, userId: string, reaction: s
   }
 
   upsertById(MESSAGE_REACTIONS, newReaction);
-  bumpMessages();
 }
 
 export async function removeReaction(messageId: string, userId: string, reaction: string): Promise<void> {
@@ -762,8 +664,6 @@ export async function removeReaction(messageId: string, userId: string, reaction
   } catch (e) {
     logger.warn('removeReaction supabase failed', { error: e instanceof Error ? e.message : String(e) });
   }
-
-  bumpMessages();
 }
 
 // ---------- read receipts ----------
@@ -811,9 +711,6 @@ export async function markConversationRead(conversationId: string, userId: strin
   } catch (e) {
     logger.warn('markConversationRead supabase failed', { error: e instanceof Error ? e.message : String(e) });
   }
-
-  bumpConversations();
-  bumpMessages();
 }
 
 // ---------- conversation participant settings ----------
@@ -834,8 +731,6 @@ export async function updateParticipantSettings(
   } catch (e) {
     logger.warn('updateParticipantSettings failed', { error: e instanceof Error ? e.message : String(e) });
   }
-
-  bumpConversations();
 }
 
 // ---------- search ----------
@@ -859,7 +754,6 @@ export async function searchMessages(userId: string, query: string, limit = 20):
 
     const mapped = (data || []).map(mapMessage);
     mapped.forEach((m) => upsertById(MESSAGES, m));
-    bumpMessages();
     return mapped.map(enrichMessage);
   } catch (e) {
     logger.warn('searchMessages failed', { error: e instanceof Error ? e.message : String(e) });
@@ -996,8 +890,6 @@ export async function updatePresence(userId: string, status: UserPresence['statu
   } catch (e) {
     logger.warn('updatePresence failed', { error: e instanceof Error ? e.message : String(e) });
   }
-
-  bumpPresence();
 }
 
 export function getUserPresence(userId: string): UserPresence | undefined {
@@ -1229,59 +1121,12 @@ export function getOrCreateThreadId(userId: string, otherUserId: string, listing
   return `thread_${sortedIds[0]}_${sortedIds[1]}_${listingId || 'general'}`;
 }
 
-export async function markThreadRead(threadId: string, userId: string): Promise<void> {
-  // Legacy thread ids have the shape thread_user1_user2_listing|general.
-  // Map to a direct conversation if one exists; otherwise no-op.
-  const parts = threadId.split('_');
-  if (parts.length !== 4 || parts[0] !== 'thread') return;
-  const otherUserId = parts[1] === userId ? parts[2] : parts[1];
-  if (!otherUserId) return;
-  const listingId = parts[3] === 'general' ? undefined : parts[3];
-  const conversation = await getOrCreateDirectConversation(userId, otherUserId, listingId);
-  await markConversationRead(conversation.id, userId);
-}
-
 export async function hydrateUserMessages(userId: string): Promise<void> {
   await hydrateUserConversations(userId);
 }
 
-export function getUserThreads(userId: string) {
-  return getUserConversations(userId).map((c) => ({
-    threadId: c.conversation.id,
-    otherUser: c.otherUser,
-    lastMessage: c.lastMessage,
-    unreadCount: c.unreadCount,
-    listing: c.listing,
-  }));
-}
-
-export function getThreadMessages(threadId: string): Message[] {
-  return getConversationMessages(threadId);
-}
-
-export async function sendLegacyMessage(
-  data: Pick<Message, 'sender_id' | 'recipient_id' | 'listing_id' | 'content' | 'flagged_contact_info'>
-): Promise<Message> {
-  if (!data.recipient_id) throw new Error('recipient_id is required');
-  const conversation = await getOrCreateDirectConversation(
-    data.sender_id,
-    data.recipient_id,
-    data.listing_id
-  );
-  return sendMessage({
-    conversationId: conversation.id,
-    senderId: data.sender_id,
-    content: data.content,
-    listingId: data.listing_id,
-  });
-}
-
 // ---------- storage helpers for attachments ----------
 export const MESSAGE_ATTACHMENT_BUCKET = 'message-attachments';
-
-export function getAttachmentPublicUrl(bucket: string, path: string): string {
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-}
 
 export async function getAttachmentSignedUrl(bucket: string, path: string, expiresInSeconds = 3600): Promise<string | null> {
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds);
