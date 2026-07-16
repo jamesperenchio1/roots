@@ -109,7 +109,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
-| 6.1 | `hydratePublicData` loads entire public datasets without pagination. | P1 | `src/lib/api.ts` — profiles, active listings, reviews. |
+| 6.1 | `hydratePublicData` loads entire public datasets without pagination. | P1 | `src/lib/api.ts` — profiles, active listings, reviews. Still open. |
 | 6.2 | ~~N+1 profile fetching in `mapListing`.~~ | Done | Removed per-row `fetchProfile` fallback; callers now pass a hydrated profile map. |
 | 6.3 | Large vendor chunks: `vendor-react` (~512 KB / 169 KB gzip), `vendor-recharts` (~387 KB / 105 KB gzip), `html5-qrcode-scanner` (~335 KB / 99 KB gzip). | P2 | Build output. |
 | 6.4 | No responsive image optimization / srcset; full-size Supabase images are loaded everywhere. | P2 | Build output, `ListingPage`, `BrowsePage`. |
@@ -211,8 +211,8 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 15. [x] Remove unused dependencies and add missing `dotenv` / `@vitest/coverage-v8`.
 16. [x] Standardize form controls (`ProvinceCombobox`, `MapLocationPicker`).
 17. [x] Fix remaining hardcoded page-level UI strings (shadcn component `sr-only` text remains P2).
-18. Add indexes for common query patterns.
-19. Batch profile lookups to fix N+1.
+18. [x] Add indexes for common query patterns.
+19. [x] Batch profile lookups to fix N+1.
 20. Add RLS policy tests.
 
 ### P2 — Polish
