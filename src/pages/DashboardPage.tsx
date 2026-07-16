@@ -229,7 +229,7 @@ export default function DashboardPage() {
                           toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
                         }
                       }}
-                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 p-2 -mr-2 rounded-md hover:bg-white/5"
                     >
                       <Trash2 className="w-3 h-3" /> {t('common:actions.remove')}
                     </button>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                         {w.watch_type === 'species' && (
                           <Link
                             to={`/species/${w.target_id}`}
-                            className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                            className="text-xs text-emerald-400 hover:underline flex items-center gap-1 p-2 rounded-md hover:bg-white/5"
                           >
                             <Bell className="w-3 h-3" /> {t('marketplace:species.setPriceAlert')}
                           </Link>
@@ -269,7 +269,7 @@ export default function DashboardPage() {
                         {listing && (
                           <Link
                             to={`/listing/${listing.id}`}
-                            className="text-xs text-emerald-400 hover:underline"
+                            className="text-xs text-emerald-400 hover:underline p-2 rounded-md hover:bg-white/5"
                           >
                             {t('common:actions.view')}
                           </Link>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveWatch(w.target_id, w.watch_type)}
-                          className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                          className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 p-2 -mr-2 rounded-md hover:bg-white/5"
                         >
                           <X className="w-3 h-3" /> {t('common:actions.remove')}
                         </button>

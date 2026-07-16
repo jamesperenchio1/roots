@@ -146,11 +146,11 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
                     )}
                   </div>
 
-                  <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-1">
+                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     {!n.read && (
                       <button
                         onClick={(e) => handleMarkRead(e, n.id)}
-                        className="p-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+                        className="p-2 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
                         title={t('common:notifications.markRead')}
                       >
                         <Check className="w-3 h-3" />
@@ -158,7 +158,7 @@ export default function NotificationPanel({ userId, open, onClose }: Notificatio
                     )}
                     <button
                       onClick={(e) => handleDelete(e, n.id)}
-                      className="p-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors"
+                      className="p-2 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors"
                       title={t('common:actions.delete')}
                     >
                       <Trash2 className="w-3 h-3" />

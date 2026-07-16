@@ -161,7 +161,7 @@ export default function ListingPage() {
                     type="button"
                     onClick={goPrev}
                     aria-label={t('marketplace:listing.previousImage')}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -169,7 +169,7 @@ export default function ListingPage() {
                     type="button"
                     onClick={goNext}
                     aria-label={t('marketplace:listing.nextImage')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -417,7 +417,7 @@ export default function ListingPage() {
             type="button"
             onClick={() => setLightboxOpen(false)}
             aria-label={t('common:actions.close')}
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 rounded-full p-2 text-white"
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 rounded-full p-3 text-white"
           >
             <X className="w-5 h-5" />
           </button>

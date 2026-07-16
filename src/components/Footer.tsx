@@ -18,9 +18,9 @@ export default function Footer() {
             <p className="text-sm text-zinc-500 mb-4 max-w-xs leading-relaxed">
               {t('home:newHero.subheadline')}
             </p>
-            <div className="flex items-center gap-3">
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label={t('common:footer.socialInstagram')} className="text-zinc-500 hover:text-white transition-colors"><Instagram className="w-4 h-4" /></a>
-              <Link to="/contact" aria-label={t('common:nav.contact')} className="text-zinc-500 hover:text-white transition-colors"><MessageCircle className="w-4 h-4" /></Link>
+            <div className="flex items-center gap-1">
+              <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label={t('common:footer.socialInstagram')} className="p-2.5 rounded-full text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"><Instagram className="w-4 h-4" /></a>
+              <Link to="/contact" aria-label={t('common:nav.contact')} className="p-2.5 rounded-full text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"><MessageCircle className="w-4 h-4" /></Link>
             </div>
           </div>
 
