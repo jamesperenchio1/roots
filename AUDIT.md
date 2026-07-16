@@ -29,8 +29,8 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 |---|---|---|---|
 | 1.1 | **Global mutable singleton stores** bypass React state. Pages read synchronously from arrays that are hydrated asynchronously, causing empty/not-found flashes and race conditions. | P0 | `src/data/mockData.ts` exports mutable arrays; `src/lib/api.ts` mutates them directly (`LISTINGS.length = 0; LISTINGS.push(...)`). |
 | 1.2 | Pages render "not found" before public data has finished hydrating. | P0 | `ListingPage`, `SellerPage`, `OrderPage` initialize from `getListingById` / `getTransactionById` immediately. |
-| 1.3 | `BrowsePage` fakes loading with a 400 ms `setTimeout` regardless of actual hydration state. | P1 | `src/pages/BrowsePage.tsx` |
-| 1.4 | Duplicated realtime subscriptions — `AuthProvider` and individual pages both open Supabase channels. | P1 | `OrderPage`, `SellerDashboardPage` open their own channels. |
+| 1.3 | ~~`BrowsePage` fakes loading with a 400 ms `setTimeout` regardless of actual hydration state.~~ | Done | `BrowsePage` now derives loading from TanStack Query `isPending`. |
+| 1.4 | ~~Duplicated realtime subscriptions — `AuthProvider` and individual pages both open Supabase channels.~~ | Done | Page-level channels removed; realtime is centralized in `AuthProvider` and messaging helpers. |
 | 1.5 | Long pages mix many concerns, making them hard to test and maintain. | P1 | `SellerDashboardPage` (921 lines), `CreateListingPage` (722 lines), `MessagesPage` (657 lines), `AdminPage` (498 lines). |
 | 1.6 | ~~No shared `ListingCard` component — each page reimplements card markup.~~ | Done | Extracted `src/components/ListingCard.tsx` and replaced inline cards on `HomePage`, `BrowsePage`, `MarketPage`, `SpeciesPage`, `SellerPage`. |
 | 1.7 | ~~Inconsistent form controls across create/edit listing.~~ | Done | `EditListingPage` now uses `ProvinceCombobox` to match `CreateListingPage`. |
@@ -64,7 +64,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
-| 2.1 | Loading states are inconsistent or fake, leaving users unsure whether content is coming. | P1 | `BrowsePage` fake 400 ms skeleton; `SellerPage` flashes `<NotFound />`. |
+| 2.1 | ~~Loading states are inconsistent or fake, leaving users unsure whether content is coming.~~ | Done | `BrowsePage` uses query `isPending`; `SellerPage` waits for both seller and listings before not-found. |
 | 2.2 | PromptPay checkout lacks clear explanation when the seller has no PromptPay ID. | P1 | `CheckoutPage` blocks pay without explaining why. |
 | 2.3 | ~~Some static copy is still in English even when Thai is selected.~~ | Done | Family/genus labels, pickup pin note, PromptPay copy, fees example, contact hours, home sales count, listing alt text, and tag suggestions are now i18n keys. |
 | 2.4 | Mobile touch targets and layouts need verification; the live site is inaccessible for automated testing. | P1 | Vercel Security Checkpoint blocks Playwright. |
@@ -166,8 +166,8 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 10.1 | `npm run lint` fails (1 error, 4 warnings). | P0 | `src/lib/api.test.ts` unused `beforeEach`; `CommentSection.tsx`; `useOnboarding.ts`; seed script eslint-disable. |
 | 10.2 | ~~Unused production dependencies bloat the bundle and install.~~ | Done | Removed `@sentry/browser`, `@hookform/resolvers`, `zod`, `framer-motion`, `dompurify`, `@types/dompurify`, `react-hotkeys-hook`, `tw-animate-css`. |
 | 10.3 | ~~Missing dependency: `dotenv` is used in `scripts/seed-database.cjs` but not declared.~~ | Done | Added `dotenv` to devDependencies. |
-| 10.4 | Missing `@vitest/coverage-v8` means configured coverage reporting is broken. | P1 | `vitest.config.ts` references it. |
-| 10.5 | `.env.example` is missing required server/edge variables. | P1 | `SUPABASE_SERVICE_ROLE_KEY`, `SLIPOK_API_KEY`, `SLIPOK_BRANCH_ID`, `APP_URL`. |
+| 10.4 | ~~Missing `@vitest/coverage-v8` means configured coverage reporting is broken.~~ | Done | Added `@vitest/coverage-v8` to devDependencies. |
+| 10.5 | ~~`.env.example` is missing required server/edge variables.~~ | Done | `.env.example` now documents service-role key, SlipOK, EasySlip, Upstash, email, cron, and contact email variables. |
 | 10.6 | `.env.example` documents unused analytics/payment variables. | P2 | `VITE_PLAUSIBLE_DOMAIN`, `VITE_GA_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_OMISE_PUBLIC_KEY`. |
 | 10.7 | Heavy use of `as` casts in `src/lib/api.ts` (~629) bypasses generated types. | P1 | `src/lib/api.ts` |
 | 10.8 | Test coverage is low (17 test files for 181 source files). | P2 | Coverage report missing. |
