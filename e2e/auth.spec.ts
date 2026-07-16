@@ -30,7 +30,7 @@ test.describe('Auth pages', () => {
 
     await page.getByPlaceholder(/display name/i).fill('Test User');
     await page.getByPlaceholder(/you@example.com/i).fill('test@example.com');
-    await page.getByPlaceholder(/min 6 characters/i).fill('password123');
+    await page.getByPlaceholder(/min 8/i).fill('password123');
     await page.getByPlaceholder(/08xxxxxxxx/i).fill('0812345678');
     await page.getByTestId('province-combobox').click();
     await page.getByPlaceholder(/province/i).fill('Bangkok');
