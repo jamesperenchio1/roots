@@ -1,13 +1,13 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { updateProfile, toggleWatch, withdrawOffer, respondToOffer, deletePriceAlert, getUserThreads, hydrateUserMessages } from '@/lib/api';
+import { updateProfile, toggleWatch, withdrawOffer, respondToOffer, deletePriceAlert } from '@/lib/api';
 import { toast } from 'sonner';
 import { sanitizeText, isValidPromptPayId } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
-import { subscribeConversations, getConversationsVersion } from '@/lib/messaging';
+import { useConversations } from '@/hooks/queries/useMessages';
 import SavedPlacesManager from '@/components/SavedPlacesManager';
 import { useUserTransactions, useOffers, useWatchlist, usePriceAlerts, useDisputes } from '@/hooks/queries/useUserData';
 
@@ -38,9 +38,7 @@ export default function DashboardPage() {
   const { data: watchlist = [] } = useWatchlist(user?.id);
   const { data: priceAlerts = [] } = usePriceAlerts(user?.id);
   const { data: disputes = [] } = useDisputes(user?.id);
-
-  // Re-render when conversation store changes (messages tab).
-  useSyncExternalStore(subscribeConversations, getConversationsVersion);
+  const { data: conversations = [] } = useConversations(user?.id);
 
   useEffect(() => {
     if (tab && tabs.some((ta) => ta.id === tab)) {
@@ -58,12 +56,6 @@ export default function DashboardPage() {
       });
     }
   }, [user]);
-
-  // Re-fetch messages when the Messages tab opens
-  useEffect(() => {
-    if (activeTab !== 'messages' || !user) return;
-    hydrateUserMessages(user.id).then(() => { /* conversation store bumps itself */ });
-  }, [activeTab, user]);
 
   const handleSaveSettings = async () => {
     if (!user) return;
@@ -287,7 +279,13 @@ export default function DashboardPage() {
         return (
           <div className="space-y-3">
             {(() => {
-              const threads = getUserThreads(user?.id || '');
+              const threads = conversations.map((c) => ({
+                threadId: c.conversation.id,
+                otherUser: c.otherUser,
+                lastMessage: c.lastMessage,
+                unreadCount: c.unreadCount,
+                listing: c.listing,
+              }));
               const totalUnread = threads.reduce((sum, th) => sum + th.unreadCount, 0);
               if (threads.length === 0) {
                 return (

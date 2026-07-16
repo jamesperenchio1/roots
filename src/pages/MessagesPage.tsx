@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageSquare, ArrowLeft, Search, MoreVertical, Phone, Pin, Archive, VolumeX, Flag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -13,34 +13,28 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
-  getUserConversations,
-  getConversationMessages,
   sendMessage,
   editMessage,
   deleteMessage,
   addReaction,
   removeReaction,
   markConversationRead,
-  hydrateUserConversations,
   getOrCreateDirectConversation,
   subscribeToConversation,
-  subscribeConversations,
-  getConversationsVersion,
   searchMessages,
   reportMessage,
   updateParticipantSettings,
   setTypingWithDebounce,
   clearTypingTimer,
   updatePresence,
-  subscribePresence,
   subscribeToPresenceChannel,
-  getUserPresence,
-  hydrateUserPresence,
-  type ConversationWithDetails,
 } from '@/lib/messaging';
+import { queryClient } from '@/lib/queryClient';
+import { messageKeys } from '@/lib/queryKeys';
+import { useConversations, useConversationMessages, usePresenceMap } from '@/hooks/queries/useMessages';
 import { useDraftMessage } from '@/hooks/useDraftMessage';
 import { useListings } from '@/hooks/queries/useListings';
-import type { Message, UserPresence } from '@/types';
+import type { Message } from '@/types';
 import ConversationList from '@/components/messaging/ConversationList';
 import MessageBubble from '@/components/messaging/MessageBubble';
 import MessageComposer from '@/components/messaging/MessageComposer';
@@ -77,13 +71,12 @@ export default function MessagesPage() {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation(['messages', 'common']);
-  const [conversations, setConversations] = useState<ConversationWithDetails[]>(
-    () => getUserConversations(user?.id || '')
-  );
-  const [messages, setMessages] = useState<Message[]>([]);
+  const conversationsQuery = useConversations(user?.id);
+  const conversations = useMemo(() => conversationsQuery.data ?? [], [conversationsQuery.data]);
+  const loading = conversationsQuery.isPending;
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(threadId);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -92,15 +85,11 @@ export default function MessagesPage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [pendingMessageId, setPendingMessageId] = useState<string>(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
   const [pendingAttachments, setPendingAttachments] = useState<import('@/types').MessageAttachment[]>([]);
-  const [presenceMap, setPresenceMap] = useState<Record<string, UserPresence | undefined>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
   const prevMessageCountRef = useRef(0);
   const lastConversationIdRef = useRef<string | undefined>(undefined);
-
-  // Track conversations store for realtime updates and unread badge sync.
-  useSyncExternalStore(subscribeConversations, getConversationsVersion);
 
   const dateLocale = i18n.language === 'th' ? 'th-TH' : 'en-GB';
 
@@ -123,16 +112,21 @@ export default function MessagesPage() {
 
   const refreshConversations = useCallback(() => {
     if (!user) return;
-    setConversations(getUserConversations(user.id));
+    queryClient.invalidateQueries({ queryKey: messageKeys.conversations(user.id) });
   }, [user]);
 
-  // Hydrate conversations and resolve legacy thread ids into real conversation ids.
+  const { data: fetchedMessages = [] } = useConversationMessages(user?.id, activeConversationId);
+  const messages = useMemo(
+    () => [...fetchedMessages, ...optimisticMessages],
+    [fetchedMessages, optimisticMessages]
+  );
+
+  // Resolve legacy thread ids into real conversation ids.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    setLoading(true);
 
-    const resolveAndHydrate = async () => {
+    const resolve = async () => {
       if (threadId && isLegacyThreadId(threadId)) {
         const otherUserId = getOtherUserIdFromThreadId(threadId, user.id);
         const listingId = getListingIdFromThreadId(threadId);
@@ -141,40 +135,29 @@ export default function MessagesPage() {
           if (!cancelled) {
             setActiveConversationId(conv.id);
             navigate(`/messages/${conv.id}`, { replace: true });
+            refreshConversations();
           }
         }
       } else {
         setActiveConversationId(threadId);
       }
-
-      await hydrateUserConversations(user.id);
-      if (!cancelled) {
-        refreshConversations();
-        if (activeConversationId) {
-          setMessages(getConversationMessages(activeConversationId));
-        }
-        setLoading(false);
-      }
     };
 
-    resolveAndHydrate();
+    resolve();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, threadId]);
 
-  // Load messages for active conversation and mark as read; restore draft.
+  // Mark active conversation as read; restore draft; reset per-conversation state.
   useEffect(() => {
     if (activeConversationId && user) {
-      const msgs = getConversationMessages(activeConversationId);
-      setMessages(msgs);
+      setOptimisticMessages([]);
       setPendingMessageId(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
       setPendingAttachments([]);
       setInput(draft.load());
       markConversationRead(activeConversationId, user.id).then(() => {
         refreshConversations();
       });
-    } else {
-      setMessages([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId, user?.id]);
@@ -224,18 +207,11 @@ export default function MessagesPage() {
   const activeConversation = conversations.find((c) => c.conversation.id === activeConversationId);
   const otherUser = activeConversation?.otherUser;
 
-  // Update local presence map whenever presence store changes.
-  const refreshPresenceMap = useCallback(() => {
-    const map: Record<string, UserPresence | undefined> = {};
-    conversations.forEach((c) => {
-      const id = c.otherUser?.id;
-      if (id) map[id] = getUserPresence(id);
-    });
-    if (otherUser?.id) {
-      map[otherUser.id] = getUserPresence(otherUser.id);
-    }
-    setPresenceMap(map);
-  }, [conversations, otherUser?.id]);
+  const partnerIds = useMemo(
+    () => conversations.map((c) => c.otherUser?.id).filter((id): id is string => Boolean(id)),
+    [conversations]
+  );
+  const { data: presenceMap = {} } = usePresenceMap(partnerIds);
 
   // Realtime subscription for active conversation
   useEffect(() => {
@@ -259,28 +235,19 @@ export default function MessagesPage() {
     const heartbeat = setInterval(setOnline, 30000);
     window.addEventListener('beforeunload', setOffline);
 
-    const unsubscribeStore = subscribePresence(refreshPresenceMap);
-
     return () => {
       clearInterval(heartbeat);
       window.removeEventListener('beforeunload', setOffline);
-      unsubscribeStore();
       setOffline();
     };
-  }, [user, refreshPresenceMap]);
+  }, [user]);
 
-  // Hydrate and subscribe to presence for all conversation partners.
+  // Subscribe to presence changes for all conversation partners.
   useEffect(() => {
-    if (!user) return;
-    const partnerIds = conversations
-      .map((c) => c.otherUser?.id)
-      .filter((id): id is string => Boolean(id));
-    if (partnerIds.length === 0) return;
-    hydrateUserPresence(partnerIds);
-    refreshPresenceMap();
+    if (!user || partnerIds.length === 0) return;
     const unsubscribe = subscribeToPresenceChannel(partnerIds);
     return () => { unsubscribe(); };
-  }, [conversations, user, refreshPresenceMap]);
+  }, [partnerIds, user]);
 
   const hasContactFlag = messages.some((m) => m.flagged_contact_info);
 
@@ -309,7 +276,7 @@ export default function MessagesPage() {
         reads: [],
         attachments: pendingAttachments.length ? pendingAttachments : undefined,
       };
-      setMessages((prev) => [...prev, optimisticMsg]);
+      setOptimisticMessages((prev) => [...prev, optimisticMsg]);
     }
     try {
       if (editingMessage) {
@@ -326,13 +293,16 @@ export default function MessagesPage() {
         });
       }
       setReplyTo(null);
+      setOptimisticMessages([]);
       refreshConversations();
       // Replace optimistic message with confirmed server state.
-      setMessages(getConversationMessages(activeConversationId));
+      await queryClient.invalidateQueries({
+        queryKey: messageKeys.conversation(user.id, activeConversationId),
+      });
       setPendingMessageId(`m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
     } catch (err) {
       // Roll back optimistic message on failure.
-      setMessages(getConversationMessages(activeConversationId));
+      setOptimisticMessages([]);
       setInput(text);
       toast.error(err instanceof Error ? err.message : t('messages:errors.sendFailed'));
     } finally {
@@ -370,7 +340,7 @@ export default function MessagesPage() {
     try {
       await deleteMessage(message.id, user.id);
       if (activeConversationId) {
-        setMessages(getConversationMessages(activeConversationId));
+        queryClient.invalidateQueries({ queryKey: messageKeys.conversation(user.id, activeConversationId) });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('messages:errors.deleteFailed'));
@@ -381,7 +351,7 @@ export default function MessagesPage() {
     if (!user) return;
     await addReaction(messageId, user.id, reaction);
     if (activeConversationId) {
-      setMessages(getConversationMessages(activeConversationId));
+      queryClient.invalidateQueries({ queryKey: messageKeys.conversation(user.id, activeConversationId) });
     }
   };
 
@@ -389,7 +359,7 @@ export default function MessagesPage() {
     if (!user) return;
     await removeReaction(messageId, user.id, reaction);
     if (activeConversationId) {
-      setMessages(getConversationMessages(activeConversationId));
+      queryClient.invalidateQueries({ queryKey: messageKeys.conversation(user.id, activeConversationId) });
     }
   };
 

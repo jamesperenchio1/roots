@@ -32,6 +32,8 @@ import type {
 import { sanitizeText, detectContactInfo } from './validation';
 import { logger } from './logger';
 import { scheduleEmailNotification } from './email-queue';
+import { queryClient } from './queryClient';
+import { messageKeys } from './queryKeys';
 
 
 const MESSAGES_LIMIT = 50;
@@ -1086,7 +1088,7 @@ export function subscribeToConversations(userId: string): () => void {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${userId}` },
         () => {
-          hydrateUserConversations(userId).then(() => bumpConversations());
+          queryClient.invalidateQueries({ queryKey: messageKeys.all(userId) });
         }
       )
       .on(
@@ -1099,7 +1101,7 @@ export function subscribeToConversations(userId: string): () => void {
           );
           if (isParticipant) {
             upsertById(CONVERSATIONS, conv);
-            bumpConversations();
+            queryClient.invalidateQueries({ queryKey: messageKeys.all(userId) });
           }
         }
       )
@@ -1130,7 +1132,7 @@ export function subscribeToConversation(
             const msg = mapMessage(payload.new as DbRow);
             upsertById(MESSAGES, msg);
           }
-          bumpMessages();
+          queryClient.invalidateQueries({ queryKey: ['messages'] });
         }
       )
       .on(
@@ -1148,7 +1150,7 @@ export function subscribeToConversation(
             );
             if (idx >= 0) MESSAGE_REACTIONS.splice(idx, 1);
           }
-          bumpMessages();
+          queryClient.invalidateQueries({ queryKey: ['messages'] });
         }
       )
       .on(
@@ -1159,7 +1161,7 @@ export function subscribeToConversation(
             const r = mapRead(payload.new as DbRow);
             if (r.conversation_id === conversationId) upsertById(MESSAGE_READS, r);
           }
-          bumpMessages();
+          queryClient.invalidateQueries({ queryKey: ['messages'] });
         }
       )
       .on(
@@ -1174,7 +1176,7 @@ export function subscribeToConversation(
             const idx = MESSAGE_ATTACHMENTS.findIndex((a) => a.id === old.id);
             if (idx >= 0) MESSAGE_ATTACHMENTS.splice(idx, 1);
           }
-          bumpMessages();
+          queryClient.invalidateQueries({ queryKey: ['messages'] });
         }
       )
       .on(
@@ -1211,7 +1213,7 @@ export function subscribeToPresenceChannel(userIds: string[]): () => void {
           const p = mapPresence(payload.new as DbRow);
           if (userIds.includes(p.id)) {
             upsertById(USER_PRESENCE, p);
-            bumpPresence();
+            queryClient.invalidateQueries({ queryKey: ['presence'] });
           }
         }
       )

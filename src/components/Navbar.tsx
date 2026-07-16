@@ -1,4 +1,4 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Menu, X, Leaf, TrendingUp, User, LogOut, Shield, Store, QrCode, MessageSquare } from 'lucide-react';
@@ -6,14 +6,13 @@ import { useTranslation } from 'react-i18next';
 import NotificationBell from './NotificationBell';
 import LanguageSwitcher from './LanguageSwitcher';
 import RealtimeBanner from './RealtimeBanner';
-import { subscribeConversations, getConversationsVersion, getUnreadMessageCount } from '@/lib/messaging';
+import { useUnreadMessageCount } from '@/hooks/queries/useMessages';
 
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();
   const { t } = useTranslation('common');
   const [menuOpen, setMenuOpen] = useState(false);
-  useSyncExternalStore(subscribeConversations, getConversationsVersion);
-  const unreadMessages = user ? getUnreadMessageCount(user.id) : 0;
+  const unreadMessages = useUnreadMessageCount(user?.id);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const location = useLocation();
