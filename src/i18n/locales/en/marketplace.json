@@ -3,6 +3,7 @@
     "title": "Browse Plants",
     "subtitle": "Find your next plant from verified sellers across Thailand",
     "filters": "Filters",
+    "searchPlaceholder": "Search plants…",
     "category": "Category",
     "categoryAll": "All Categories",
     "size": "Size",
