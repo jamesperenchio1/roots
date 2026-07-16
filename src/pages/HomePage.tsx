@@ -5,7 +5,7 @@ import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
 import { useListings } from '@/hooks/queries/useListings';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
-import { PriceChart } from '@/components/PriceChart';
+import { LazyPriceChart } from '@/components/LazyPriceChart';
 import { ListingCard } from '@/components/ListingCard';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
@@ -173,7 +173,7 @@ export default function HomePage() {
               </h3>
               {chartData.length > 0 ? (
                 <>
-                  <PriceChart data={chartData} height={200} showArea={true} />
+                  <LazyPriceChart data={chartData} height={200} showArea={true} />
                   <div className="flex items-center justify-between mt-4 text-xs text-zinc-500">
                     <span>90-day median: {Math.round(chartData[chartData.length - 1].price).toLocaleString()} {t('common:currency')}</span>
                     <span className="text-emerald-400">{t('home:liveData')}</span>

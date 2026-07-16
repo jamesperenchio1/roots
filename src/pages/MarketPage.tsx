@@ -5,8 +5,9 @@ import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from
 import { ListingCard } from '@/components/ListingCard';
 import { getSpeciesById } from '@/data/mockData';
 import { getMarketSpeciesFromData, type PublicData } from '@/lib/api';
-import { PriceChart, Sparkline } from '@/components/PriceChart';
-import { StatsPanel } from '@/components/PriceChart';
+import { LazyPriceChart } from '@/components/LazyPriceChart';
+import { Sparkline } from '@/components/Sparkline';
+import { StatsPanel } from '@/components/StatsPanel';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
@@ -268,7 +269,7 @@ export default function MarketPage() {
               </div>
             </div>
           </div>
-          <PriceChart
+          <LazyPriceChart
             key={`${selectedSpecies?.id ?? 'none'}-${sizeFilter}`}
             data={priceData}
             height={300}

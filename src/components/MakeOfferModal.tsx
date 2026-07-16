@@ -9,7 +9,7 @@ import { createOffer } from '@/lib/api';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { useSpeciesPriceStats } from '@/hooks/queries/useSpeciesPriceStats';
 import { useProvenanceSummary } from '@/hooks/queries/useProvenance';
-import { PriceChart } from '@/components/PriceChart';
+import { LazyPriceChart } from '@/components/LazyPriceChart';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MakeOfferModalProps {
@@ -103,7 +103,7 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
             {stats && <p className="text-xs text-zinc-500">{t('marketplace:offer.priceStats', { median: Math.round(stats.median).toLocaleString(), min: Math.round(stats.min).toLocaleString(), max: Math.round(stats.max).toLocaleString() })}</p>}
           </div>
           {chartData.length > 0 ? (
-            <PriceChart data={chartData} height={120} showArea />
+            <LazyPriceChart data={chartData} height={120} showArea />
           ) : (
             <p className="text-xs text-zinc-600 py-6 text-center">{t('marketplace:offer.noPriceHistory')}</p>
           )}

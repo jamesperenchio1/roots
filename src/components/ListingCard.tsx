@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PLANT_IMAGES } from '@/data/mockData';
 import { LazyImage } from '@/components/LazyImage';
-import { Sparkline } from '@/components/PriceChart';
+import { Sparkline } from '@/components/Sparkline';
 import { getProvinceLabel } from '@/lib/provinces';
 import { getSrcSet, CARD_SIZES, RESPONSIVE_WIDTHS } from '@/lib/images';
 import type { Listing } from '@/types';

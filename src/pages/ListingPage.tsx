@@ -10,8 +10,8 @@ import { toast } from 'sonner';
 import { PLANT_IMAGES } from '@/data/mockData';
 import { useListing } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
-import { PriceChart } from '@/components/PriceChart';
-import { StatsPanel } from '@/components/PriceChart';
+import { LazyPriceChart } from '@/components/LazyPriceChart';
+import { StatsPanel } from '@/components/StatsPanel';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { toggleWatch, getOrCreateThreadId, fetchPlant } from '@/lib/api';
@@ -378,7 +378,7 @@ export default function ListingPage() {
           <p className="text-sm text-zinc-500 mb-4">
             {t('marketplace:listing.priceHistoryDescription', { species: listing.species?.scientific_name, size: listing.size_category })}
           </p>
-          <PriceChart data={priceData} height={300} showVolume={true} />
+          <LazyPriceChart data={priceData} height={300} showVolume={true} />
           <div className="mt-6">
             <StatsPanel speciesId={speciesId} fallbackPrice={listing.price_thb} />
           </div>

@@ -6,8 +6,8 @@ import { useListings } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { usePriceAlerts } from '@/hooks/queries/useUserData';
 import { normalizeSpeciesName } from '@/data/speciesDatabase';
-import { PriceChart } from '@/components/PriceChart';
-import { StatsPanel } from '@/components/PriceChart';
+import { LazyPriceChart } from '@/components/LazyPriceChart';
+import { StatsPanel } from '@/components/StatsPanel';
 import { ListingCard } from '@/components/ListingCard';
 import { useState, useEffect, useMemo } from 'react';
 import type { SizeCategory } from '@/types';
@@ -365,7 +365,7 @@ export default function SpeciesPage() {
             </div>
           )}
           {priceData.length >= 3 ? (
-            <PriceChart data={priceData} height={350} showVolume={true} />
+            <LazyPriceChart data={priceData} height={350} showVolume={true} />
           ) : (
             <div className="py-12 text-center">
               <p className="text-zinc-500">{t('marketplace:species.insufficientData')}</p>

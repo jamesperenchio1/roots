@@ -10,7 +10,7 @@ import { getSpeciesById, PLANT_IMAGES, USERS } from '@/data/mockData';
 import { fetchProvenance, recordQRScan } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
-import { PriceChart } from '@/components/PriceChart';
+import { LazyPriceChart } from '@/components/LazyPriceChart';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { useAuth } from '@/hooks/useAuth';
 import type { Listing, Transfer, Plant } from '@/types';
@@ -330,7 +330,7 @@ export default function PlantQRPage() {
         {priceData.length > 0 && (
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-8">
             <h2 className="text-lg font-medium mb-4">{t('common:plantQr.priceHistory.title')}</h2>
-            <PriceChart data={priceData.map(d => ({ date: d.snapshot_date, price: d.median_price_thb }))} height={250} showArea={true} />
+            <LazyPriceChart data={priceData.map(d => ({ date: d.snapshot_date, price: d.median_price_thb }))} height={250} showArea={true} />
             <p className="text-xs text-zinc-600 mt-3">{t('common:plantQr.priceHistory.note')}</p>
           </div>
         )}
