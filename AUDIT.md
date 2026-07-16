@@ -4,6 +4,7 @@
 **Scope:** Full product, codebase, database, and deployment audit for the Roots Thailand plant marketplace.
 
 > This audit was generated before any code changes were made. Each item is prioritized P0 (blocker), P1 (important), or P2 (nice-to-have).
+> **Update 2026-07-16:** TanStack Query migration and first-pass P0 security hardening are complete; see the Verification Checklist and P0 Action Plan below for status.
 
 ---
 
@@ -190,16 +191,16 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 ### P0 — Fix First
 
-1. Fix `npm run lint` (remove unused `beforeEach`, clean eslint-disable directives).
-2. Add missing env vars to `.env.example`.
-3. Harden `confirmPaymentReceived` and `updateOrderStatus` in `src/lib/api.ts`.
-4. Add the missing `guard_payment_confirmed` database trigger.
-5. Fix hardcoded `'buyer'` in `src/pages/DisputePage.tsx`.
-6. Add `SellerGuard` / `OwnershipGuard` for seller and edit-listing routes.
-7. Fix `AdminGuard` redirect target.
-8. Create base schema migrations (`CREATE TABLE IF NOT EXISTS`) for core tables.
-9. Define storage buckets and policies in migrations.
-10. Remove or hide `loginAsLocalAdmin()` dev bypass.
+1. [x] Fix `npm run lint` (remove unused `beforeEach`, clean eslint-disable directives).
+2. [ ] Add missing env vars to `.env.example`.
+3. [x] Harden `confirmPaymentReceived` and `updateOrderStatus` in `src/lib/api.ts`.
+4. [x] Add the missing `guard_payment_confirmed` database trigger.
+5. [x] Fix hardcoded `'buyer'` in `src/pages/DisputePage.tsx` (role was already dynamic; confirmed no user-ID hardcoding remains).
+6. [x] Add `SellerGuard` / `OwnershipGuard` for seller and edit-listing routes.
+7. [x] Fix `AdminGuard` redirect target (now redirects to `/`).
+8. [x] Create base schema migrations (`CREATE TABLE IF NOT EXISTS`) for core tables.
+9. [x] Define storage buckets and policies in migrations.
+10. [x] Remove or hide `loginAsLocalAdmin()` dev bypass (no longer present in codebase).
 
 ### P1 — Next
 
@@ -224,12 +225,12 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 ## Verification Checklist
 
-- [ ] `npm run lint` passes with no errors or warnings.
-- [ ] `npm run build` passes.
-- [ ] `npm test` passes.
+- [x] `npm run lint` passes with no errors or warnings.
+- [x] `npm run build` passes.
+- [x] `npm test` passes.
 - [ ] `npm run test:e2e` passes (against local dev server).
 - [ ] No hardcoded user-facing English strings remain in pages/components.
-- [ ] All route guards enforce role/ownership at the route level.
-- [ ] Payment/order functions validate caller authorization.
-- [ ] Database migrations can reproduce the live schema from scratch.
+- [x] All route guards enforce role/ownership at the route level.
+- [x] Payment/order functions validate caller authorization.
+- [x] Database migrations can reproduce the live schema from scratch.
 - [ ] Storage buckets have restrictive RLS policies.
