@@ -372,24 +372,176 @@ export async function fetchListings(
   };
 }
 
+export async function fetchRecentListings(limit = 8): Promise<Listing[]> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const rows = (data || []) as DbRow[];
+    const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+    const profiles = await fetchProfilesByIds(sellerIds);
+    return await Promise.all(rows.map((r) => mapListing(r, profiles)));
+  } catch (e) {
+    logger.warn('fetchRecentListings failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+export async function fetchListingsBySeller(sellerId: string): Promise<Listing[]> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('status', 'active')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const rows = (data || []) as DbRow[];
+    const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+    const profiles = await fetchProfilesByIds(sellerIds);
+    return await Promise.all(rows.map((r) => mapListing(r, profiles)));
+  } catch (e) {
+    logger.warn('fetchListingsBySeller failed', { error: e instanceof Error ? e.message : String(e), sellerId });
+    return [];
+  }
+}
+
+export async function fetchListingsBySpecies(
+  speciesId: string,
+  options?: { sizeCategory?: string; scientificName?: string }
+): Promise<Listing[]> {
+  try {
+    let query = supabase.from('listings').select('*').eq('status', 'active');
+    if (speciesId) {
+      query = query.eq('species_id', speciesId);
+    } else if (options?.scientificName) {
+      query = query.ilike('species_scientific', `%${options.scientificName}%`);
+    } else {
+      return [];
+    }
+    if (options?.sizeCategory) query = query.eq('size_category', options.sizeCategory);
+    const { data, error } = await query.order('created_at', { ascending: false });
+    if (error) throw error;
+    const rows = (data || []) as DbRow[];
+    const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+    const profiles = await fetchProfilesByIds(sellerIds);
+    return await Promise.all(rows.map((r) => mapListing(r, profiles)));
+  } catch (e) {
+    logger.warn('fetchListingsBySpecies failed', { error: e instanceof Error ? e.message : String(e), speciesId });
+    return [];
+  }
+}
+
+export async function fetchListingsByIds(ids: string[]): Promise<Listing[]> {
+  if (ids.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .in('id', ids)
+      .eq('status', 'active');
+    if (error) throw error;
+    const rows = (data || []) as DbRow[];
+    const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+    const profiles = await fetchProfilesByIds(sellerIds);
+    return await Promise.all(rows.map((r) => mapListing(r, profiles)));
+  } catch (e) {
+    logger.warn('fetchListingsByIds failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+export async function fetchPriceSnapshotsForSpecies(
+  speciesId: string,
+  sizeCategory?: string,
+  days = 90
+): Promise<PriceSnapshot[]> {
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    let query = supabase
+      .from('price_snapshots')
+      .select('*')
+      .eq('species_id', speciesId)
+      .gte('snapshot_date', cutoff.toISOString().split('T')[0])
+      .order('snapshot_date', { ascending: true });
+    if (sizeCategory) query = query.eq('size_category', sizeCategory);
+    else query = query.is('size_category', null);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map((r) => mapPriceSnapshot(r));
+  } catch (e) {
+    logger.warn('fetchPriceSnapshotsForSpecies failed', { error: e instanceof Error ? e.message : String(e), speciesId });
+    return [];
+  }
+}
+
+export async function fetchProfiles(): Promise<Profile[]> {
+  try {
+    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => mapProfile(r));
+  } catch (e) {
+    logger.warn('fetchProfiles failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+const PUBLIC_DATA_LISTING_LIMIT = 500;
+const PUBLIC_DATA_REVIEW_LIMIT = 100;
+const PUBLIC_DATA_TRANSACTION_LIMIT = 100;
+const PRICE_SNAPSHOT_DAYS = 60;
+
 async function fetchPublicDataRaw(): Promise<PublicData> {
   const timeoutMs = 8000;
-  const profileReq = supabase.from('profiles').select('*').then((r) => r);
-  const listingsReq = supabase.from('listings').select('*').eq('status', 'active').order('created_at', { ascending: false }).then((r) => r);
-  const sellerReviewsReq = supabase.from('seller_reviews').select('*').eq('status', 'visible').order('created_at', { ascending: false }).then((r) => r);
-  const [{ data: profs }, { data: rows }, { data: sellerReviewRows }] = await Promise.all([
-    withTimeout(profileReq, timeoutMs),
+  const listingsReq = supabase
+    .from('listings')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(PUBLIC_DATA_LISTING_LIMIT)
+    .then((r) => r);
+  const sellerReviewsReq = supabase
+    .from('seller_reviews')
+    .select('*')
+    .eq('status', 'visible')
+    .order('created_at', { ascending: false })
+    .limit(PUBLIC_DATA_REVIEW_LIMIT)
+    .then((r) => r);
+  const transactionsReq = supabase
+    .from('transactions')
+    .select('*, listings(*)')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(PUBLIC_DATA_TRANSACTION_LIMIT)
+    .then((r) => r);
+
+  const [{ data: rows }, { data: sellerReviewRows }, { data: transactionRows }] = await Promise.all([
     withTimeout(listingsReq, timeoutMs),
     withTimeout(sellerReviewsReq, timeoutMs),
+    withTimeout(transactionsReq, timeoutMs),
   ]);
 
-  const cache: Record<string, Profile> = {};
-  const users: Profile[] = [];
-  (profs || []).forEach((p: DbRow) => {
-    const mapped = mapProfile(p);
-    cache[mapped.id] = mapped;
-    users.push(mapped);
+  const profileIds = new Set<string>();
+  (rows || []).forEach((r: DbRow) => {
+    const sid = r.seller_id as string;
+    if (sid) profileIds.add(sid);
   });
+  (sellerReviewRows || []).forEach((r: DbRow) => {
+    if (r.reviewer_id) profileIds.add(r.reviewer_id as string);
+    if (r.seller_id) profileIds.add(r.seller_id as string);
+  });
+  (transactionRows || []).forEach((r: DbRow) => {
+    if (r.buyer_id) profileIds.add(r.buyer_id as string);
+    if (r.seller_id) profileIds.add(r.seller_id as string);
+  });
+
+  const cache = await fetchProfilesByIds(Array.from(profileIds));
+  profileCache = { ...profileCache, ...cache };
 
   const listings: Listing[] = [];
   await Promise.all((rows || []).map(async (r: DbRow) => {
@@ -399,16 +551,17 @@ async function fetchPublicDataRaw(): Promise<PublicData> {
   const sellerReviews: SellerReview[] = [];
   (sellerReviewRows || []).forEach((r: DbRow) => sellerReviews.push(mapSellerReview(r)));
 
-  const priceSnapshots = await fetchPriceSnapshots();
-  const transactions = await fetchPublicTransactions(cache);
+  const transactions = await Promise.all((transactionRows || []).map(async (r: DbRow) => mapTransaction(r, cache)));
 
-  return { users, listings, sellerReviews, priceSnapshots, transactions };
+  const priceSnapshots = await fetchPriceSnapshots(PRICE_SNAPSHOT_DAYS);
+
+  return { users: Object.values(cache), listings, sellerReviews, priceSnapshots, transactions };
 }
 
-async function fetchPriceSnapshots(): Promise<PriceSnapshot[]> {
+async function fetchPriceSnapshots(days = 365): Promise<PriceSnapshot[]> {
   try {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 365);
+    cutoff.setDate(cutoff.getDate() - days);
     const { data, error } = await supabase
       .from('price_snapshots')
       .select('*')
@@ -418,22 +571,6 @@ async function fetchPriceSnapshots(): Promise<PriceSnapshot[]> {
     return (data || []).map((r) => mapPriceSnapshot(r));
   } catch (e) {
     logger.warn('fetchPriceSnapshots failed', { error: e instanceof Error ? e.message : String(e) });
-    return [];
-  }
-}
-
-async function fetchPublicTransactions(profileMap: Record<string, Profile>): Promise<Transaction[]> {
-  try {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*, listings(*)')
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(100);
-    if (error) throw error;
-    return await Promise.all((data || []).map(async (r) => mapTransaction(r, profileMap)));
-  } catch (e) {
-    logger.warn('fetchPublicTransactions failed', { error: e instanceof Error ? e.message : String(e) });
     return [];
   }
 }
@@ -535,6 +672,26 @@ export function getMarketSpeciesFromData(data: PublicData | undefined): Species[
   ALL_SPECIES.forEach((s) => ids.add(s.id));
   (data?.listings ?? []).forEach((l) => { if (l.species?.id) ids.add(l.species.id); });
   (data?.transactions ?? []).forEach((t) => { if (t.listing?.species?.id) ids.add(t.listing.species.id); });
+  return Array.from(ids)
+    .map((id) => getSpeciesById(id))
+    .filter((s): s is Species => !!s);
+}
+
+export function getMarketSpeciesFromOverview(overview: MarketOverview | undefined): Species[] {
+  const ids = new Set<string>();
+  ALL_SPECIES.forEach((s) => ids.add(s.id));
+  if (!overview) {
+    return Array.from(ids)
+      .map((id) => getSpeciesById(id))
+      .filter((s): s is Species => !!s);
+  }
+  const add = (item: { species: Species }) => { if (item.species?.id) ids.add(item.species.id); };
+  overview.trending_up.forEach(add);
+  overview.trending_down.forEach(add);
+  overview.most_traded.forEach(add);
+  overview.hot_right_now.forEach(add);
+  overview.cold.forEach(add);
+  overview.high_value_sales.forEach((t) => { if (t.listing?.species?.id) ids.add(t.listing.species.id); });
   return Array.from(ids)
     .map((id) => getSpeciesById(id))
     .filter((s): s is Species => !!s);

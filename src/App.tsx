@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import { usePublicData } from '@/hooks/queries/usePublicData';
+import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import i18n from '@/i18n/config';
 import { Toaster } from '@/components/ui/sonner';
 import { PageLoader } from '@/components/PageLoader';
@@ -133,7 +133,7 @@ function AppContent() {
 }
 
 function BootGate({ children }: { children: React.ReactNode }) {
-  const { isPending, isFetched, error } = usePublicData();
+  const { isPending, isFetched, error } = useMarketOverview();
 
   if (isPending && !isFetched) {
     return (

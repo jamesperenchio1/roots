@@ -4,17 +4,16 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
 import { ListingCard } from '@/components/ListingCard';
 import { getSpeciesById } from '@/data/mockData';
-import { getMarketSpeciesFromData, type PublicData } from '@/lib/api';
+import { getMarketSpeciesFromOverview } from '@/lib/api';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
 import { Sparkline } from '@/components/Sparkline';
 import { StatsPanel } from '@/components/StatsPanel';
 import SpeciesAutocomplete from '@/components/SpeciesAutocomplete';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
-import { useListings } from '@/hooks/queries/useListings';
-import { usePublicData } from '@/hooks/queries/usePublicData';
+import { useListingsBySpecies } from '@/hooks/queries/useListings';
 import type { LucideIcon } from 'lucide-react';
-import type { Species, Category, SizeCategory, MarketOverview } from '@/types';
+import type { Category, SizeCategory, MarketOverview } from '@/types';
 
 function SectionHeader({ icon: Icon, titleKey, color }: { icon: LucideIcon; titleKey: string; color: string }) {
   const { t } = useTranslation('marketplace');
@@ -114,23 +113,6 @@ const SIZES: (SizeCategory | '')[] = ['', 'S', 'M', 'L', 'XL'];
 
 const SPECIES_STORAGE_KEY = 'roots.market.selectedSpecies';
 
-function scoreSpeciesFromData(data: PublicData, s: Species) {
-  const cutoff = Date.now() - 180 * 24 * 60 * 60 * 1000;
-  let mostRecent = 0;
-  let hasSnapshots = false;
-  for (const ps of data.priceSnapshots) {
-    if (ps.species_id !== s.id || ps.size_category != null) continue;
-    const time = new Date(ps.snapshot_date).getTime();
-    if (time < cutoff) continue;
-    hasSnapshots = true;
-    if (time > mostRecent) mostRecent = time;
-  }
-  const listings = data.listings.filter(
-    (l) => l.status === 'active' && l.species?.id === s.id
-  ).length;
-  return { mostRecent, listings, hasData: hasSnapshots || listings > 0 };
-}
-
 export default function MarketPage() {
   const { t } = useTranslation(['marketplace', 'common']);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | undefined>(undefined);
@@ -146,25 +128,16 @@ export default function MarketPage() {
   const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
   const { data: market } = useMarketOverview();
-  const { data: allListings } = useListings();
-  const { data: publicData } = usePublicData();
 
-  const marketSpecies = useMemo(() => getMarketSpeciesFromData(publicData), [publicData]);
+  const marketSpecies = useMemo(() => getMarketSpeciesFromOverview(market), [market]);
 
   const selectedSpecies = useMemo(() => {
     if (selectedSpeciesId) {
       const saved = getSpeciesById(selectedSpeciesId);
       if (saved && marketSpecies.some((s) => s.id === saved.id)) return saved;
     }
-    if (!publicData) return undefined;
-    const withData = marketSpecies
-      .map((s) => ({ species: s, ...scoreSpeciesFromData(publicData, s) }))
-      .filter((s) => s.hasData);
-    withData.sort((a, b) =>
-      a.mostRecent !== b.mostRecent ? b.mostRecent - a.mostRecent : b.listings - a.listings
-    );
-    return withData[0]?.species;
-  }, [selectedSpeciesId, marketSpecies, publicData]);
+    return market?.trending_up[0]?.species ?? market?.most_traded[0]?.species;
+  }, [selectedSpeciesId, marketSpecies, market]);
 
   const filteredMarket = useMemo(
     () => ({
@@ -190,19 +163,15 @@ export default function MarketPage() {
     [market, categoryFilter]
   );
 
-  const { data: priceSnapshots } = usePriceSnapshots(selectedSpecies?.id, sizeFilter || undefined, 90);
+  const { data: priceSnapshots = [] } = usePriceSnapshots(selectedSpecies?.id, sizeFilter || undefined, 90);
   const priceData = useMemo(
     () => priceSnapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb, volume: ps.sale_count })),
     [priceSnapshots]
   );
 
-  const speciesListings = useMemo(
-    () =>
-      selectedSpecies && allListings
-        ? allListings.filter((l) => l.species?.id === selectedSpecies.id && (!sizeFilter || l.size_category === sizeFilter))
-        : [],
-    [selectedSpecies, allListings, sizeFilter]
-  );
+  const { data: speciesListings = [] } = useListingsBySpecies(selectedSpecies?.id, {
+    sizeCategory: sizeFilter || undefined,
+  });
 
   const handleSpeciesChange = (_value: string, entry?: { id: string }) => {
     if (!entry) return;

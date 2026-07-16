@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
-import { useListings } from '@/hooks/queries/useListings';
+import { useListingsBySpecies } from '@/hooks/queries/useListings';
 import { computeSpeciesPriceStats } from '@/hooks/queries/useSpeciesPriceStats';
 
 interface StatsPanelProps {
@@ -12,7 +12,7 @@ interface StatsPanelProps {
 export function StatsPanel({ speciesId, sizeCategory, fallbackPrice }: StatsPanelProps) {
   const { t } = useTranslation(['marketplace', 'common']);
   const { data: allTimeData = [] } = usePriceSnapshots(speciesId, sizeCategory, 180);
-  const { data: listings = [] } = useListings();
+  const { data: listings = [] } = useListingsBySpecies(speciesId, { sizeCategory });
   const stats30 = computeSpeciesPriceStats(allTimeData, listings, speciesId, 30);
   const stats90 = computeSpeciesPriceStats(allTimeData, listings, speciesId, 90);
   const trendPct = stats30 && stats90

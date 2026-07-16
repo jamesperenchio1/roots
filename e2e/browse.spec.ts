@@ -15,20 +15,17 @@ test.describe('Browse page', () => {
     });
   });
 
-  test('search input is present and accepts input', async ({ page }) => {
-    await page.goto('/#/browse');
+  test('search query is reflected in heading', async ({ page }) => {
+    await page.goto('/#/browse?q=monstera');
     await waitForAppReady(page);
-    const searchInput = page.getByPlaceholder(/search/i).first();
-    await expect(searchInput).toBeVisible();
-    await searchInput.fill('monstera');
-    await expect(searchInput).toHaveValue('monstera');
+    await expect(page.getByRole('heading', { name: /monstera/i })).toBeVisible();
   });
 
-  test('filter/category buttons visible', async ({ page }) => {
+  test('filter/category select is visible', async ({ page }) => {
     await page.goto('/#/browse');
     await waitForAppReady(page);
-    // Category filters like "All", "Aroid", etc should exist
-    await expect(page.getByRole('button', { name: /all/i }).first()).toBeVisible();
+    // Category filter select should exist
+    await expect(page.getByRole('combobox').first()).toBeVisible();
   });
 
   test('navigating from home browse link lands on browse', async ({ page }) => {

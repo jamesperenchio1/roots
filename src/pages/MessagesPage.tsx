@@ -14,7 +14,7 @@ import { messageKeys } from '@/lib/queryKeys';
 import { useConversations, useConversationMessages, usePresenceMap } from '@/hooks/queries/useMessages';
 import { useDraftMessage } from '@/hooks/useDraftMessage';
 import { useMessageActions } from '@/hooks/useMessageActions';
-import { useListings } from '@/hooks/queries/useListings';
+import { useListing } from '@/hooks/queries/useListings';
 import { useAuth } from '@/hooks/useAuth';
 import type { Message, MessageAttachment } from '@/types';
 import MessageComposer from '@/components/messaging/MessageComposer';
@@ -50,8 +50,10 @@ function getListingIdFromThreadId(threadId: string): string | undefined {
 export default function MessagesPage() {
   const { user } = useAuth();
   const userId = user?.id;
-  const { data: allListings = [] } = useListings();
   const { threadId } = useParams<{ threadId?: string }>();
+  const legacyListingId =
+    threadId && isLegacyThreadId(threadId) ? getListingIdFromThreadId(threadId) : undefined;
+  const { data: legacyListing } = useListing(legacyListingId);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation(['messages', 'common']);
   const conversationsQuery = useConversations(user?.id);
@@ -277,11 +279,7 @@ export default function MessagesPage() {
     t,
   });
 
-  const legacyListingId =
-    threadId && isLegacyThreadId(threadId) ? getListingIdFromThreadId(threadId) : undefined;
-  const legacyListingName = legacyListingId
-    ? allListings.find((l) => l.id === legacyListingId)?.species?.common_name_en
-    : undefined;
+  const legacyListingName = legacyListing?.species?.common_name_en;
 
   return (
     <div className="pt-20 pb-0 md:pb-16 px-0 md:px-4 sm:px-6 flex flex-col md:flex-row max-w-7xl mx-auto min-h-[calc(100dvh-80px)] md:min-h-[70vh]">

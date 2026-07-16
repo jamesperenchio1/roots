@@ -29,7 +29,7 @@ export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
   const { data: listing, isPending } = useListing(id);
   const speciesIdForListing = listing?.species?.id || listing?.plant_id?.replace('p-', 'sp-') || '';
-  const { data: snapshots } = usePriceSnapshots(speciesIdForListing, listing?.size_category, 365);
+  const { data: snapshots = [] } = usePriceSnapshots(speciesIdForListing, listing?.size_category, 365);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [watched, setWatched] = useState(false);

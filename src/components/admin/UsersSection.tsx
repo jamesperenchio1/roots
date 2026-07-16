@@ -3,17 +3,17 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { adminUpdateUser } from '@/lib/api';
-import { usePublicData } from '@/hooks/queries/usePublicData';
+import { useProfiles } from '@/hooks/queries/useProfiles';
 import type { Profile } from '@/types';
 
 export function UsersSection() {
   const { t } = useTranslation(['common']);
-  const { data: publicData } = usePublicData();
-  const [users, setUsers] = useState<Profile[]>(publicData?.users ?? []);
+  const { data: profiles } = useProfiles();
+  const [users, setUsers] = useState<Profile[]>(profiles ?? []);
 
   useEffect(() => {
-    if (publicData?.users) setUsers(publicData.users);
-  }, [publicData?.users]);
+    if (profiles) setUsers(profiles);
+  }, [profiles]);
 
   const handleStrike = async (userId: string) => {
     const target = users.find((u) => u.id === userId);

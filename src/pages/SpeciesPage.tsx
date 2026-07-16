@@ -2,10 +2,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Leaf, Bell, X, Trash2, Search } from 'lucide-react';
 import { getSpeciesById, PLANT_IMAGES } from '@/data/mockData';
-import { useListings } from '@/hooks/queries/useListings';
+import { useListingsBySpecies } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { usePriceAlerts } from '@/hooks/queries/useUserData';
-import { normalizeSpeciesName } from '@/data/speciesDatabase';
+
 import { LazyPriceChart } from '@/components/LazyPriceChart';
 import { StatsPanel } from '@/components/StatsPanel';
 import { ListingCard } from '@/components/ListingCard';
@@ -137,17 +137,17 @@ export default function SpeciesPage() {
 
   const chartId = localSpecies?.id || rawId;
 
-  const { data: allListings } = useListings();
-  const speciesListings = useMemo(() => {
-    const base = (allListings || []).filter((l) => {
-      if (localSpecies) return l.species?.id === localSpecies.id;
-      const name = l.species?.scientific_name;
-      return name ? normalizeSpeciesName(name) === normalizeSpeciesName(display.scientificName) : false;
-    });
-    return base.filter((l) => !sizeFilter || l.size_category === sizeFilter);
-  }, [allListings, localSpecies, display.scientificName, sizeFilter]);
+  const speciesListingsScientificName = !localSpecies ? display.scientificName : undefined;
+  const { data: speciesListingsData } = useListingsBySpecies(localSpecies?.id, {
+    sizeCategory: sizeFilter,
+    scientificName: speciesListingsScientificName,
+  });
+  const speciesListings = useMemo(
+    () => (speciesListingsData || []).filter((l) => !sizeFilter || l.size_category === sizeFilter),
+    [speciesListingsData, sizeFilter]
+  );
 
-  const { data: priceSnapshots } = usePriceSnapshots(chartId, sizeFilter, 180);
+  const { data: priceSnapshots = [] } = usePriceSnapshots(chartId, sizeFilter, 180);
   const priceData = useMemo(
     () => priceSnapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb, volume: ps.sale_count })),
     [priceSnapshots]

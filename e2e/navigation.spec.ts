@@ -45,13 +45,13 @@ test.describe('Navigation', () => {
   test('login page has login and signup links', async ({ page }) => {
     await page.goto('/#/login');
     await waitForAppReady(page);
-    await expect(page.getByRole('link', { name: /sign up|create account/i })).toBeVisible();
+    await expect(page.locator('main').getByRole('link', { name: /sign up|create account/i })).toBeVisible();
   });
 
   test('signup page has login link', async ({ page }) => {
     await page.goto('/#/signup');
     await waitForAppReady(page);
-    await expect(page.getByRole('link', { name: /log in|sign in/i })).toBeVisible();
+    await expect(page.locator('main').getByRole('link', { name: /log in|sign in/i })).toBeVisible();
   });
 
   test('QR scanner page loads for anonymous users', async ({ page }) => {

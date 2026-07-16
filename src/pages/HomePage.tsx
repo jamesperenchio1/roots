@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
-import { useListings } from '@/hooks/queries/useListings';
+import { useListingsByIds, useRecentListings } from '@/hooks/queries/useListings';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
@@ -12,18 +12,23 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 export default function HomePage() {
   const { t } = useTranslation(['home', 'common', 'marketplace']);
   const [heroLoaded, setHeroLoaded] = useState(false);
-  const { data: listingsData } = useListings();
-  const listings = useMemo(() => (listingsData ?? []).slice(0, 8), [listingsData]);
+  const { data: listingsData } = useRecentListings(8);
+  const listings = listingsData ?? [];
   const { data: market } = useMarketOverview();
   const { recentlyViewed: recentlyViewedIds } = useRecentlyViewed();
-  const recentlyViewed = recentlyViewedIds
-    .slice(0, 4)
-    .map((id) => (listingsData ?? []).find((l) => l.id === id))
-    .filter(Boolean);
+  const { data: recentlyViewedListings } = useListingsByIds(recentlyViewedIds);
+  const recentlyViewed = useMemo(
+    () =>
+      recentlyViewedIds
+        .slice(0, 4)
+        .map((id) => (recentlyViewedListings ?? []).find((l) => l.id === id))
+        .filter(Boolean),
+    [recentlyViewedIds, recentlyViewedListings]
+  );
 
   // Price history for the most-listed species, derived from real snapshots only.
   const featuredSpeciesId = market?.trending_up[0]?.species?.id ?? market?.most_traded[0]?.species?.id;
-  const { data: featuredSnapshots } = usePriceSnapshots(featuredSpeciesId, undefined, 90);
+  const { data: featuredSnapshots = [] } = usePriceSnapshots(featuredSpeciesId, undefined, 90);
   const chartData = useMemo(
     () => featuredSnapshots.map((ps) => ({ date: ps.snapshot_date, price: ps.median_price_thb })),
     [featuredSnapshots]

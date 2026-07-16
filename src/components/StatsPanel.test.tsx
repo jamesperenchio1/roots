@@ -10,11 +10,11 @@ vi.mock('@/hooks/queries/usePriceSnapshots', () => ({
 }));
 
 vi.mock('@/hooks/queries/useListings', () => ({
-  useListings: vi.fn(),
+  useListingsBySpecies: vi.fn(),
 }));
 
 const mockUsePriceSnapshots = vi.mocked(usePriceSnapshotsModule.usePriceSnapshots);
-const mockUseListings = vi.mocked(useListingsModule.useListings);
+const mockUseListingsBySpecies = vi.mocked(useListingsModule.useListingsBySpecies);
 
 describe('StatsPanel', () => {
   it('renders stats derived from snapshots', () => {
@@ -33,7 +33,7 @@ describe('StatsPanel', () => {
     ];
 
     mockUsePriceSnapshots.mockReturnValue({ data: snapshots } as ReturnType<typeof usePriceSnapshotsModule.usePriceSnapshots>);
-    mockUseListings.mockReturnValue({ data: [] } as ReturnType<typeof useListingsModule.useListings>);
+    mockUseListingsBySpecies.mockReturnValue({ data: [] } as ReturnType<typeof useListingsModule.useListingsBySpecies>);
 
     render(<StatsPanel speciesId="sp-1" fallbackPrice={1200} />);
 
@@ -43,7 +43,7 @@ describe('StatsPanel', () => {
 
   it('falls back to the listing price when no snapshot or live data exists', () => {
     mockUsePriceSnapshots.mockReturnValue({ data: [] } as ReturnType<typeof usePriceSnapshotsModule.usePriceSnapshots>);
-    mockUseListings.mockReturnValue({ data: [] } as ReturnType<typeof useListingsModule.useListings>);
+    mockUseListingsBySpecies.mockReturnValue({ data: [] } as ReturnType<typeof useListingsModule.useListingsBySpecies>);
 
     render(<StatsPanel speciesId="sp-1" fallbackPrice={1500} />);
 

@@ -109,7 +109,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
-| 6.1 | `hydratePublicData` loads entire public datasets without pagination. | P1 | `src/lib/api.ts` — profiles, active listings, reviews. Still open. |
+| 6.1 | ~~`hydratePublicData` loads entire public datasets without pagination.~~ | Done | `fetchPublicData` now caps active listings (500), reviews (100), transactions (100), and price snapshots (60 days) and only fetches referenced profiles. Consumers migrated to targeted hooks (`useRecentListings`, `useListingsBySeller`, `useListingsBySpecies`, `useListingsByIds`, `usePriceSnapshots` per species, `useProfiles`). |
 | 6.2 | ~~N+1 profile fetching in `mapListing`.~~ | Done | Removed per-row `fetchProfile` fallback; callers now pass a hydrated profile map. |
 | 6.3 | Large vendor chunks: `vendor-react` (~512 KB / 169 KB gzip), `vendor-recharts` (~387 KB / 105 KB gzip), `html5-qrcode-scanner` (~335 KB / 99 KB gzip). | P2 | Build output. |
 | 6.4 | No responsive image optimization / srcset; full-size Supabase images are loaded everywhere. | P2 | Build output, `ListingPage`, `BrowsePage`. |
@@ -230,7 +230,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 - [x] `npm run lint` passes with no errors or warnings.
 - [x] `npm run build` passes.
 - [x] `npm test` passes.
-- [ ] `npm run test:e2e` passes (against local dev server).
+- [x] `npm run test:e2e` passes (against local dev server).
 - [ ] No hardcoded user-facing English strings remain in pages/components.
 - [x] All route guards enforce role/ownership at the route level.
 - [x] Payment/order functions validate caller authorization.

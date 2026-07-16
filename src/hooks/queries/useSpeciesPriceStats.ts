@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useListings } from '@/hooks/queries/useListings';
+import { useListingsBySpecies } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import type { Listing, PriceSnapshot } from '@/types';
 
@@ -49,7 +49,7 @@ export function computeSpeciesPriceStats(
 
 export function useSpeciesPriceStats(speciesId: string | undefined, days: number = 30) {
   const { data: snapshots = [] } = usePriceSnapshots(speciesId, undefined, days);
-  const { data: listings = [] } = useListings();
+  const { data: listings = [] } = useListingsBySpecies(speciesId);
 
   return useMemo(
     () => (speciesId ? computeSpeciesPriceStats(snapshots, listings, speciesId, days) : null),

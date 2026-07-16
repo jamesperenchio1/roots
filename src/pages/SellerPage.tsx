@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Star, Store, MapPin, Calendar, Leaf } from 'lucide-react';
 import { ListingCard } from '@/components/ListingCard';
 import { useSeller } from '@/hooks/queries/useSeller';
-import { useListings } from '@/hooks/queries/useListings';
+import { useListingsBySeller } from '@/hooks/queries/useListings';
 import { getProvinceLabel } from '@/lib/provinces';
 import { SellerReviewsSection } from '@/components/SellerReviewsSection';
 
@@ -11,8 +11,7 @@ export default function SellerPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
   const { id } = useParams<{ id: string }>();
   const { data: seller, isPending: sellerLoading } = useSeller(id);
-  const { data: allListings, isPending: listingsLoading } = useListings();
-  const listings = (allListings || []).filter((l) => l.seller_id === id);
+  const { data: listings = [], isPending: listingsLoading } = useListingsBySeller(id);
 
   if (sellerLoading || listingsLoading) {
     return (

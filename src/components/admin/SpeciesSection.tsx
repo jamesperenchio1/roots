@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { getMarketSpeciesFromData } from '@/lib/api';
-import { usePublicData } from '@/hooks/queries/usePublicData';
+import { getMarketSpeciesFromOverview } from '@/lib/api';
+import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 
 export function SpeciesSection() {
   const { t } = useTranslation(['common']);
-  const { data: publicData } = usePublicData();
-  const species = getMarketSpeciesFromData(publicData);
+  const { data: market } = useMarketOverview();
+  const species = getMarketSpeciesFromOverview(market);
   return (
     <div className="space-y-2">
       {species.slice(0, 10).map((s) => (
