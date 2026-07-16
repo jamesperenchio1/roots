@@ -105,9 +105,9 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
     );
   }
 
-  const careLevel = plant?.care_level ?? (fb ? capitalize(fb.care_level) : 'Moderate');
-  const watering = plant?.watering ?? (fb ? fb.water_requirement : 'Average');
-  const sunlight = plant?.sunlight ?? (fb ? [fb.light_requirement] : ['Bright indirect']);
+  const careLevel = plant?.care_level ?? (fb ? capitalize(fb.care_level) : t('plantCare.fallback.moderate'));
+  const watering = plant?.watering ?? (fb ? fb.water_requirement : t('plantCare.fallback.averageWater'));
+  const sunlight = plant?.sunlight ?? (fb ? [fb.light_requirement] : [t('plantCare.fallback.brightIndirect')]);
   const description = plant?.description ?? fb?.description ?? '';
 
   if (compact) {

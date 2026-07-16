@@ -4,10 +4,11 @@ export function Skeleton({ className, style, ...props }: React.HTMLAttributes<HT
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-zinc-800',
+        'animate-pulse motion-reduce:animate-none rounded-md bg-zinc-800',
         className
       )}
       style={style}
+      aria-hidden="true"
       {...props}
     />
   );

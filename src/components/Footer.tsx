@@ -19,7 +19,7 @@ export default function Footer() {
               {t('home:newHero.subheadline')}
             </p>
             <div className="flex items-center gap-3">
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="text-zinc-500 hover:text-white transition-colors"><Instagram className="w-4 h-4" /></a>
+              <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label={t('common:footer.socialInstagram')} className="text-zinc-500 hover:text-white transition-colors"><Instagram className="w-4 h-4" /></a>
               <Link to="/contact" aria-label={t('common:nav.contact')} className="text-zinc-500 hover:text-white transition-colors"><MessageCircle className="w-4 h-4" /></Link>
             </div>
           </div>

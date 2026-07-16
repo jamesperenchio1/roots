@@ -202,7 +202,7 @@ export default function CheckoutPage() {
                   <p className="text-xs text-zinc-500">{t('checkout:paysSellerDirectly', { seller: listing.seller?.display_name || t('common:unknown') })}</p>
                   <p className="text-[11px] text-zinc-600 mt-1">{t('checkout:afterPayConfirm')}</p>
                   <div className="flex items-center justify-center gap-3 mt-3">
-                    {['Krungthai', 'SCB', 'KBank', 'BBL'].map(bank => (
+                    {(t('checkout:supportedBanks', { returnObjects: true }) as string[]).map((bank) => (
                       <span key={bank} className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-500">{bank}</span>
                     ))}
                   </div>

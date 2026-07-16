@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Leaf, Heart, MessageSquare, AlertTriangle, Settings, Package, ChevronRight, X, Trash2, Bell } from 'lucide-react';
@@ -9,6 +9,7 @@ import { sanitizeText, isValidPromptPayId } from '@/lib/validation';
 import OfferCard from '@/components/OfferCard';
 import { useConversations } from '@/hooks/queries/useMessages';
 import SavedPlacesManager from '@/components/SavedPlacesManager';
+import { UnsavedChangesBlocker } from '@/components/UnsavedChangesBlocker';
 import { useUserTransactions, useOffers, useWatchlist, usePriceAlerts, useDisputes } from '@/hooks/queries/useUserData';
 
 const getTabs = (t: (key: string) => string) => [
@@ -33,6 +34,15 @@ export default function DashboardPage() {
     language_preference: user?.language_preference || 'en',
   });
 
+  const isDirty = useMemo(() => {
+    if (!user) return false;
+    return (
+      settingsForm.display_name !== (user.display_name || '') ||
+      settingsForm.promptpay_id !== (user.promptpay_id || '') ||
+      settingsForm.language_preference !== (user.language_preference || 'en')
+    );
+  }, [user, settingsForm]);
+
   const { data: transactions = [] } = useUserTransactions(user?.id);
   const { data: offers = [] } = useOffers(user?.id);
   const { data: watchlist = [] } = useWatchlist(user?.id);
@@ -56,6 +66,15 @@ export default function DashboardPage() {
       });
     }
   }, [user]);
+
+  const handleTabChange = (tabId: string) => {
+    if (activeTab === 'settings' && isDirty) {
+      if (!window.confirm(t('common:unsavedChanges.description'))) {
+        return;
+      }
+    }
+    setActiveTab(tabId);
+  };
 
   const handleSaveSettings = async () => {
     if (!user) return;
@@ -405,6 +424,8 @@ export default function DashboardPage() {
   };
 
   return (
+    <>
+      <UnsavedChangesBlocker isDirty={isDirty} />
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-light tracking-tight mb-6">{t('common:nav.dashboard')}</h1>
@@ -414,7 +435,7 @@ export default function DashboardPage() {
             <button
               key={ta.id}
               type="button"
-              onClick={() => setActiveTab(ta.id)}
+              onClick={() => handleTabChange(ta.id)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab === ta.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               <ta.icon className="w-4 h-4" />
@@ -426,5 +447,6 @@ export default function DashboardPage() {
         {renderContent()}
       </div>
     </div>
+    </>
   );
 }

@@ -119,6 +119,7 @@
     "ownListing": "You cannot purchase your own listing.",
     "listingUnavailable": "This listing is no longer available."
   },
+  "supportedBanks": ["Krungthai", "SCB", "KBank", "BBL"],
   "toast": {
     "paymentAutoVerified": "Payment verified automatically — your order is protected by escrow.",
     "paymentManual": "We couldn't auto-verify your slip; the seller will review it manually.",

@@ -53,7 +53,7 @@ export default function IdentifyPage() {
   const [result, setResult] = useState<IdentificationResult | null>(null);
   const [needsMore, setNeedsMore] = useState<EvidenceNeed | null>(null);
   const [loading, setLoading] = useState(false);
-  const [country, setCountry] = useState('Thailand');
+  const [country, setCountry] = useState(t('common:country.thailand'));
   const [growingConditions, setGrowingConditions] = useState('');
   const [notes, setNotes] = useState('');
   const initialized = useRef(false);
@@ -65,7 +65,7 @@ export default function IdentifyPage() {
       return;
     }
     setRequestId(req.id);
-    setCountry(req.country || 'Thailand');
+    setCountry(req.country || t('common:country.thailand'));
     setGrowingConditions(req.growing_conditions || '');
     setNotes(req.notes || '');
     const media = await getRequestMedia(req.id);

@@ -124,6 +124,14 @@
   "authGuard": {
     "loading": "กำลังโหลดข้อมูลบัญชีของคุณ…"
   },
+  "realtime": {
+    "connecting": "กำลังเชื่อมต่อ…",
+    "disconnected": "ขาดการเชื่อมต่อ — กำลังเชื่อมต่อใหม่…"
+  },
+  "networkWarning": "ตรวจพบปัญหาการเชื่อมต่อ บางฟีเจอร์อาจใช้งานได้ไม่เต็มที่จนกว่าเซิร์ฟเวอร์จะตอบสนอง",
+  "country": {
+    "thailand": "ประเทศไทย"
+  },
   "speciesAutocomplete": {
     "useCustom": "ใช้ \"{{query}}\" เป็นสปีชีส์ที่กำหนดเอง",
     "customHint": "สปีชีส์นี้จะถูกเพิ่มในฐานข้อมูลของเรา",
@@ -154,7 +162,12 @@
     "careLevel": "ความยาก: {{level}}",
     "water": "น้ำ: {{level}}",
     "light": "แสง: {{level}} {{detail}}",
-    "fallbackNote": "แสดงเคล็ดลับการดูแลจากฐานข้อมูลในประเทศ เชื่อมต่อ Perenual เพื่อดูคู่มือฉบับเต็ม"
+    "fallbackNote": "แสดงเคล็ดลับการดูแลจากฐานข้อมูลในประเทศ เชื่อมต่อ Perenual เพื่อดูคู่มือฉบับเต็ม",
+    "fallback": {
+      "moderate": "ปานกลาง",
+      "averageWater": "ปานกลาง",
+      "brightIndirect": "แสงสะท้อนสว่าง"
+    }
   },
   "comments": {
     "title": "พูดคุยในชุมชน",
@@ -499,6 +512,7 @@
     }
   },
   "footer": {
+    "socialInstagram": "Instagram",
     "company": "บริษัท",
     "copyright": "2025 ROOTS Plant Market Co., Ltd. กรุงเทพฯ ประเทศไทย",
     "termsShort": "ข้อกำหนด",
@@ -664,7 +678,7 @@
     "owners": "{{count}} เจ้าของ",
     "owners_one": "{{count}} เจ้าของ",
     "owners_other": "{{count}} เจ้าของ",
-    "totalSales": "ยอดขายรวม {{value}} บาท",
+    "totalSales": "ยอดขายรวม {{value}} {{currency}}",
     "scanToVerify": "สแกนเพื่อตรวจสอบ",
     "downloadQr": "ดาวน์โหลด QR",
     "printTag": "พิมพ์แท็ก",
@@ -686,7 +700,7 @@
     },
     "from": "จาก: {{name}}",
     "to": "ถึง: {{name}}",
-    "price": "{{value}} บาท",
+    "price": "{{value}} {{currency}}",
     "priceHistory": {
       "title": "ประวัติราคาต้นไม้นี้",
       "note": "ประวัติราคาต้นไม้ต้นนี้เทียบกับค่าเฉลี่ยของสปีชีส์"

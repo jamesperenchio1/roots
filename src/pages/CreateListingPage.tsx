@@ -16,6 +16,7 @@ import { getProvinceOptions } from '@/lib/provinces';
 import type { ProvinceOption } from '@/lib/provinces';
 import type { Listing, Category, IdentificationResult } from '@/types';
 import { CreateListingHeader, DeliverySection, DescriptionSection, FeeNotice, MarketStatsNotice, PhotosSection, PickupLocationSection, PotSizeProvinceSection, PrefillBanner, PriceSizeSection, QRProvenanceSection, QRView, SavedPlacesSelect, ShippingCostSection, SpeciesSection, SubmitButton, SubmittedView, TagsSection } from '@/components/create-listing';
+import { UnsavedChangesBlocker } from '@/components/UnsavedChangesBlocker';
 
 interface PhotoItem {
   file: File;
@@ -58,6 +59,26 @@ export default function CreateListingPage() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Listing | null>(null);
+
+  const isDirty = useMemo(() => {
+    if (step !== 'form') return false;
+    return (
+      species !== null ||
+      speciesQuery.trim() !== '' ||
+      price !== '' ||
+      size !== '' ||
+      potSize !== '' ||
+      description.trim() !== '' ||
+      delivery.length > 0 ||
+      shippingCost !== '' ||
+      province !== '' ||
+      pickupLocation.trim() !== '' ||
+      pickupCoords !== null ||
+      tags.length > 0 ||
+      photos.length > 0 ||
+      !hasQrProvenance
+    );
+  }, [step, species, speciesQuery, price, size, potSize, description, delivery, shippingCost, province, pickupLocation, pickupCoords, tags, photos, hasQrProvenance]);
   const [provenanceQR, setProvenanceQR] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
@@ -258,6 +279,8 @@ export default function CreateListingPage() {
   }
 
   return (
+    <>
+      <UnsavedChangesBlocker isDirty={isDirty} />
     <div className="pt-24 pb-16 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <CreateListingHeader />
@@ -332,5 +355,6 @@ export default function CreateListingPage() {
         </form>
       </div>
     </div>
+    </>
   );
 }

@@ -124,6 +124,14 @@
   "authGuard": {
     "loading": "Loading your account…"
   },
+  "realtime": {
+    "connecting": "Connecting…",
+    "disconnected": "Connection lost — reconnecting…"
+  },
+  "networkWarning": "Connection issue detected. Some features may be limited until the server responds.",
+  "country": {
+    "thailand": "Thailand"
+  },
   "speciesAutocomplete": {
     "useCustom": "Use \"{{query}}\" as custom species",
     "customHint": "This species will be added to our database",
@@ -154,7 +162,12 @@
     "careLevel": "Care: {{level}}",
     "water": "Water: {{level}}",
     "light": "Light: {{level}} {{detail}}",
-    "fallbackNote": "Showing locally-sourced care tips. Connect to Perenual for detailed guides."
+    "fallbackNote": "Showing locally-sourced care tips. Connect to Perenual for detailed guides.",
+    "fallback": {
+      "moderate": "Moderate",
+      "averageWater": "Average",
+      "brightIndirect": "Bright indirect"
+    }
   },
   "comments": {
     "title": "Community Discussion",
@@ -499,6 +512,7 @@
     }
   },
   "footer": {
+    "socialInstagram": "Instagram",
     "company": "Company",
     "copyright": "2025 ROOTS Plant Market Co., Ltd. Bangkok, Thailand.",
     "termsShort": "Terms",
@@ -663,7 +677,7 @@
     "since": "Since {{date}}",
     "owners_one": "{{count}} owner",
     "owners_other": "{{count}} owners",
-    "totalSales": "{{value}} THB total sales",
+    "totalSales": "{{value}} {{currency}} total sales",
     "scanToVerify": "Scan to verify",
     "downloadQr": "Download QR",
     "printTag": "Print Tag",
@@ -685,7 +699,7 @@
     },
     "from": "From: {{name}}",
     "to": "To: {{name}}",
-    "price": "{{value}} THB",
+    "price": "{{value}} {{currency}}",
     "priceHistory": {
       "title": "This Plant's Price History",
       "note": "Individual plant price history overlaid against species average"

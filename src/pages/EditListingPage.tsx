@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useParams, useBlocker } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, CheckCircle, Tag, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { updateListing, uploadListingPhoto } from '@/lib/api';
 import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation';
 import { ProvinceCombobox } from '@/components/ProvinceCombobox';
+import { UnsavedChangesBlocker } from '@/components/UnsavedChangesBlocker';
 import type { Listing, Category } from '@/types';
 
 interface ExistingPhoto {
@@ -56,7 +57,6 @@ export default function EditListingPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const blocker = useBlocker(() => isDirty);
 
   const [species, setSpecies] = useState<SpeciesEntry | null>(null);
   const [speciesQuery, setSpeciesQuery] = useState('');
@@ -113,17 +113,6 @@ export default function EditListingPage() {
     );
     setPageLoading(false);
   }, [id, user, listing, listingLoading]);
-
-  // Unsaved changes warning
-  useEffect(() => {
-    if (!isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -576,30 +565,7 @@ export default function EditListingPage() {
         </form>
       </div>
 
-      {blocker.state === 'blocked' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-          <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-medium mb-2">{t('common:unsavedChanges.title')}</h3>
-            <p className="text-sm text-zinc-400 mb-6">{t('common:unsavedChanges.description')}</p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => blocker.reset?.()}
-                className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5"
-              >
-                {t('common:actions.cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={() => blocker.proceed?.()}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-red-500 hover:bg-red-600 text-white"
-              >
-                {t('common:actions.leave')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UnsavedChangesBlocker isDirty={isDirty} />
     </div>
   );
 }

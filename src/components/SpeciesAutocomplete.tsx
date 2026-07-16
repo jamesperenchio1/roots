@@ -214,7 +214,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
                   })()}
                 </p>
                 <p className="text-xs text-zinc-500 truncate">
-                  {isGbifResult(species) ? 'from GBIF' : species.common_name_en} {species.common_name_th && !isGbifResult(species) && `· ${species.common_name_th}`}
+                  {isGbifResult(species) ? t('common:speciesAutocomplete.fromGbif') : species.common_name_en} {species.common_name_th && !isGbifResult(species) && `· ${species.common_name_th}`}
                 </p>
               </div>
               <div className="ml-auto text-xs text-zinc-600 shrink-0">

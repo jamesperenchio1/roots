@@ -4,8 +4,8 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { usePublicData } from '@/hooks/queries/usePublicData';
 import i18n from '@/i18n/config';
-import { Leaf } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
+import { PageLoader } from '@/components/PageLoader';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -49,15 +49,6 @@ const MessagesPage = lazy(() => import('@/pages/MessagesPage'));
 const QRScannerPage = lazy(() => import('@/pages/QRScannerPage'));
 const IdentifyPage = lazy(() => import('@/pages/IdentifyPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
-
-function PageLoader() {
-  return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 bg-black text-white">
-      <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
-      <p className="text-sm text-zinc-500">{i18n.t('common:actions.loading')}</p>
-    </div>
-  );
-}
 
 function TutorialModalWrapper() {
   const { showTutorial, closeTutorial, skipTour, completeTour, dontShowAgain } = useOnboarding();
@@ -146,10 +137,7 @@ function BootGate({ children }: { children: React.ReactNode }) {
 
   if (isPending && !isFetched) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-black text-white">
-        <Leaf className="w-8 h-8 text-emerald-400 animate-pulse" />
-        <p className="text-sm text-zinc-500">{i18n.t('common:actions.loading')}</p>
-      </div>
+      <PageLoader fullScreen />
     );
   }
 
@@ -159,7 +147,7 @@ function BootGate({ children }: { children: React.ReactNode }) {
       {error && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
           <p className="text-xs text-amber-200">
-            Connection issue detected. Some features may be limited until the server responds.
+            {i18n.t('common:networkWarning')}
           </p>
         </div>
       )}

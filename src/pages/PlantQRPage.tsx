@@ -212,7 +212,7 @@ export default function PlantQRPage() {
                 <span className="flex items-center gap-1 text-zinc-500"><Calendar className="w-3.5 h-3.5" /> {t('common:plantQr.since', { date: originDate })}</span>
                 <span className="flex items-center gap-1 text-zinc-500"><User className="w-3.5 h-3.5" /> {t('common:plantQr.owners', { count: totalOwners })}</span>
                 {totalSalesValue > 0 && (
-                  <span className="flex items-center gap-1 text-zinc-500"><Tag className="w-3.5 h-3.5" /> {t('common:plantQr.totalSales', { value: totalSalesValue.toLocaleString() })}</span>
+                  <span className="flex items-center gap-1 text-zinc-500"><Tag className="w-3.5 h-3.5" /> {t('common:plantQr.totalSales', { value: totalSalesValue.toLocaleString(), currency: t('common:currency') })}</span>
                 )}
               </div>
             </div>
@@ -299,7 +299,7 @@ export default function PlantQRPage() {
                     <p className="text-sm font-medium">{t(entry.eventKey)}</p>
                     {entry.from && <p className="text-xs text-zinc-500">{t('common:plantQr.from', { name: entry.from })}</p>}
                     {entry.to && <p className="text-xs text-zinc-500">{t('common:plantQr.to', { name: entry.to })}</p>}
-                    {entry.price && <p className="text-sm text-emerald-400 mt-1">{t('common:plantQr.price', { value: entry.price.toLocaleString() })}</p>}
+                    {entry.price && <p className="text-sm text-emerald-400 mt-1">{t('common:plantQr.price', { value: entry.price.toLocaleString(), currency: t('common:currency') })}</p>}
                   </div>
                 </div>
               ))}
