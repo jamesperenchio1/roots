@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { publicKeys } from '@/lib/queryKeys';
-import { fetchListingById, fetchPublicData, type PublicData } from '@/lib/api';
+import { fetchListingById, fetchListings, fetchPublicData, type PublicData, type ListingFilters, type PaginatedListings } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import type { Listing } from '@/types';
 
@@ -16,6 +16,26 @@ export function useListings() {
     select: selectListings,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function usePaginatedListings(
+  filters: ListingFilters,
+  options: { pageSize?: number; enabled?: boolean } = {}
+) {
+  const { pageSize = 12, enabled = true } = options;
+  return useInfiniteQuery<PaginatedListings, Error>({
+    queryKey: [...publicKeys.listings(filters), pageSize],
+    queryFn: ({ pageParam = 0 }) => fetchListings(filters, { page: pageParam as number, pageSize }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const nextPage = lastPage.page + 1;
+      return nextPage * lastPage.pageSize < lastPage.total ? nextPage : undefined;
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     retry: 1,
   });
 }

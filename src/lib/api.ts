@@ -227,6 +227,23 @@ export type PublicData = {
   transactions: Transaction[];
 };
 
+export type ListingFilters = {
+  category?: Category | '';
+  size?: SizeCategory | '';
+  province?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  q?: string;
+  sortBy?: 'newest' | 'price-low' | 'price-high';
+};
+
+export type PaginatedListings = {
+  listings: Listing[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export async function fetchPublicData(): Promise<PublicData> {
   const data = await fetchPublicDataRaw();
   // Keep an in-memory profile cache for mappers, but do not write back to the
@@ -252,6 +269,107 @@ async function fetchProfileMap(): Promise<Record<string, Profile>> {
     logger.warn('fetchProfileMap failed', { error: e instanceof Error ? e.message : String(e) });
     return {};
   }
+}
+
+async function fetchProfilesByIds(ids: string[]): Promise<Record<string, Profile>> {
+  if (ids.length === 0) return {};
+  try {
+    const { data, error } = await supabase.from('profiles').select('*').in('id', ids);
+    if (error) throw error;
+    const map: Record<string, Profile> = {};
+    (data || []).forEach((r) => {
+      const p = mapProfile(r);
+      map[p.id] = p;
+    });
+    return map;
+  } catch (e) {
+    logger.warn('fetchProfilesByIds failed', { error: e instanceof Error ? e.message : String(e) });
+    return {};
+  }
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[%_]/g, '\\$&');
+}
+
+async function searchSellerIds(q: string): Promise<string[]> {
+  const pattern = `%${escapeLikePattern(q)}%`;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('display_name', pattern);
+    if (error) throw error;
+    return (data || []).map((r) => r.id as string);
+  } catch (e) {
+    logger.warn('searchSellerIds failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
+}
+
+export async function fetchListings(
+  filters: ListingFilters,
+  pagination: { page: number; pageSize: number }
+): Promise<PaginatedListings> {
+  const { page, pageSize } = pagination;
+  const { category, size, province, minPrice, maxPrice, q, sortBy } = filters;
+
+  let query = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+
+  if (category) query = query.eq('category', category);
+  if (size) query = query.eq('size_category', size);
+  if (province) query = query.eq('pickup_province', province);
+  if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) query = query.gte('price_thb', minPrice);
+  if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) query = query.lte('price_thb', maxPrice);
+
+  if (q && q.trim()) {
+    const term = escapeLikePattern(q.trim());
+    const pattern = `%${term}%`;
+    const sellerIds = await searchSellerIds(term);
+    const conditions: string[] = [
+      `species_common_en.ilike.${pattern}`,
+      `species_scientific.ilike.${pattern}`,
+      `description.ilike.${pattern}`,
+      `pickup_province.ilike.${pattern}`,
+    ];
+    if (sellerIds.length > 0) {
+      conditions.push(`seller_id.in.(${sellerIds.join(',')})`);
+    }
+    query = query.or(conditions.join(','));
+  }
+
+  switch (sortBy) {
+    case 'price-low':
+      query = query.order('price_thb', { ascending: true });
+      break;
+    case 'price-high':
+      query = query.order('price_thb', { ascending: false });
+      break;
+    default:
+      query = query.order('created_at', { ascending: false });
+  }
+
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+  if (error) {
+    logger.warn('fetchListings failed', { error: error.message, filters, pagination });
+    throw error;
+  }
+
+  const rows = (data || []) as DbRow[];
+  const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+  const profiles = await fetchProfilesByIds(sellerIds);
+  const listings = await Promise.all(rows.map((r) => mapListing(r, profiles)));
+
+  return {
+    listings,
+    total: count ?? listings.length,
+    page,
+    pageSize,
+  };
 }
 
 async function fetchPublicDataRaw(): Promise<PublicData> {

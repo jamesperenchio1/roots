@@ -2,14 +2,13 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { useListings } from '@/hooks/queries/useListings';
+import { usePaginatedListings } from '@/hooks/queries/useListings';
 
 function seededRandom(seed: string, index: number): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   return Math.abs(Math.sin(hash + index) * 10000 % 1);
 }
-import { usePagination } from '@/hooks/usePagination';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import { ListingCard } from '@/components/ListingCard';
 import type { Category, SizeCategory } from '@/types';
@@ -50,40 +49,28 @@ export default function BrowsePage() {
   const q = (searchParams.get('q') || '').toLowerCase().trim();
   const showAll = searchParams.get('all') === '1';
 
-  const { data: allListings, isPending: isLoading } = useListings();
+  const filters = useMemo(() => ({
+    category,
+    size,
+    province,
+    minPrice: minPrice ? parseInt(minPrice, 10) : undefined,
+    maxPrice: maxPrice ? parseInt(maxPrice, 10) : undefined,
+    q,
+    sortBy,
+  }), [category, size, province, minPrice, maxPrice, q, sortBy]);
 
-  const listings = useMemo(() => {
-    let result = allListings ? [...allListings] : [];
-    if (category) result = result.filter((l) => l.species?.category === category);
-    if (size) result = result.filter((l) => l.size_category === size);
-    if (province) result = result.filter((l) => l.pickup_province === province);
-    if (minPrice) result = result.filter((l) => l.price_thb >= parseInt(minPrice));
-    if (maxPrice) result = result.filter((l) => l.price_thb <= parseInt(maxPrice));
+  const pageSize = showAll ? 1000 : PAGE_SIZE;
+  const {
+    data,
+    isPending: isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = usePaginatedListings(filters, { pageSize });
 
-    if (q) {
-      result = result.filter((l) => {
-        const hay = [
-          l.species?.common_name_en,
-          l.species?.common_name_th,
-          l.species?.scientific_name,
-          l.description,
-          l.seller?.display_name,
-          l.pickup_province,
-        ].filter(Boolean).join(' ').toLowerCase();
-        return hay.includes(q);
-      });
-    }
-
-    switch (sortBy) {
-      case 'price-low': result = [...result].sort((a, b) => a.price_thb - b.price_thb); break;
-      case 'price-high': result = [...result].sort((a, b) => b.price_thb - a.price_thb); break;
-      default: result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    }
-    return result;
-  }, [allListings, category, size, province, minPrice, maxPrice, sortBy, q]);
-
-  const { visibleItems, hasMore, loadMore, total } = usePagination(listings, { pageSize: showAll ? listings.length : PAGE_SIZE });
-  const itemsToRender = showAll ? listings : visibleItems;
+  const listings = useMemo(() => data?.pages.flatMap((page) => page.listings) ?? [], [data]);
+  const total = data?.pages[0]?.total ?? 0;
+  const hasMore = !showAll && !!hasNextPage;
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -186,7 +173,7 @@ export default function BrowsePage() {
               <ListingCardSkeleton key={i} />
             ))
           ) : (
-            itemsToRender.map(listing => (
+            listings.map(listing => (
               <ListingCard
                 key={listing.id}
                 listing={listing}
@@ -197,15 +184,16 @@ export default function BrowsePage() {
           )}
         </div>
 
-        {!isLoading && hasMore && !showAll && (
+        {!isLoading && hasMore && (
           <div className="text-center mt-8">
             <button
-              onClick={loadMore}
-              className="inline-flex items-center gap-2 bg-zinc-900 border border-white/10 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-zinc-800 transition-colors"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="inline-flex items-center gap-2 bg-zinc-900 border border-white/10 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-zinc-800 transition-colors disabled:opacity-50"
             >
-              {t('common:actions.loadMore')}
+              {isFetchingNextPage ? t('common:actions.loading') : t('common:actions.loadMore')}
               <span className="text-zinc-500">
-                ({t('marketplace:browse.remaining', { count: total - visibleItems.length })})
+                ({t('marketplace:browse.remaining', { count: total - listings.length })})
               </span>
             </button>
           </div>
