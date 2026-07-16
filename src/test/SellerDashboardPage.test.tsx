@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/test/test-utils';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import SellerDashboardPage from './SellerDashboardPage';
+import SellerDashboardPage from '@/pages/SellerDashboardPage';
 import { USERS, LISTINGS, TRANSACTIONS } from '@/data/mockData';
 import type { Profile, Listing } from '@/types';
 

@@ -171,7 +171,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | 10.6 | `.env.example` documents unused analytics/payment variables. | P2 | `VITE_PLAUSIBLE_DOMAIN`, `VITE_GA_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_OMISE_PUBLIC_KEY`. |
 | 10.7 | Heavy use of `as` casts in `src/lib/api.ts` (~629) bypasses generated types. | P1 | `src/lib/api.ts` |
 | 10.8 | Test coverage is low (17 test files for 181 source files). | P2 | Coverage report missing. |
-| 10.9 | `SellerDashboardPage.test.tsx` lives in `src/pages/` instead of a test directory. | P2 | Project structure. |
+| 10.9 | ~~`SellerDashboardPage.test.tsx` lives in `src/pages/` instead of a test directory.~~ | Done | Moved to `src/test/SellerDashboardPage.test.tsx` and updated import to `@/pages/SellerDashboardPage`. |
 | 10.10 | ~~`innerHTML` used in `SellerReviewCard.tsx` for a fallback icon.~~ | Done | Replaced with a React `ReviewImage` component that uses `ImageOff` from `lucide-react` and local error state. |
 
 ---
