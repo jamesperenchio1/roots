@@ -186,19 +186,28 @@ export default function CheckoutPage() {
           {/* PromptPay Panel */}
           {method === 'promptpay' && (
             <div className="text-center py-6 bg-zinc-800/30 rounded-lg border border-white/5">
-              <div className="w-44 h-44 bg-white rounded-xl mx-auto mb-4 p-2 shadow-lg flex items-center justify-center">
-                {qr
-                  ? <img src={qr} alt={t('checkout:promptPayQrAlt')} loading="lazy" decoding="async" className="w-full h-full object-contain" />
-                  : <QrCode className="w-12 h-12 text-zinc-400" />}
-              </div>
-              <p className="text-sm text-zinc-300 mb-1">{t('checkout:scanToPay', { total: total.toLocaleString(), currency: t('common:currency') })}</p>
-              <p className="text-xs text-zinc-500">{t('checkout:paysSellerDirectly', { seller: listing.seller?.display_name || t('common:unknown') })}</p>
-              <p className="text-[11px] text-zinc-600 mt-1">{t('checkout:afterPayConfirm')}</p>
-              <div className="flex items-center justify-center gap-3 mt-3">
-                {['Krungthai', 'SCB', 'KBank', 'BBL'].map(bank => (
-                  <span key={bank} className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-500">{bank}</span>
-                ))}
-              </div>
+              {!canCheckout ? (
+                <div className="flex flex-col items-center gap-3 text-red-400">
+                  <QrCode className="w-12 h-12 opacity-50" />
+                  <p className="text-sm font-medium">{t('checkout:errors.sellerNoPromptPay')}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="w-44 h-44 bg-white rounded-xl mx-auto mb-4 p-2 shadow-lg flex items-center justify-center">
+                    {qr
+                      ? <img src={qr} alt={t('checkout:promptPayQrAlt')} loading="lazy" decoding="async" className="w-full h-full object-contain" />
+                      : <QrCode className="w-12 h-12 text-zinc-400" />}
+                  </div>
+                  <p className="text-sm text-zinc-300 mb-1">{t('checkout:scanToPay', { total: total.toLocaleString(), currency: t('common:currency') })}</p>
+                  <p className="text-xs text-zinc-500">{t('checkout:paysSellerDirectly', { seller: listing.seller?.display_name || t('common:unknown') })}</p>
+                  <p className="text-[11px] text-zinc-600 mt-1">{t('checkout:afterPayConfirm')}</p>
+                  <div className="flex items-center justify-center gap-3 mt-3">
+                    {['Krungthai', 'SCB', 'KBank', 'BBL'].map(bank => (
+                      <span key={bank} className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-500">{bank}</span>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

@@ -65,7 +65,7 @@ Roots is a feature-rich React SPA backed by Supabase. It already has lazy loadin
 | # | Issue | Severity | Evidence |
 |---|---|---|---|
 | 2.1 | ~~Loading states are inconsistent or fake, leaving users unsure whether content is coming.~~ | Done | `BrowsePage` uses query `isPending`; `SellerPage` waits for both seller and listings before not-found. |
-| 2.2 | PromptPay checkout lacks clear explanation when the seller has no PromptPay ID. | P1 | `CheckoutPage` blocks pay without explaining why. |
+| 2.2 | ~~PromptPay checkout lacks clear explanation when the seller has no PromptPay ID.~~ | Done | `CheckoutPage` now shows the `sellerNoPromptPay` message inline in the PromptPay panel when the seller has no PromptPay ID, and disables the pay button. |
 | 2.3 | ~~Some static copy is still in English even when Thai is selected.~~ | Done | Family/genus labels, pickup pin note, PromptPay copy, fees example, contact hours, home sales count, listing alt text, and tag suggestions are now i18n keys. |
 | 2.4 | Mobile touch targets and layouts need verification; the live site is inaccessible for automated testing. | P1 | Vercel Security Checkpoint blocks Playwright. |
 | 2.5 | Empty states are generic and do not guide the user to the next action. | P2 | `common:empty` is used everywhere. |
