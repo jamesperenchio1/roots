@@ -13,6 +13,8 @@ interface CommentTreeProps {
   maxDepth?: number;
   onReply?: (comment: Comment) => void;
   onChanged?: () => void;
+  // Bumped when the comments query refetches so replies recompute from the store.
+  version?: number;
 }
 
 export function CommentTree({
@@ -22,12 +24,13 @@ export function CommentTree({
   maxDepth = 4,
   onReply,
   onChanged,
+  version,
 }: CommentTreeProps) {
   const { t } = useTranslation(['common']);
   const [expanded, setExpanded] = useState(depth < 2);
   // replies_count is a manual cache-buster when new replies are added
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const replies = useMemo(() => getCommentReplies(comment.id), [comment.id, comment.replies_count, onChanged]);
+  const replies = useMemo(() => getCommentReplies(comment.id), [comment.id, comment.replies_count, onChanged, version]);
 
   if (comment.status === 'hidden' && comment.author_id !== currentUserId) return null;
 
@@ -52,6 +55,7 @@ export function CommentTree({
                   maxDepth={maxDepth}
                   onReply={depth + 1 < maxDepth ? onReply : undefined}
                   onChanged={onChanged}
+                  version={version}
                 />
               ))}
               {depth + 1 >= maxDepth && comment.replies_count > replies.length && (

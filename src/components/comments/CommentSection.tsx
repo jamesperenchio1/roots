@@ -1,18 +1,13 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommentComposer } from './CommentComposer';
 import { CommentTree } from './CommentTree';
-import {
-  getCommentsForSpecies,
-  hydrateCommentsForSpecies,
-  getCommentsForListing,
-  hydrateCommentsForListing,
-  subscribeToComments,
-  subscribeCommentsStore,
-  getCommentsStoreVersion,
-} from '@/lib/api';
+import { subscribeToComments } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { commentKeys } from '@/lib/queryKeys';
+import { useComments } from '@/hooks/queries/useComments';
 import { useAuth } from '@/hooks/useAuth';
 import type { Comment } from '@/types';
 
@@ -24,55 +19,29 @@ interface CommentSectionProps {
 export function CommentSection({ speciesId, listingId }: CommentSectionProps) {
   const { t } = useTranslation(['common']);
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
-  const [version, setVersion] = useState(0);
-  const [error, setError] = useState<string | null>(null);
 
   const isListing = !!listingId;
   const targetId = listingId || speciesId || '';
 
+  const commentsQuery = useComments(targetId || undefined, isListing);
+  const comments = commentsQuery.data ?? [];
+  const loading = commentsQuery.isPending;
+  const error = commentsQuery.isError
+    ? (commentsQuery.error instanceof Error ? commentsQuery.error.message : t('common:errors.generic'))
+    : null;
+
   // Subscribe to realtime comment changes so new comments appear without a manual refresh.
-  useSyncExternalStore(subscribeCommentsStore, getCommentsStoreVersion);
   useEffect(() => {
     if (!targetId) return;
     return subscribeToComments(targetId, isListing);
   }, [targetId, isListing]);
 
-  // version bumps on manual refresh; the store subscription above bumps on realtime inserts.
-  void version;
-  const comments = isListing ? getCommentsForListing(targetId) : getCommentsForSpecies(targetId);
-
-  const hydrate = useCallback(async () => {
-    if (isListing) {
-      return hydrateCommentsForListing(targetId);
-    }
-    return hydrateCommentsForSpecies(targetId);
-  }, [targetId, isListing]);
-
   const refresh = useCallback(() => {
-    setVersion((v) => v + 1);
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-    hydrate()
-      .then(() => {
-        if (mounted) {
-          refresh();
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : t('common:errors.generic'));
-          setLoading(false);
-        }
-      });
-    return () => { mounted = false; };
-  }, [hydrate, t, refresh]);
+    queryClient.invalidateQueries({
+      queryKey: isListing ? commentKeys.forListing(targetId) : commentKeys.forSpecies(targetId),
+    });
+  }, [isListing, targetId]);
 
   function handleSubmitted() {
     setReplyTo(null);
@@ -125,6 +94,7 @@ export function CommentSection({ speciesId, listingId }: CommentSectionProps) {
               currentUserId={user?.id}
               onReply={setReplyTo}
               onChanged={refresh}
+              version={commentsQuery.dataUpdatedAt}
             />
           ))}
         </div>

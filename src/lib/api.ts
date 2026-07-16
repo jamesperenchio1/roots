@@ -8,7 +8,7 @@ import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
 import { queryClient } from './queryClient';
-import { publicKeys, userKeys } from './queryKeys';
+import { publicKeys, userKeys, commentKeys } from './queryKeys';
 import i18n from '@/i18n/config';
 import { sendMessage as sendMessageV2, getOrCreateDirectConversation } from './messaging';
 
@@ -2032,7 +2032,9 @@ export function subscribeToComments(targetId: string, isListing: boolean): () =>
             const idx = COMMENTS.findIndex((c) => c.id === id);
             if (idx >= 0) COMMENTS.splice(idx, 1);
           }
-          bumpCommentsVersion();
+          queryClient.invalidateQueries({
+            queryKey: isListing ? commentKeys.forListing(targetId) : commentKeys.forSpecies(targetId),
+          });
         }
       )
       .subscribe()
