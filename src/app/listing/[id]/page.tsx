@@ -11,17 +11,6 @@ export const revalidate = 60;
 
 type Params = { id: string };
 
-export async function generateStaticParams() {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from('listings')
-    .select('id')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(50);
-  return (data ?? []).map((row) => ({ id: row.id }));
-}
-
 const fetchListing = cache(async (id: string) => {
   const supabase = await createSupabaseServerClient();
   const { data: row, error } = await supabase
