@@ -1,0 +1,15 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL": "https://daacilgagkphafpjdcte.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYWNpbGdhZ2twaGFmcGpkY3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODc2NTQsImV4cCI6MjA5NjA2MzY1NH0.8hq2nYbzur0muo99s0lfdBN4yUvpVMMEPqbfpUlJmyA"
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://daacilgagkphafpjdcte.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhYWNpbGdhZ2twaGFmcGpkY3RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODc2NTQsImV4cCI6MjA5NjA2MzY1NH0.8hq2nYbzur0muo99s0lfdBN4yUvpVMMEPqbfpUlJmyA"
+  }
+}

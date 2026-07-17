@@ -2,11 +2,15 @@ import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { publicKeys } from '@/lib/queryKeys';
 import { mapListing, mapProfile, mapPriceSnapshot } from '@/lib/api';
-import { getSpeciesById } from '@/data/mockData';
+import { getSpeciesById, SPECIES } from '@/data/mockData';
 import SpeciesPage from '@/page-components/SpeciesPage';
 import type { Metadata } from 'next';
 
 export const revalidate = 300;
+
+export function generateStaticParams() {
+  return SPECIES.map((s) => ({ id: s.id }));
+}
 
 type Params = { id: string };
 

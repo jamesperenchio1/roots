@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-const supabase = createSupabaseBrowserClient();
+import { supabase } from '@/lib/supabase/client';
 import type { Provider } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 import i18n from '@/i18n/config';

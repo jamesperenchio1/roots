@@ -46,10 +46,18 @@ const config: NextConfig = {
   },
 };
 
-export default withSentryConfig(config, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  silent: true,
-  sourcemaps: { disable: false },
-});
+const sentryEnabled = !!(
+  process.env.SENTRY_AUTH_TOKEN &&
+  process.env.SENTRY_ORG &&
+  process.env.SENTRY_PROJECT
+);
+
+export default sentryEnabled
+  ? withSentryConfig(config, {
+      org: process.env.SENTRY_ORG!,
+      project: process.env.SENTRY_PROJECT!,
+      authToken: process.env.SENTRY_AUTH_TOKEN!,
+      silent: true,
+      disableLogger: true,
+    })
+  : config;

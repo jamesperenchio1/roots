@@ -32,6 +32,9 @@ dist-ssr
 # Next.js
 .next/
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Playwright
 test-results/
 playwright-report/

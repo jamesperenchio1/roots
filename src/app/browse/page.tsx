@@ -23,7 +23,7 @@ export default async function Page() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="min-h-[60vh]" />}>
         <BrowsePage />
       </Suspense>
     </HydrationBoundary>
