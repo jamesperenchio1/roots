@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { publicKeys } from '@/lib/queryKeys';
@@ -10,7 +11,16 @@ export const revalidate = 120;
 
 type Params = { id: string };
 
-async function fetchSellerData(id: string) {
+export async function generateStaticParams() {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .limit(50);
+  return (data ?? []).map((row) => ({ id: row.id }));
+}
+
+const fetchSellerData = cache(async (id: string) => {
   const supabase = await createSupabaseServerClient();
   const { data: profileRow, error } = await supabase
     .from('profiles')
@@ -33,7 +43,7 @@ async function fetchSellerData(id: string) {
   );
 
   return { profile, listings };
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { id } = await params;

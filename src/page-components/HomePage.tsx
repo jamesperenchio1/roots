@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState, useMemo } from 'react';
 
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,7 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 export default function HomePage() {
   const { t } = useTranslation(['home', 'common', 'marketplace']);
-  const [heroLoaded, setHeroLoaded] = useState(false);
+  const [textReady, setTextReady] = useState(false);
   const { data: listingsData } = useRecentListings(8);
   const listings = listingsData ?? [];
   const { data: market } = useMarketOverview();
@@ -38,7 +39,7 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => setHeroLoaded(true), 300);
+    const timer = setTimeout(() => setTextReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
@@ -53,23 +54,30 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative min-h-[92vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-black" />
-        <div className={`absolute right-0 top-0 w-full lg:w-[60%] h-full transition-all duration-1500 ease-out ${heroLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}>
-          <img src="/images/hero.jpg" alt={t('home:hero.alt')} className="w-full h-full object-cover" />
+        <div className="absolute right-0 top-0 w-full lg:w-[60%] h-full">
+          <Image
+            src="/images/hero.jpg"
+            alt={t('home:hero.alt')}
+            fill
+            className="object-cover"
+            priority
+            fetchPriority="high"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full py-20">
           <div className="max-w-2xl">
-            <div className={`transition-all duration-1000 delay-300 ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <div className={`transition-all duration-1000 delay-300 ${textReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight mb-6 leading-snug break-words">
                 {t('home:newHero.headline')}
               </h1>
             </div>
-            <div className={`transition-all duration-1000 delay-500 ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <div className={`transition-all duration-1000 delay-500 ${textReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
               <p className="text-lg text-zinc-400 mb-8 max-w-md leading-relaxed">
                 {t('home:newHero.subheadline')}
               </p>
             </div>
-            <div className={`flex flex-wrap gap-4 transition-all duration-1000 delay-700 ${heroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <div className={`flex flex-wrap gap-4 transition-all duration-1000 delay-700 ${textReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
               <Link href="/browse" className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full text-sm font-medium hover:bg-zinc-200 transition-all">
                 {t('home:newHero.ctaBrowse')}
                 <ArrowRight className="w-4 h-4" />
