@@ -51,5 +51,5 @@ export default withSentryConfig(config, {
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: true,
-  sourcemaps: { disable: false },
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
 });
