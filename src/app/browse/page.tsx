@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { fetchListings } from '@/lib/api';
 import { publicKeys } from '@/lib/queryKeys';
@@ -22,7 +23,9 @@ export default async function Page() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <BrowsePage />
+      <Suspense fallback={<div className="min-h-[60vh]" />}>
+        <BrowsePage />
+      </Suspense>
     </HydrationBoundary>
   );
 }
