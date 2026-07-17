@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { mapListing } from '@/lib/api';
@@ -48,5 +49,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 }
 
 export default function Page() {
-  return <PlantQRPage />;
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <PlantQRPage />
+    </Suspense>
+  );
 }
