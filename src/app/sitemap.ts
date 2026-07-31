@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { SPECIES } from '@/data/mockData';
+import { ALL_SPECIES } from '@/data/speciesDatabase';
 
 export const revalidate = 3600;
 
@@ -21,7 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
   ];
 
-  const speciesRoutes: MetadataRoute.Sitemap = SPECIES.map((s) => ({
+  const speciesRoutes: MetadataRoute.Sitemap = ALL_SPECIES.map((s) => ({
     url: `${BASE_URL}/species/${s.id}`,
     changeFrequency: 'weekly' as const,
     priority: 0.7,
