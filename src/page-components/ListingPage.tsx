@@ -11,7 +11,6 @@ import WeatherWidget from '@/components/WeatherWidget';
 import { PROVINCE_CITIES } from '@/lib/weather';
 import { getProvinceLabel } from '@/lib/provinces';
 import { toast } from 'sonner';
-import { PLANT_IMAGES } from '@/data/mockData';
 import { useListing } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
@@ -122,7 +121,7 @@ export default function ListingPage() {
   const speciesId = listing.species?.id || listing.plant_id?.replace('p-', 'sp-') || '';
   const plantPhotos = listing.photos && listing.photos.length
     ? [...new Set(listing.photos.map(p => p.storage_path))]
-    : [PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg'];
+    : ['/images/plants/monstera-thai.jpg'];
   const gallery = plantPhotos;
   const mainImage = gallery[activeImage] || gallery[0] || '';
   const showNav = gallery.length > 1;

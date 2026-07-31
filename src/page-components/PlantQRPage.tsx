@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import PrintTag from '@/components/PrintTag';
-import { getSpeciesById, PLANT_IMAGES, USERS } from '@/data/mockData';
+import { getSpeciesById, USERS } from '@/data/mockData';
 import { fetchProvenance, recordQRScan } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
@@ -148,7 +148,7 @@ export default function PlantQRPage() {
   const totalOwners = new Set(events.map(e => e.to).filter(Boolean)).size || 1;
   const originDate = events[0]?.date || (listing?.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10));
 
-  const coverImage = listing?.photos?.[0]?.storage_path || PLANT_IMAGES[speciesId] || '/images/plants/monstera-thai.jpg';
+  const coverImage = listing?.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg';
 
   if (loading) {
     return (

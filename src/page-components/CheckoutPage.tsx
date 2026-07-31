@@ -7,7 +7,6 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Shield, QrCode, Truck, Lock, Upload, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { PLANT_IMAGES } from '@/data/mockData';
 import { useListing } from '@/hooks/queries/useListings';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -122,7 +121,7 @@ export default function CheckoutPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={listing.photos?.[0]?.storage_path || PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || ''] || '/images/plants/monstera-thai.jpg'} alt={listing.species?.scientific_name || t('common:unknown')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              <img src={listing.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt={listing.species?.scientific_name || t('common:unknown')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium">{listing.species?.common_name_en}</p>

@@ -2,7 +2,7 @@
 // cached via TanStack Query; the legacy in-memory seed stores remain only as
 // fallback initial data for a handful of un-migrated getters.
 import { supabase, PHOTO_BUCKET } from './supabase/client';
-import { SPECIES, USERS, LISTINGS, TRANSACTIONS, PLANT_IMAGES, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, WATCHLIST, getListingByPlantId, getListingById, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
+import { USERS, LISTINGS, TRANSACTIONS, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS, COMMENT_IMAGES, COMMENT_REACTIONS, OFFERS, PRICE_ALERTS, WATCHLIST, getListingByPlantId, getListingById, getSpeciesById, bumpPriceSnapshots } from '@/data/mockData';
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies, DashboardStats } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
@@ -93,8 +93,7 @@ export async function mapListing(r: DbRow, profiles: Record<string, Profile>): P
   const photosArr = r.photos as string[] | undefined;
   const imageUrl = r.image_url as string | undefined;
   const photos = (photosArr && photosArr.length ? photosArr : [imageUrl].filter(Boolean)) as string[];
-  const speciesId = r.species_id as string | undefined;
-  const cover = photos[0] || (speciesId ? PLANT_IMAGES[speciesId] : '') || FALLBACK_IMG;
+  const cover = photos[0] || FALLBACK_IMG;
   const sellerId = r.seller_id as string;
   // Callers are responsible for hydrating the profile map in batch; no per-row
   // fetch so we avoid N+1 queries when mapping large result sets.
@@ -2842,4 +2841,4 @@ export async function sendContactEmail(input: ContactEmailInput): Promise<void> 
   }
 }
 
-export { SPECIES };
+

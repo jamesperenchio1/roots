@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageSquare, Camera, Upload, Loader2, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { PLANT_IMAGES } from '@/data/mockData';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { updateOrderStatus, uploadDisputeEvidence, hasReviewedTransaction, getTransactionEvents } from '@/lib/api';
@@ -136,7 +135,7 @@ export default function OrderPage() {
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
           <div className="flex gap-4 mb-4">
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-              <img src={tx.listing?.photos?.[0]?.storage_path || PLANT_IMAGES[tx.listing?.plant_id?.replace('p-', 'sp-') || 'sp-1']} srcSet={getSrcSet(tx.listing?.photos?.[0]?.storage_path, { widths: [64, 128, 256], resize: 'cover' })} sizes="64px" alt={tx.listing?.species?.scientific_name || t('common:unknown')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              <img src={tx.listing?.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} srcSet={getSrcSet(tx.listing?.photos?.[0]?.storage_path, { widths: [64, 128, 256], resize: 'cover' })} sizes="64px" alt={tx.listing?.species?.scientific_name || t('common:unknown')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium">{tx.listing?.species?.common_name_en || t('checkout:order.yourPlant')}</p>

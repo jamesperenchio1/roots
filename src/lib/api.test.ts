@@ -34,11 +34,9 @@ vi.mock('./messaging', () => ({
 }));
 
 vi.mock('@/data/mockData', () => ({
-  SPECIES: [],
   USERS: [],
   LISTINGS: [],
   TRANSACTIONS: [],
-  PLANT_IMAGES: {},
   NOTIFICATIONS: [],
   SELLER_REVIEWS: [],
   COMMENTS: [],

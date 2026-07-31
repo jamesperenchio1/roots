@@ -8,53 +8,7 @@ import type {
 } from '@/types';
 import { ALL_SPECIES } from './speciesDatabase';
 
-export const SPECIES: Species[] = [
-  { id: 'sp-1', scientific_name: 'Monstera deliciosa \'Thai Constellation\'', common_name_th: 'มอนสเตอร่าไทยคอนสเตอเลชัน', common_name_en: 'Thai Constellation Monstera', synonyms: ['Monstera Thai Const'], category: 'aroid', created_at: '2023-01-01', description: 'Rare variegated Monstera with creamy white constellation-like patterns', care_level: 'moderate', light_requirement: 'Bright indirect' },
-  { id: 'sp-2', scientific_name: 'Philodendron erubescens \'Pink Princess\'', common_name_th: 'ฟิโลเดนดรอนพิ้งค์ปริ้นเซส', common_name_en: 'Pink Princess Philodendron', synonyms: ['PPP'], category: 'aroid', created_at: '2023-01-01', description: 'Stunning pink variegated philodendron', care_level: 'moderate', light_requirement: 'Bright indirect' },
-  { id: 'sp-3', scientific_name: 'Hoya carnosa', common_name_th: 'ฮอยย่านภาคพื้นสมุทร', common_name_en: 'Wax Plant', synonyms: ['Hoya Tricolor'], category: 'hoya', created_at: '2023-01-01', description: 'Classic trailing Hoya with fragrant flowers', care_level: 'easy', light_requirement: 'Bright indirect' },
-  { id: 'sp-4', scientific_name: 'Anthurium clarinervium', common_name_th: 'หน้าวัวใบหัวใจ', common_name_en: 'Velvet Cardboard Anthurium', synonyms: [], category: 'aroid', created_at: '2023-01-01', description: 'Heart-shaped dark leaves with white veins', care_level: 'advanced', light_requirement: 'Bright indirect' },
-  { id: 'sp-5', scientific_name: 'Epipremnum aureum \'Marble Queen\'', common_name_th: 'พอทอสมาร์เบิ้ลควีน', common_name_en: 'Marble Queen Pothos', synonyms: ['Devils Ivy Marble'], category: 'aroid', created_at: '2023-01-01', description: 'Easy-care trailing plant with cream variegation', care_level: 'easy', light_requirement: 'Low to bright' },
-  { id: 'sp-6', scientific_name: 'Dracaena trifasciata', common_name_th: 'ลิ้นมังกร', common_name_en: 'Snake Plant', synonyms: ['Sansevieria', "Mother-in-law's Tongue"], category: 'succulent', created_at: '2023-01-01', description: 'Nearly indestructible upright succulent', care_level: 'easy', light_requirement: 'Low to bright' },
-  { id: 'sp-7', scientific_name: 'Asplenium nidus', common_name_th: 'เฟิร์นข้าหลวง', common_name_en: "Bird's Nest Fern", synonyms: [], category: 'fern', created_at: '2023-01-01', description: 'Bright green wavy fronds in rosette form', care_level: 'moderate', light_requirement: 'Medium indirect' },
-  { id: 'sp-8', scientific_name: 'Zamioculcas zamiifolia', common_name_th: 'กวักมรกต', common_name_en: 'ZZ Plant', synonyms: ['Zanzibar Gem'], category: 'aroid', created_at: '2023-01-01', description: 'Glossy dark green leaves, extremely hardy', care_level: 'easy', light_requirement: 'Low to bright' },
-  { id: 'sp-9', scientific_name: 'Hoya kerrii', common_name_th: 'ฮอย่าใจ', common_name_en: 'Sweetheart Hoya', synonyms: ['Valentine Hoya'], category: 'hoya', created_at: '2023-01-01', description: 'Heart-shaped leaves, perfect gift plant', care_level: 'easy', light_requirement: 'Bright indirect' },
-  { id: 'sp-10', scientific_name: 'Philodendron gloriosum', common_name_th: 'ฟิโลเดนดรอนกลอริโอซัม', common_name_en: 'Gloriosum Philodendron', synonyms: [], category: 'aroid', created_at: '2023-01-01', description: 'Velvety dark green heart leaves with white veins', care_level: 'advanced', light_requirement: 'Bright indirect' },
-  { id: 'sp-11', scientific_name: 'Monstera deliciosa \'Albo Borsigiana\'', common_name_th: 'มอนสเตอร่าอัลโบ', common_name_en: 'Monstera Albo', synonyms: ['Monstera Albo Variegata'], category: 'aroid', created_at: '2023-01-01', description: 'Half-moon white variegated Monstera', care_level: 'advanced', light_requirement: 'Bright indirect' },
-  { id: 'sp-12', scientific_name: 'Echeveria elegans', common_name_th: 'อีเชเวอเรีย', common_name_en: 'Mexican Snowball', synonyms: [], category: 'succulent', created_at: '2023-01-01', description: 'Rosette-forming pastel succulent', care_level: 'easy', light_requirement: 'Bright direct' },
-  { id: 'sp-13', scientific_name: 'Spathiphyllum wallisii', common_name_th: 'หน้าวัวใบ', common_name_en: 'Peace Lily', synonyms: ['White Sails'], category: 'aroid', created_at: '2023-01-01', description: 'Elegant white flowers, air purifier', care_level: 'easy', light_requirement: 'Low to medium' },
-  { id: 'sp-14', scientific_name: 'Anthurium crystallinum', common_name_th: 'หน้าวัวคริสตัล', common_name_en: 'Crystal Anthurium', synonyms: [], category: 'aroid', created_at: '2023-01-01', description: 'Silver crystalline veins on velvet leaves', care_level: 'advanced', light_requirement: 'Bright indirect' },
-  { id: 'sp-15', scientific_name: 'Philodendron melanochrysum', common_name_th: 'ฟิโลเดนดรอนเมลาโน', common_name_en: 'Black Gold Philodendron', synonyms: [], category: 'aroid', created_at: '2023-01-01', description: 'Velvety bronze-green with golden venation', care_level: 'advanced', light_requirement: 'Bright indirect' },
-  { id: 'sp-16', scientific_name: 'Chlorophytum comosum', common_name_th: 'เศรษฐีเรือนใน', common_name_en: 'Spider Plant', synonyms: ['Airplane Plant'], category: 'other', created_at: '2023-01-01', description: 'Variegated arching leaves with baby plantlets', care_level: 'easy', light_requirement: 'Bright indirect' },
-  { id: 'sp-17', scientific_name: 'Hoya pubicalyx', common_name_th: 'ฮอย่าพับบิคาลิกซ์', common_name_en: 'Hoya Pubicalyx', synonyms: ['Splash Hoya'], category: 'hoya', created_at: '2023-01-01', description: 'Silver-splashed leaves, pink star flowers', care_level: 'easy', light_requirement: 'Bright indirect' },
-  { id: 'sp-18', scientific_name: 'Alocasia amazonica \'Polly\'', common_name_th: 'อะโลคาเซียโพลลี่', common_name_en: 'African Mask Plant', synonyms: [], category: 'aroid', created_at: '2023-01-01', description: 'Arrowhead leaves with striking white veins', care_level: 'moderate', light_requirement: 'Bright indirect' },
-  { id: 'sp-19', scientific_name: 'Ctenanthe burle-marxii', common_name_th: 'คเทนันเท้', common_name_en: 'Fishbone Prayer Plant', synonyms: ['Never Never Plant'], category: 'other', created_at: '2023-01-01', description: 'Silver-green striped leaves with purple undersides', care_level: 'moderate', light_requirement: 'Medium indirect' },
-  { id: 'sp-20', scientific_name: 'Philodendron erubescens \'White Princess\'', common_name_th: 'ฟิโลเดนดรอนไวท์ปริ้นเซส', common_name_en: 'White Princess Philodendron', synonyms: ['PWP'], category: 'aroid', created_at: '2023-01-01', description: 'White and pink variegated beauty', care_level: 'advanced', light_requirement: 'Bright indirect' },
-  { id: 'sp-21', scientific_name: 'Ficus lyrata', common_name_th: 'ไทรใบสัก', common_name_en: 'Fiddle Leaf Fig', synonyms: [], category: 'other', created_at: '2023-01-01', description: 'Large violin-shaped glossy leaves', care_level: 'moderate', light_requirement: 'Bright indirect' },
-];
-
-export const PLANT_IMAGES: Record<string, string> = {
-  'sp-1': '/images/plants/monstera-thai.jpg',
-  'sp-2': '/images/plants/pink-princess.jpg',
-  'sp-3': '/images/plants/hoya-carnosa.jpg',
-  'sp-4': '/images/plants/anthurium-clarinervium.jpg',
-  'sp-5': '/images/plants/pothos-marble.jpg',
-  'sp-6': '/images/plants/snake-plant.jpg',
-  'sp-7': '/images/plants/birds-nest-fern.jpg',
-  'sp-8': '/images/plants/zz-plant.jpg',
-  'sp-9': '/images/plants/hoya-kerrii.jpg',
-  'sp-10': '/images/plants/philodendron-gloriosum.jpg',
-  'sp-11': '/images/plants/monstera-albo.jpg',
-  'sp-12': '/images/plants/succulent-collection.jpg',
-  'sp-13': '/images/plants/peace-lily.jpg',
-  'sp-14': '/images/plants/anthurium-crystallinum.jpg',
-  'sp-15': '/images/plants/philodendron-melanochrysum.jpg',
-  'sp-16': '/images/plants/spider-plant.jpg',
-  'sp-17': '/images/plants/hoya-pubicalyx.jpg',
-  'sp-18': '/images/plants/alocasia-polly.jpg',
-  'sp-19': '/images/plants/ctenanthe.jpg',
-  'sp-20': '/images/plants/philodendron-white-princess.jpg',
-  'sp-21': '/images/plants/fiddle-leaf-fig.jpg',
-};
+const FALLBACK_IMG = '/images/plants/monstera-thai.jpg';
 
 // Real sellers are loaded from Supabase `profiles` at boot (see lib/api.ts).
 export const USERS: Profile[] = [];
@@ -275,7 +229,7 @@ export function getListingsWithDetails(): Listing[] {
     ...l,
     species: l.species,
     seller: l.seller || USERS.find(u => u.id === l.seller_id),
-    photos: l.photos && l.photos.length ? l.photos : [{ id: `lp-${l.id}`, listing_id: l.id, storage_path: PLANT_IMAGES[l.species?.id || ''] || '/images/plants/monstera-thai.jpg', order_index: 0, created_at: l.created_at }]
+    photos: l.photos && l.photos.length ? l.photos : [{ id: `lp-${l.id}`, listing_id: l.id, storage_path: FALLBACK_IMG, order_index: 0, created_at: l.created_at }]
   }));
 }
 
@@ -293,8 +247,6 @@ export function getListingById(id: string): Listing | undefined {
 }
 
 export function getSpeciesById(id: string): Species | undefined {
-  const fromCatalog = SPECIES.find(s => s.id === id);
-  if (fromCatalog) return fromCatalog;
   const fromAll = ALL_SPECIES.find(s => s.id === id);
   if (!fromAll) return undefined;
   return {
@@ -305,6 +257,9 @@ export function getSpeciesById(id: string): Species | undefined {
     synonyms: fromAll.synonyms,
     category: fromAll.category as Species['category'],
     created_at: '2023-01-01',
+    description: fromAll.description,
+    care_level: fromAll.care_level,
+    light_requirement: fromAll.light_requirement,
   };
 }
 

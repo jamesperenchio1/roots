@@ -4,7 +4,6 @@ import { useState, memo } from 'react';
 import { Check, X, RotateCcw, ArrowLeft, Tag, Clock, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Offer } from '@/types';
-import { PLANT_IMAGES } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 
 interface OfferCardProps {
@@ -19,9 +18,7 @@ function OfferCardInner({ offer, mode, onRespond, onWithdraw }: OfferCardProps) 
   const [counterMode, setCounterMode] = useState(false);
   const [counterPrice, setCounterPrice] = useState('');
 
-  const thumbnail = offer.listing?.photos?.[0]?.storage_path
-    || PLANT_IMAGES[offer.listing?.plant_id?.replace('p-', 'sp-') || '']
-    || '/images/plants/monstera-thai.jpg';
+  const thumbnail = offer.listing?.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg';
 
   const plantName = offer.listing?.species?.common_name_en
     || offer.listing?.species?.scientific_name

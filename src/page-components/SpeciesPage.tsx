@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Leaf, Bell, X, Trash2, Search } from 'lucide-react';
-import { getSpeciesById, PLANT_IMAGES } from '@/data/mockData';
+import { getSpeciesById } from '@/data/mockData';
 import { useListingsBySpecies } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { usePriceAlerts } from '@/hooks/queries/useUserData';
@@ -105,9 +105,6 @@ export default function SpeciesPage() {
     const category = localSpecies?.category || 'other';
 
     const images: string[] = [];
-    if (localSpecies && rawId && PLANT_IMAGES[rawId]) {
-      images.push(PLANT_IMAGES[rawId]);
-    }
     if (inat?.taxon_photos) {
       inat.taxon_photos.slice(0, 8).forEach(tp => {
         const url = tp.photo?.medium_url || tp.photo?.url;

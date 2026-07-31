@@ -3,7 +3,6 @@
 
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { PLANT_IMAGES } from '@/data/mockData';
 import { LazyImage } from '@/components/LazyImage';
 import { Sparkline } from '@/components/Sparkline';
 import { getProvinceLabel } from '@/lib/provinces';
@@ -33,11 +32,7 @@ export interface ListingCardProps {
 }
 
 function listingImageSrc(listing: Listing): string {
-  return (
-    listing.photos?.[0]?.storage_path ||
-    PLANT_IMAGES[listing.plant_id?.replace('p-', 'sp-') || listing.species?.id || ''] ||
-    '/images/plants/monstera-thai.jpg'
-  );
+  return listing.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg';
 }
 
 const LAYOUT_CONFIG: Record<
