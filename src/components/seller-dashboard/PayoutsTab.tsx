@@ -11,7 +11,6 @@ export interface TransactionPayoutItem {
   plant: string;
   buyer: string;
   price: number;
-  fee: number;
   net: number;
 }
 
@@ -40,7 +39,7 @@ interface PayoutsTabProps {
 export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRevenue, completedSales, pendingRevenue, pendingSales, t }: PayoutsTabProps) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.availableBalance')}</p>
           <p className="text-xl font-semibold text-emerald-400">{pendingRevenue.toLocaleString()} {t('common:currency')}</p>
@@ -50,11 +49,6 @@ export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRe
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.totalPaidOut')}</p>
           <p className="text-xl font-semibold">{totalRevenue.toLocaleString()} {t('common:currency')}</p>
           <p className="text-xs text-zinc-600 mt-1">{completedSales.length} {t('dashboard:seller.transactions')}</p>
-        </div>
-        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
-          <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.totalFees')}</p>
-          <p className="text-xl font-semibold text-amber-400">{completedSales.reduce((sum: number, sale: Transaction) => sum + sale.platform_fee_thb, 0).toLocaleString()} {t('common:currency')}</p>
-          <p className="text-xs text-zinc-600 mt-1">8% {t('dashboard:seller.perSale')}</p>
         </div>
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.payoutMethod')}</p>
@@ -94,9 +88,7 @@ export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRe
                           <Link href={`/order/${tx.orderId}`} className="text-xs text-emerald-400 hover:underline">{t('common:actions.view')}</Link>
                         </div>
                         <div className="text-right">
-                          <p>{tx.price.toLocaleString()} {t('common:currency')}</p>
-                          <p className="text-xs text-amber-400">-{tx.fee.toLocaleString()}</p>
-                          <p className="text-emerald-400 font-medium">{tx.net.toLocaleString()}</p>
+                          <p className="text-emerald-400 font-medium">{tx.net.toLocaleString()} {t('common:currency')}</p>
                         </div>
                       </div>
                     ))}

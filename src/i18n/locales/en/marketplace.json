@@ -227,7 +227,6 @@
     "tagsLabel": "Tags",
     "tagInputPlaceholder": "Add custom tag + Enter",
     "customTagPlaceholder": "Add custom tag + Enter",
-    "feeNotice": "When this sells, you will receive {{net}} {{currency}} after the 8% platform fee ({{fee}} {{currency}}).",
     "publishing": "Publishing...",
     "submitButton": "Publish Listing",
     "signUpSeller": "Please sign up as a seller to create a real listing.",
@@ -287,9 +286,7 @@
   },
   "edit": {
     "changesSaved": "Changes saved",
-    "saveFailed": "Could not save changes",
-    "feeNotice": "When this sells, you will receive {{net}} {{currency}} after the 8% platform fee ({{fee}} {{currency}}).",
-    "feeNote": "No listing fee. No monthly fee. You only pay when you sell."
+    "saveFailed": "Could not save changes"
   },
   "identify": {
     "title": "Identify a plant",

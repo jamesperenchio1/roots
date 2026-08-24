@@ -15,6 +15,18 @@ const MODES = [
   { id: 'manual', labelKey: 'manual', icon: Keyboard },
 ];
 
+// html5-qrcode's stop() can throw synchronously (not just reject) when the
+// scanner never actually started (e.g. camera access was blocked/denied),
+// so a plain `.catch()` isn't enough to guard every call site.
+function safeStopScanner(scanner: Html5Qrcode | null) {
+  if (!scanner) return;
+  try {
+    scanner.stop()?.catch(() => {});
+  } catch {
+    // Scanner was never running — nothing to stop.
+  }
+}
+
 export default function QRScannerPage() {
   const { t } = useTranslation(['common']);
   const router = useRouter();
@@ -29,19 +41,19 @@ export default function QRScannerPage() {
     if (urlMatch) {
       const plantId = urlMatch[1];
       const query = urlMatch[2] ? `?${urlMatch[2]}` : '';
-      scannerRef.current?.stop().catch(() => {});
+      safeStopScanner(scannerRef.current);
       router.push(`/p/${plantId}${query}`);
       return;
     }
     const raw = text.trim();
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
-      scannerRef.current?.stop().catch(() => {});
+      safeStopScanner(scannerRef.current);
       router.push(`/p/${raw}`);
       return;
     }
     // Legacy plant slug support (e.g. p-1 used by early seed data).
     if (/^p-[a-z0-9-]+$/i.test(raw)) {
-      scannerRef.current?.stop().catch(() => {});
+      safeStopScanner(scannerRef.current);
       router.push(`/p/${raw}`);
       return;
     }
@@ -68,7 +80,7 @@ export default function QRScannerPage() {
           () => {}
         );
         if (!active) {
-          scanner.stop().catch(() => {});
+          safeStopScanner(scanner);
         }
       } catch {
         if (active) {
@@ -83,7 +95,7 @@ export default function QRScannerPage() {
     return () => {
       active = false;
       scannerRef.current = null;
-      scanner?.stop().catch(() => {});
+      safeStopScanner(scanner);
     };
   }, [mode, handleDecoded, t]);
 
@@ -120,7 +132,7 @@ export default function QRScannerPage() {
           {MODES.map((m) => (
             <button
               key={m.id}
-              onClick={() => { setMode(m.id as typeof mode); scannerRef.current?.stop().catch(() => {}); }}
+              onClick={() => { setMode(m.id as typeof mode); safeStopScanner(scannerRef.current); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm transition-colors ${
                 mode === m.id
                   ? 'border-emerald-500 bg-emerald-500/5 text-emerald-400'

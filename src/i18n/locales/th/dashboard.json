@@ -79,8 +79,6 @@
     "totalRevenue": "รายได้ทั้งหมด",
     "availableBalance": "ยอดที่พร้อมใช้",
     "totalPaidOut": "จ่ายออกทั้งหมด",
-    "totalFees": "ค่าธรรมเนียมรวม",
-    "perSale": "ต่อการขาย",
     "payoutMethod": "วิธีรับเงิน",
     "payoutDestination": "บัญชีรับเงิน",
     "notSet": "ยังไม่ตั้งค่า",

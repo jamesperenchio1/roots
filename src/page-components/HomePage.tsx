@@ -59,6 +59,7 @@ export default function HomePage() {
             src="/images/hero.jpg"
             alt={t('home:hero.alt')}
             fill
+            sizes="(min-width: 1024px) 60vw, 100vw"
             className="object-cover"
             priority
             fetchPriority="high"

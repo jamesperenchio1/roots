@@ -1,16 +1,9 @@
 {
   "hero": {
-    "alt": "Lush tropical plants",
-    "headline1": "Buy plants.",
-    "headline2": "Sell plants.",
-    "headline3": "Simple.",
-    "subheadline": "Thailand's plant marketplace — for every species, every price. List what you grow, find what you want.",
-    "valueProp": "See price history before you buy. Sell with a permanent QR tag that tracks your plant's story. PromptPay checkout. 8% seller fee.",
-    "ctaBrowse": "Browse Plants",
-    "ctaMarket": "Market Prices"
+    "alt": "Lush tropical plants"
   },
   "newHero": {
-    "headline": "Thailand's plant marketplace, from garden basics to rare collector cuts.",
+    "headline": "Thailand's plant marketplace.",
     "subheadline": "Buy with confidence using real price history. Sell with a permanent QR tag that proves your plant's story. PromptPay checkout, nationwide shipping.",
     "ctaBrowse": "Browse Plants",
     "ctaSell": "Start Selling"

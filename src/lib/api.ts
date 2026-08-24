@@ -1146,7 +1146,6 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const price = input.listing.price_thb;
   const shipping = input.listing.shipping_cost_thb || 0;
   const total = price + shipping;
-  const fee = Math.round(price * 0.08);
   const sellerId = input.listing.seller_id;
   if (input.buyer.id === sellerId) {
     throw new Error(i18n.t('checkout:errors.ownListing'));
@@ -1176,8 +1175,8 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
       species_label: input.listing.species?.common_name_en || 'Plant',
       image_url: cover || null,
       sale_price_thb: total,
-      platform_fee_thb: fee,
-      seller_payout_thb: total - fee,
+      platform_fee_thb: 0,
+      seller_payout_thb: total,
       shipping_cost_thb: shipping,
       status: 'paid_in_escrow',
       delivery_method: input.delivery_method,
