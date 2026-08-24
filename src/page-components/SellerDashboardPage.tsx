@@ -134,7 +134,6 @@ export default function SellerDashboardPage() {
       plant: sale.listing?.species?.common_name_en || sale.listing?.species?.scientific_name || t('common:unknown'),
       buyer: sale.buyer?.display_name || t('common:unknownUser'),
       price: sale.sale_price_thb,
-      fee: sale.platform_fee_thb,
       net: sale.seller_payout_thb,
     }],
   }));

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 
-import { ArrowLeft, Camera, CheckCircle, Tag, Info, X } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -538,25 +538,6 @@ export default function EditListingPage() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Fee Notice */}
-          <div className="bg-zinc-900/30 border border-white/5 rounded-lg p-4 text-sm">
-            <div className="flex items-start gap-2">
-              <Tag className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-zinc-400">
-                  {t('marketplace:edit.feeNotice', {
-                    net: price ? (parseInt(price) * 0.92).toFixed(0) : '0',
-                    currency,
-                    fee: price ? (parseInt(price) * 0.08).toFixed(0) : '0',
-                  })}
-                </p>
-                <p className="text-xs text-zinc-600 mt-1">
-                  {t('marketplace:edit.feeNote')}
-                </p>
-              </div>
-            </div>
           </div>
 
           <Button

@@ -18,7 +18,6 @@
     "logout": "Log out",
     "scan": "Scan QR",
     "search": "Search plants...",
-    "fees": "Fees",
     "qrProvenance": "QR Provenance"
   },
   "actions": {
@@ -376,8 +375,8 @@
         "desc": "Pay via PromptPay, funds held in escrow until you confirm delivery with a QR scan. Sellers get paid, buyers get protection."
       },
       "fee": {
-        "title": "8% Flat Fee",
-        "desc": "No listing fees, no monthly subscriptions, no featured placement charges. We take 8% when you sell. That is it."
+        "title": "100% Free",
+        "desc": "No listing fees, no commission, no subscriptions. Buyers pay sellers directly — we just connect you."
       },
       "everyPlant": {
         "title": "For Every Plant",
@@ -580,50 +579,6 @@
       "partnership": "Partnership"
     }
   },
-  "fees": {
-    "title": "Simple, Transparent Fees",
-    "subtitle": "8% from sellers only. No hidden costs, no monthly fees.",
-    "buyers": {
-      "title": "Buyers",
-      "price": "Free",
-      "features": {
-        "browse": "Browse all listings",
-        "priceHistory": "View price history graphs",
-        "watchlist": "Use watchlist & alerts",
-        "escrow": "Escrow protection included",
-        "qrVerification": "QR provenance verification"
-      }
-    },
-    "sellers": {
-      "title": "Sellers",
-      "price": "8%",
-      "note": "of sale price only when sold",
-      "features": {
-        "freeListings": "Unlimited free listings",
-        "qrTag": "QR provenance tag generation",
-        "priceHistory": "Price history integration",
-        "escrow": "Escrow & dispute handling",
-        "promptPay": "PromptPay payouts"
-      }
-    },
-    "example": {
-      "title": "Example Breakdown",
-      "soldFor": "Plant sold for",
-      "platformFee": "Platform fee (8%)",
-      "youReceive": "You receive",
-      "soldForValue": "{{value}} {{currency}}",
-      "platformFeeValue": "{{value}} {{currency}}",
-      "youReceiveValue": "{{value}} {{currency}}"
-    },
-    "noCharges": {
-      "title": "We don't charge for:",
-      "listingFees": "Listing fees",
-      "subscriptions": "Monthly subscriptions",
-      "featured": "Featured placement",
-      "withdrawal": "Withdrawal fees",
-      "currencyConversion": "Currency conversion"
-    }
-  },
   "howItWorksPage": {
     "title": "How Root Works",
     "subtitle": "Buy and sell plants the easy way. QR verification, escrow protection, and price history so you know you are getting a fair deal.",
@@ -638,7 +593,7 @@
       },
       "escrow": {
         "title": "3. Secure Escrow Payment",
-        "desc": "Pay via PromptPay or card. Your money is held in escrow — the seller only receives it after you confirm delivery. Platform fee is 8%, taken from the seller's side only."
+        "desc": "Pay via PromptPay or card. Your money is held in escrow — the seller only receives it after you confirm delivery. Roots is free to use; sellers keep 100% of the sale price."
       },
       "ship": {
         "title": "4. Seller Ships with QR",
@@ -893,7 +848,7 @@
     },
     "fees": {
       "title": "6. Fees",
-      "text": "Root charges an 8% platform fee on the sale price, deducted from the seller's payout. There are no listing fees, no monthly fees, and no buyer fees. Payouts are processed to the seller's registered PromptPay ID within 1-2 business days of transaction completion."
+      "text": "Root is completely free to use. There are no listing fees, no platform commission, no monthly fees, and no buyer fees — sellers keep 100% of the sale price. Payouts are processed to the seller's registered PromptPay ID within 1-2 business days of transaction completion."
     },
     "prohibited": {
       "title": "7. Prohibited Items",

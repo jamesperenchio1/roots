@@ -18,7 +18,7 @@ import { validateImageFile, sanitizeText, isValidPrice } from '@/lib/validation'
 import { getProvinceOptions } from '@/lib/provinces';
 import type { ProvinceOption } from '@/lib/provinces';
 import type { Listing, Category, IdentificationResult } from '@/types';
-import { CreateListingHeader, DeliverySection, DescriptionSection, FeeNotice, MarketStatsNotice, PhotosSection, PickupLocationSection, PotSizeProvinceSection, PrefillBanner, PriceSizeSection, QRProvenanceSection, QRView, SavedPlacesSelect, ShippingCostSection, SpeciesSection, SubmitButton, SubmittedView, TagsSection } from '@/components/create-listing';
+import { CreateListingHeader, DeliverySection, DescriptionSection, MarketStatsNotice, PhotosSection, PickupLocationSection, PotSizeProvinceSection, PrefillBanner, PriceSizeSection, QRProvenanceSection, QRView, SavedPlacesSelect, ShippingCostSection, SpeciesSection, SubmitButton, SubmittedView, TagsSection } from '@/components/create-listing';
 import { UnsavedChangesBlocker } from '@/components/UnsavedChangesBlocker';
 
 interface PhotoItem {
@@ -353,7 +353,6 @@ export default function CreateListingPage() {
             setTagInput={setTagInput}
           />
           <QRProvenanceSection checked={hasQrProvenance} onChange={setHasQrProvenance} />
-          <FeeNotice price={price} currency={currency} />
           <SubmitButton submitting={submitting} />
         </form>
       </div>

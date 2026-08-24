@@ -76,7 +76,7 @@ export default function Navbar() {
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Link href="/scan" className="p-2 text-zinc-400 hover:text-white transition-colors hidden sm:block" title={t('nav.scan')}>
+            <Link href="/scan" className="p-2 text-zinc-400 hover:text-white transition-colors" title={t('nav.scan')}>
               <QrCode className="w-5 h-5" />
             </Link>
             <button onClick={() => setSearchOpen(!searchOpen)} className="p-2 text-zinc-400 hover:text-white transition-colors">
@@ -153,7 +153,10 @@ export default function Navbar() {
           <Link href="/about" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.about')}</Link>
           <Link href="/contact" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('nav.contact')}</Link>
           <Link href="/how-it-works" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('home:sections.howItWorks')}</Link>
-          <Link href="/fees" onClick={() => setMenuOpen(false)} className="block py-2 text-zinc-300 hover:text-white">{t('common:nav.fees')}</Link>
+          <Link href="/scan" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 py-2 text-zinc-300 hover:text-white">
+            <QrCode className="w-4 h-4" />
+            {t('nav.scan')}
+          </Link>
           {user ? (
             <>
               <Link href="/messages" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 py-2 text-zinc-300 hover:text-white">

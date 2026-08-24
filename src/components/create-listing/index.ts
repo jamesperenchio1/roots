@@ -1,7 +1,6 @@
 export { default as CreateListingHeader } from './CreateListingHeader';
 export { default as DeliverySection } from './DeliverySection';
 export { default as DescriptionSection } from './DescriptionSection';
-export { default as FeeNotice } from './FeeNotice';
 export { default as MarketStatsNotice } from './MarketStatsNotice';
 export { default as PhotosSection } from './PhotosSection';
 export { default as PickupLocationSection } from './PickupLocationSection';

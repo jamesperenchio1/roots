@@ -129,10 +129,13 @@ export default function ListingPage() {
   const goNext = () => goTo(activeImage + 1);
   const goPrev = () => goTo(activeImage - 1);
 
-  const median30d = priceData.length > 0
-    ? priceData.slice(-30).reduce((s, d) => s + d.price, 0) / Math.min(30, priceData.length)
+  const validPrices = priceData.slice(-30).filter((d) => typeof d.price === 'number' && d.price > 0);
+  const median30d = validPrices.length > 0
+    ? validPrices.reduce((s, d) => s + d.price, 0) / validPrices.length
     : listing.price_thb;
-  const pctDiff = ((listing.price_thb - median30d) / median30d * 100).toFixed(1);
+  const pctDiff = median30d > 0
+    ? ((listing.price_thb - median30d) / median30d * 100).toFixed(1)
+    : null;
 
   return (
     <div className="pt-24 pb-16 px-4 sm:px-6">
@@ -240,12 +243,14 @@ export default function ListingPage() {
 
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-semibold">{listing.price_thb.toLocaleString()} {t('common:currency')}</span>
-              <span
-                title={t('marketplace:listing.medianTooltip')}
-                className={`text-sm cursor-help ${parseFloat(pctDiff) > 0 ? 'text-red-400' : 'text-emerald-400'}`}
-              >
-                {t('marketplace:listing.vsMedian', { value: `${parseFloat(pctDiff) > 0 ? '+' : ''}${pctDiff}` })}
-              </span>
+              {pctDiff !== null && (
+                <span
+                  title={t('marketplace:listing.medianTooltip')}
+                  className={`text-sm cursor-help ${parseFloat(pctDiff) > 0 ? 'text-red-400' : 'text-emerald-400'}`}
+                >
+                  {t('marketplace:listing.vsMedian', { value: `${parseFloat(pctDiff) > 0 ? '+' : ''}${pctDiff}` })}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2">
