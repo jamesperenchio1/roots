@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       const subject = `New message from ${row.sender_name || 'someone'} on Root Plant Market`;
       const body = `Hi ${profile.display_name || 'there'},\n\nYou have a new message:\n\n${
         row.preview || ''
-      }\n\nOpen the conversation: ${appUrl}/#/messages/${row.conversation_id}`;
+      }\n\nOpen the conversation: ${appUrl}/messages/${row.conversation_id}`;
 
       if (apiKey) {
         try {

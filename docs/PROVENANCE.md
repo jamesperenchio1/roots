@@ -41,7 +41,7 @@ Records every time a QR code is scanned.
 ## QR code format
 
 ```
-https://<origin>/#/p/<plant_id>?s=<qr_signature>
+https://<origin>/p/<plant_id>?s=<qr_signature>
 ```
 
 The provenance page (`PlantQRPage`) fetches the plant and compares the query `s` parameter to the stored `qr_signature`. A mismatch shows a counterfeit warning.

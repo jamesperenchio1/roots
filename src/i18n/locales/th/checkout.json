@@ -16,13 +16,26 @@
     "postalCode": "รหัสไปรษณีย์",
     "payment": "ชำระเงิน",
     "promptPay": "พร้อมเพย์",
+    "paymentMethod": {
+      "title": "วิธีการชำระเงิน",
+      "stripe": "ชำระออนไลน์ (บัตร / ธนาคาร)",
+      "stripeDescription": "ชำระเงินอย่างปลอดภัยผ่าน Stripe เงินของคุณถูกเก็บใน escrow จนกว่าคุณจะยืนยันการรับสินค้า",
+      "direct": "ชำระเงินกับผู้ขายโดยตรง",
+      "directDescription": "สไตล์ Binance P2P นัดหมายการชำระเงินกับผู้ขายในแชทและจ่ายโดยตรง แพลตฟอร์มไม่ตรวจสอบเงิน — คุณรับความเสี่ยงเอง",
+      "directWarning": "การชำระโดยตรงไม่ได้รับการคุ้มครองโดย escrow จ่ายเฉพาะเมื่อตกลงกับผู้ขายในแชทแล้ว และเก็บหลักฐานการชำระเงินไว้"
+    },
     "scanQr": "สแกน QR นี้ด้วยแอปธนาคารใดก็ได้",
     "uploadSlip": "อัปโหลดสลิป",
     "slipRequired": "ต้องแนบสลิปการโอน",
     "confirmPayment": "ฉันชำระแล้ว",
     "processing": "กำลังดำเนินการ...",
     "orderCreated": "สร้างคำสั่งซื้อแล้ว",
-    "orderError": "ไม่สามารถสร้างคำสั่งซื้อได้"
+    "orderError": "ไม่สามารถสร้างคำสั่งซื้อได้",
+    "scanWithBankApp": "Scan with your banking app to pay",
+    "qrWillAppear": "Your PromptPay QR will appear here after you confirm.",
+    "waitingForPayment": "Waiting for payment confirmation…",
+    "paymentConfirmed": "Payment confirmed",
+    "completePayment": "Complete payment in your banking app"
   },
   "order": {
     "title": "คำสั่งซื้อ",
@@ -59,17 +72,18 @@
     "idLabel": "คำสั่งซื้อ #{{id}}",
     "yourPlant": "ต้นไม้ของคุณ",
     "plantPrice": "ราคาต้นไม้",
-    "paymentVerifiedDate": "ผู้ขายตรวจสอบการชำระเงินแล้วเมื่อ {{date}}",
-    "paymentVerified": "ผู้ขายตรวจสอบการชำระเงินแล้ว",
-    "paymentPending": "ส่งสลิปแล้ว — รอผู้ขายตรวจสอบกับธนาคารก่อนจัดส่ง",
+    "paymentVerifiedDate": "ยืนยันการชำระเงินแล้วเมื่อ {{date}}",
+    "paymentVerified": "ยืนยันการชำระเงินแล้ว",
+    "paymentPending": "Waiting for payment confirmation. Please complete payment in your banking app.",
     "trackingLabel": "เลขติดตามพัสดุ: {{number}}",
     "pickupLocation": "สถานที่รับสินค้า",
     "openPin": "เปิดหมุดในแผนที่ →",
-    "escrowInfo": "ชำระเงินผ่านพร้อมเพย์แล้ว เงินจะถูกพักไว้ในเอสโครวจนกว่าคุณจะยืนยันการได้รับสินค้า",
+    "escrowInfo": "Payment is held in escrow. Funds are released to the seller after you confirm delivery.",
     "disputeInfo": "หากต้นไม้ไม่ตรงกับรายการขาย คุณสามารถเปิดข้อพิพาทได้ภายใน 48 ชั่วโมงหลังได้รับสินค้า",
-    "confirmReceiptDescription": "สแกน QR บนแท็กต้นไม้เพื่อยืนยันความถูกต้องและยืนยันการได้รับสินค้า ระบบจะปล่อยเงินให้ผู้ขาย",
+    "confirmReceiptDescription": "Scan the QR code on the plant's tag to verify authenticity and confirm receipt, or upload a photo of the plant you received. This will release funds to the seller.",
     "scanQr": "สแกน QR Code",
     "uploadPhoto": "อัปโหลดรูปภาพ",
+    "receiptSaved": "Receipt photo saved.",
     "statusMessages": {
       "shipped": "ต้นไม้กำลังเดินทาง! คุณจะสามารถยืนยันการได้รับสินค้าได้เมื่อสินค้าถึง",
       "paid": "รอผู้ขายจัดส่ง คุณจะได้รับเลขติดตามพัสดุเมื่อจัดส่งแล้ว",
@@ -101,9 +115,9 @@
   "promptPayQrAlt": "QR พร้อมเพย์",
   "scanToPay": "สแกนผ่านแอปธนาคารเพื่อชำระ {{total}} {{currency}}",
   "paysSellerDirectly": "ชำระโดยตรงให้ {{seller}} ผ่านธนาคารไทย",
-  "afterPayConfirm": "หลังชำระแล้ว ให้กดปุ่มด้านล่างเพื่อยืนยัน",
+  "afterPayConfirm": "After paying, complete the payment in your banking app.",
   "confirming": "กำลังยืนยัน…",
-  "confirmPaid": "ฉันชำระ {{total}} {{currency}} แล้ว",
+  "confirmPaid": "Pay {{total}} {{currency}}",
   "footer": "เงินของคุณจะถูกเก็บไว้อย่างปลอดภัยจนกว่าคุณจะยืนยันการได้รับสินค้า ไม่มีค่าธรรมเนียมแอบแฝง — จ่ายตามราคาด้านบนเท่านั้น",
   "packedShipmentAlt": "กล่องที่แพ็คแล้ว",
   "labels": {
@@ -122,20 +136,22 @@
   "toast": {
     "paymentAutoVerified": "ตรวจสอบการชำระเงินอัตโนมัติสำเร็จ — คำสั่งซื้อของคุณได้รับการคุ้มครองเอสโครว",
     "paymentManual": "เราไม่สามารถตรวจสอบสลิปอัตโนมัติได้ ผู้ขายจะตรวจสอบด้วยตนเอง",
-    "slipSubmitted": "ส่งสลิปแล้ว — ผู้ขายจะตรวจสอบการชำระเงิน จากนั้นจัดส่งสินค้า"
+    "slipSubmitted": "ส่งสลิปแล้ว — ผู้ขายจะตรวจสอบการชำระเงิน จากนั้นจัดส่งสินค้า",
+    "orderCreated": "Order created — scan the QR code to complete payment."
   },
   "buyerProtection": {
     "title": "การคุ้มครองผู้ซื้อ",
     "description": "เงินของคุณจะถูกพักไว้ในเอสโครว ผู้ขายจะได้รับเงินหลังจากคุณยืนยันว่าต้นไม้ส่งถึงอย่างปลอดภัย หากมีปัญหา คุณสามารถเปิดข้อพิพาทได้ภายใน 48 ชั่วโมงหลังได้รับสินค้า"
   },
   "confirmPayment": {
-    "title": "ยืนยันการชำระเงิน",
-    "description": "หลังชำระผ่านแอปธนาคารแล้ว กรุณาอัปโหลดสลิป ผู้ขายจะตรวจสอบกับธนาคารก่อนจัดส่ง — เพื่อความปลอดภัยของทั้งสองฝ่าย",
+    "title": "Confirm Your Order",
+    "description": "You are about to pay {{total}} {{currency}}. After confirming, a PromptPay QR code will be generated for you to complete the payment.",
     "slipLabel": "สลิปการโอน",
     "uploadSlipScreenshot": "อัปโหลดภาพหน้าจอสลิป",
     "transactionReference": "เลขอ้างอิงการทำรายการ (ไม่บังคับ)",
     "referencePlaceholder": "เช่น 20240605ABC123",
-    "submitting": "กำลังส่ง…",
+    "submitting": "Creating order…",
+    "confirm": "Confirm & Pay",
     "submitPaymentSlip": "ส่งสลิปการโอน"
   },
   "markShipped": {

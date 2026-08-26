@@ -6,6 +6,7 @@ import { USERS, LISTINGS, TRANSACTIONS, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS,
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies, DashboardStats } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
+import { calculatePlatformFees } from './platform-config';
 import { logger } from './logger';
 import { queryClient } from './queryClient';
 import { publicKeys, userKeys, commentKeys } from './queryKeys';
@@ -51,6 +52,8 @@ export function mapProfile(r: DbRow): Profile {
     id,
     display_name: (r.display_name as string | undefined) ?? 'Plant Lover',
     promptpay_id: (r.promptpay_id as string | undefined) ?? null,
+    stripe_account_id: (r.stripe_account_id as string | undefined) ?? null,
+    stripe_onboarding_complete: (r.stripe_onboarding_complete as boolean | undefined) ?? false,
     is_admin: !!r.is_admin,
     strike_count: (r.strike_count as number | undefined) ?? 0,
     is_banned: !!r.is_banned,
@@ -189,12 +192,16 @@ async function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Prom
     platform_fee_thb: (r.platform_fee_thb as number | undefined) ?? 0,
     seller_payout_thb: (r.seller_payout_thb as number | undefined) ?? 0,
     status: r.status as Transaction['status'],
+    payment_method: (r.payment_method as Transaction['payment_method'] | undefined) || undefined,
+    stripe_payment_intent_id: (r.stripe_payment_intent_id as string | undefined) || undefined,
     delivery_method: (r.delivery_method as DeliveryOption | undefined) || 'ship',
     tracking_number: (r.tracking_number as string | undefined) || undefined,
     courier: (r.courier as string | undefined) || undefined,
-    payment_slip_path: (r.payment_slip_path as string | undefined) || undefined,
-    payment_ref: (r.payment_ref as string | undefined) || undefined,
     payment_confirmed: !!r.payment_confirmed,
+    payment_gateway_fee_thb: (r.payment_gateway_fee_thb as number | undefined) ?? 0,
+    payout_status: (r.payout_status as Transaction['payout_status'] | undefined) || undefined,
+    payout_transfer_id: (r.payout_transfer_id as string | undefined) || undefined,
+    receipt_photo_path: (r.receipt_photo_path as string | undefined) || undefined,
     payment_confirmed_at: (r.payment_confirmed_at as string | undefined) || undefined,
     created_at: r.created_at as string,
     shipped_at: (r.shipped_at as string | undefined) || undefined,
@@ -1036,106 +1043,66 @@ export interface NewOrderInput {
   buyer: Profile;
   shipping_address?: Record<string, string>;
   delivery_method: string;
-  payment_slip_path?: string;
-  payment_ref?: string;
+  payment_method?: 'stripe' | 'direct';
 }
 
-const SLIP_BUCKET = 'payment-slips';
+const RECEIPT_BUCKET = 'receipt-photos';
 
-// Upload a payment slip to the PRIVATE slips bucket; returns the storage path
-// (not a public URL — slips contain bank details and are read via signed URLs).
-export async function uploadPaymentSlip(file: File, userId: string): Promise<string> {
+// Upload a receipt photo to the receipt-photos bucket; returns the public URL.
+export async function uploadReceiptPhoto(file: File, userId: string): Promise<string> {
   const validation = validateImageFile(file, 5);
   if (!validation.ok) throw new Error(validation.error);
   const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
   const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(SLIP_BUCKET).upload(path, file, { upsert: false });
-  if (error) throw error;
-  return path;
-}
-
-// Short-lived signed URL so only the transaction parties can view a slip.
-export async function getSignedSlipUrl(path: string): Promise<string | null> {
-  const { data, error } = await supabase.storage.from(SLIP_BUCKET).createSignedUrl(path, 3600);
-  if (error) {
-    logger.warn('getSignedSlipUrl failed', { error: error.message });
-    return null;
+  let uploadError = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { upsert: false }).then(r => r.error);
+  if (uploadError && (uploadError.message?.includes('Bucket') || uploadError.message?.includes('not found'))) {
+    await supabase.storage.createBucket(RECEIPT_BUCKET, { public: true, fileSizeLimit: 10485760 });
+    uploadError = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { upsert: false }).then(r => r.error);
   }
-  return data.signedUrl;
+  if (uploadError) throw uploadError;
+  return supabase.storage.from(RECEIPT_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
-// Ask the verify-slip edge function to auto-verify a slip via SlipOK. Returns:
-//  'verified' — SlipOK confirmed a genuine, amount-matching slip (the function
-//               already flipped payment_confirmed server-side);
-//  'failed'   — a slip was checked but didn't pass (amount/recipient/dup);
-//  'manual'   — SlipOK isn't configured or was unreachable; fall back to the
-//               seller's manual confirmation. Never throws.
-export async function requestSlipVerification(transactionId: string): Promise<'verified' | 'failed' | 'manual'> {
+// Create a Stripe PaymentIntent for an order. Must be called after createOrder.
+export async function createStripePaymentIntent(orderId: string): Promise<{ paymentIntentId: string; clientSecret: string }> {
+  const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+    body: { orderId },
+  });
+  if (error) {
+    logger.error('createStripePaymentIntent failed', new Error(error.message));
+    throw new Error(error.message || 'Failed to create payment');
+  }
+  return {
+    paymentIntentId: String(data.paymentIntentId || ''),
+    clientSecret: String(data.clientSecret || ''),
+  };
+}
+
+// Create (or resume) the seller's Stripe Connect Express onboarding link.
+export async function onboardStripeConnect(): Promise<{ url: string; accountId: string }> {
+  const { data, error } = await supabase.functions.invoke('stripe-connect-onboard', {
+    body: {},
+  });
+  if (error) {
+    logger.error('onboardStripeConnect failed', new Error(error.message));
+    throw new Error(error.message || 'Failed to start Stripe onboarding');
+  }
+  return {
+    url: String(data.url || ''),
+    accountId: String(data.accountId || ''),
+  };
+}
+
+// Trigger a seller payout for a completed order (fire-and-forget at call sites).
+export async function processPayout(orderId: string): Promise<void> {
   try {
-    const { data, error } = await supabase.functions.invoke('verify-slip', { body: { transactionId } });
+    const { error } = await supabase.functions.invoke('process-payout', { body: { orderId } });
     if (error) {
-      logger.warn('verify-slip invoke failed', { error: error.message });
-      return 'manual';
+      logger.warn('process-payout failed', { error: error.message });
     }
-    const status = (data?.status as string) || 'manual';
-    if (status === 'verified') {
-      const tx = TRANSACTIONS.find((t) => t.id === transactionId);
-      if (tx) {
-        tx.payment_confirmed = true;
-        tx.payment_confirmed_at = new Date().toISOString();
-      }
-      return 'verified';
-    }
-    return status === 'failed' ? 'failed' : 'manual';
   } catch (e) {
-    logger.warn('verify-slip threw', { error: e instanceof Error ? e.message : String(e) });
-    return 'manual';
+    logger.warn('process-payout threw', { error: e instanceof Error ? e.message : String(e) });
   }
-}
-
-// Seller (who owns the PromptPay account) confirms the money arrived. This is
-// the real verification step — it unlocks shipping. A SlipOK/EasySlip API call
-// could perform this automatically in the future.
-export async function confirmPaymentReceived(txId: string): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
-
-  const { data: tx, error: txError } = await supabase
-    .from('transactions')
-    .select('id, seller_id, buyer_id, payment_confirmed')
-    .eq('id', txId)
-    .single();
-  if (txError || !tx) throw txError || new Error('Transaction not found');
-
-  const profile = await fetchProfile(userData.user.id);
-  const isSeller = tx.seller_id === userData.user.id;
-  const isAdmin = !!profile?.is_admin;
-  if (!isSeller && !isAdmin) {
-    throw new Error('Only the seller can confirm payment');
-  }
-
-  if (tx.payment_confirmed) return;
-
-  const confirmedAt = new Date().toISOString();
-  const { error } = await supabase
-    .from('transactions')
-    .update({ payment_confirmed: true, payment_confirmed_at: confirmedAt })
-    .eq('id', txId);
-  if (error) {
-    logger.warn('confirmPaymentReceived failed', { error: error.message });
-    throw error;
-  }
-  const localTx = TRANSACTIONS.find((t) => t.id === txId);
-  if (localTx) {
-    localTx.payment_confirmed = true;
-    localTx.payment_confirmed_at = confirmedAt;
-    notifyPaymentConfirmed(localTx.buyer_id, txId);
-  } else {
-    notifyPaymentConfirmed(tx.buyer_id as string, txId);
-  }
-  invalidateTransactionDetail(txId);
-  invalidateUserQueries(tx.buyer_id as string);
-  invalidateUserQueries(tx.seller_id as string);
 }
 
 export async function createOrder(input: NewOrderInput): Promise<Transaction> {
@@ -1146,6 +1113,7 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const price = input.listing.price_thb;
   const shipping = input.listing.shipping_cost_thb || 0;
   const total = price + shipping;
+  const { platformFeeThb: fee, sellerPayoutThb: sellerPayout } = calculatePlatformFees(total);
   const sellerId = input.listing.seller_id;
   if (input.buyer.id === sellerId) {
     throw new Error(i18n.t('checkout:errors.ownListing'));
@@ -1175,15 +1143,13 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
       species_label: input.listing.species?.common_name_en || 'Plant',
       image_url: cover || null,
       sale_price_thb: total,
-      platform_fee_thb: 0,
-      seller_payout_thb: total,
+      platform_fee_thb: fee,
+      seller_payout_thb: sellerPayout,
       shipping_cost_thb: shipping,
-      status: 'paid_in_escrow',
+      status: 'pending_payment',
+      payment_method: input.payment_method || 'stripe',
       delivery_method: input.delivery_method,
       shipping_address: input.shipping_address || null,
-      seller_promptpay_id: input.listing.seller?.promptpay_id || null,
-      payment_slip_path: input.payment_slip_path || null,
-      payment_ref: input.payment_ref || null,
       payment_confirmed: false,
     })
     .select('*')
@@ -1193,11 +1159,14 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
     throw error;
   }
 
-  // Mark the listing sold.
-  const { error: listingError } = await supabase.from('listings').update({ status: 'sold' }).eq('id', input.listing.id);
-  if (listingError) {
-    logger.error('createOrder: failed to mark listing sold', listingError as Error);
-    throw listingError;
+  // Mark the listing sold via the atomic RPC so concurrent checkouts can't race.
+  const { error: rpcError } = await supabase.rpc('mark_listing_sold_for_order', {
+    p_listing_id: input.listing.id,
+    p_buyer_id: input.buyer.id,
+  });
+  if (rpcError) {
+    logger.error('createOrder: mark_listing_sold_for_order failed', rpcError as Error);
+    throw rpcError;
   }
 
   // Update local LISTINGS so the sold item disappears from browse immediately
@@ -1236,6 +1205,7 @@ const ALLOWED_ORDER_UPDATE_FIELDS = new Set([
   'courier',
   'tracking_number',
   'dispute_reason',
+  'receipt_photo_path',
 ]);
 
 export async function updateOrderStatus(id: string, patch: Partial<Record<string, unknown>>): Promise<void> {
@@ -1297,6 +1267,11 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
     const courier = (patch.courier as string | undefined) || localTx.courier || 'courier';
     notifyOrderShipped(localTx.buyer_id, id, courier);
   }
+
+  // Trigger seller payout when an order is completed.
+  if (newStatus === 'completed') {
+    processPayout(id).catch(() => {});
+  }
 }
 
 export async function markOrderDelivered(id: string): Promise<void> {
@@ -1332,6 +1307,53 @@ export async function markOrderDelivered(id: string): Promise<void> {
     localTx.status = 'delivered';
     localTx.delivered_at = deliveredAt;
   }
+  invalidateTransactionDetail(id);
+  invalidateUserQueries(tx.buyer_id as string);
+  invalidateUserQueries(tx.seller_id as string);
+}
+
+// Direct/P2P payment: the buyer marks that they paid the seller directly.
+// The platform does not verify funds — buyers pay at their own risk
+// (Binance-P2P style). This simply advances the order past payment so the
+// seller can ship.
+export async function confirmDirectPayment(id: string): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id, buyer_id, seller_id, status')
+    .eq('id', id)
+    .single();
+  if (txError || !tx) throw txError || new Error('Transaction not found');
+
+  const isBuyer = tx.buyer_id === userData.user.id;
+  const profile = await fetchProfile(userData.user.id);
+  const isAdmin = !!profile?.is_admin;
+  if (!isBuyer && !isAdmin) {
+    throw new Error('Only the buyer can confirm a direct payment');
+  }
+  if (tx.status !== 'pending_payment') {
+    throw new Error('Only pending orders can be confirmed as paid');
+  }
+
+  const confirmedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from('transactions')
+    .update({
+      status: 'paid_in_escrow',
+      payment_confirmed: true,
+      payment_confirmed_at: confirmedAt,
+    })
+    .eq('id', id);
+  if (error) throw error;
+  const localTx = TRANSACTIONS.find((t) => t.id === id);
+  if (localTx) {
+    localTx.status = 'paid_in_escrow';
+    localTx.payment_confirmed = true;
+    localTx.payment_confirmed_at = confirmedAt;
+  }
+  notifyPaymentConfirmed(tx.buyer_id as string, id);
   invalidateTransactionDetail(id);
   invalidateUserQueries(tx.buyer_id as string);
   invalidateUserQueries(tx.seller_id as string);

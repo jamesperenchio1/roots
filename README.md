@@ -14,14 +14,12 @@ nurseries and collectors.
 
 ## Stack
 
-- **Frontend:** React 19 + Vite + TypeScript + Tailwind + shadcn/ui, routed with
-  **HashRouter** (static-host friendly).
+- **Frontend:** Next.js 15 App Router + React 19 + TypeScript + Tailwind + shadcn/ui.
 - **Backend:** Supabase (Postgres + Auth + Storage + Row Level Security), free tier.
   Project ref: `daacilgagkphafpjdcte`.
-- **Payments:** Dynamic **PromptPay** QR generated client-side (EMVCo standard).
-  Any Thai banking app scans it and pays the seller directly — no gateway or
-  business registration required. There is **no payment webhook**: the buyer
-  self-confirms payment (see trust caveats below).
+- **Payments:** Omise PromptPay. The platform collects buyer payments, holds
+  funds, and settles sellers via Omise Transfers. Webhooks update order status
+  automatically.
 - **Testing:** Vitest + jsdom + @testing-library/react.
 - **Deploy:** Vercel (preview deploy per push; production tracks `main`).
 
@@ -141,14 +139,13 @@ src/
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm run build    # type-check (tsc) + production build (vite)
+npm run build    # type-check (tsc) + production build (next)
 npm run test     # run unit tests
 npm run test:ui  # interactive test UI
 ```
 
-Supabase credentials ship with safe public defaults (see `.env.example`); access
-is gated by RLS. Override via `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` if
-you fork the backend.
+Supabase credentials are configured via environment variables (see `.env.example`);
+access is gated by RLS.
 
 **Always run `npm run build` before pushing** — it type-checks the whole project.
 

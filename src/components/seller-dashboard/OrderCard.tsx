@@ -8,14 +8,12 @@ import type { Transaction } from '@/types';
 
 interface OrderCardProps {
   order: Transaction;
-  onViewSlip: (path?: string) => void;
-  onConfirmPayment: (id: string) => void;
   onShip: (id: string) => void;
   onDeliver: (id: string) => void;
   t: TFunction;
 }
 
-export function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, onDeliver, t }: OrderCardProps) {
+export function OrderCard({ order, onShip, onDeliver, t }: OrderCardProps) {
   const timeline = ['pending_payment', 'paid_in_escrow', 'shipped', 'delivered', 'completed'];
   const step = timeline.indexOf(order.status);
 
@@ -48,13 +46,7 @@ export function OrderCard({ order, onViewSlip, onConfirmPayment, onShip, onDeliv
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        {order.status === 'paid_in_escrow' && !order.payment_confirmed && (
-          <>
-            <button onClick={() => onViewSlip(order.payment_slip_path)} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-zinc-300">{t('checkout:order.viewSlip')}</button>
-            <button onClick={() => onConfirmPayment(order.id)} className="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-medium hover:bg-emerald-600">{t('checkout:order.confirmPayment')}</button>
-          </>
-        )}
-        {order.status === 'paid_in_escrow' && order.payment_confirmed && (
+        {order.status === 'paid_in_escrow' && (
           <button onClick={() => onShip(order.id)} className="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-medium hover:bg-emerald-600">{t('checkout:order.markShipped')}</button>
         )}
         {order.status === 'shipped' && (

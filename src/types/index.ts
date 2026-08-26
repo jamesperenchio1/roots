@@ -21,6 +21,10 @@ export interface Profile {
   id: string;
   display_name: string;
   promptpay_id?: string | null;
+  stripe_account_id?: string | null;
+  stripe_onboarding_complete?: boolean | null;
+  payout_bank_last_digits?: string | null;
+  payout_verified_at?: string | null;
   default_shipping_address?: ShippingAddress;
   is_admin: boolean;
   strike_count: number;
@@ -150,7 +154,8 @@ export interface Transaction {
   seller_payout_thb: number;
   shipping_cost_thb?: number;
   status: TransactionStatus;
-  omise_charge_id?: string;
+  payment_method?: 'stripe' | 'direct';
+  stripe_payment_intent_id?: string;
   tracking_number?: string;
   courier?: string;
   shipment_photo_url?: string;
@@ -158,6 +163,10 @@ export interface Transaction {
   payment_ref?: string;
   payment_confirmed?: boolean;
   payment_confirmed_at?: string;
+  receipt_photo_path?: string;
+  payment_gateway_fee_thb?: number;
+  payout_status?: 'pending' | 'transferred' | 'failed';
+  payout_transfer_id?: string;
   delivery_method: DeliveryOption;
   shipped_at?: string;
   delivered_at?: string;

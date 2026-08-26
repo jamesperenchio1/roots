@@ -20,6 +20,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://root.market/sitemap.xml',
+    sitemap: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roots-rho-two.vercel.app'}/sitemap.xml`,
   };
 }

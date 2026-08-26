@@ -11,11 +11,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  getSignedSlipUrl, confirmPaymentReceived,
-  withdrawListing, markListingSold, markOrderDelivered,
+  withdrawListing, markListingSold, markOrderDelivered, onboardStripeConnect,
 } from '@/lib/api';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import { toast } from 'sonner';
+import { queryClient } from '@/lib/queryClient';
+import { userKeys } from '@/lib/queryKeys';
 import { useSellerListings } from '@/hooks/queries/useSellerListings';
 import { useUserTransactions } from '@/hooks/queries/useUserData';
 import { useOffers } from '@/hooks/queries/useUserData';
@@ -33,7 +34,7 @@ import { AccountTab } from '@/components/seller-dashboard/AccountTab';
 
 export default function SellerDashboardPage() {
   const { t } = useTranslation(['dashboard', 'common', 'checkout', 'auth', 'marketplace']);
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { tab } = useParams<{ tab?: string }>() ?? { tab: '' };
   const router = useRouter();
 
@@ -55,6 +56,7 @@ export default function SellerDashboardPage() {
   const [markSoldConfirm, setMarkSoldConfirm] = useState<string | null>(null);
   const [expandedPayout, setExpandedPayout] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState<string>('all');
+  const [stripeConnecting, setStripeConnecting] = useState(false);
 
   const { data: listings = [] } = useSellerListings(user?.id);
   const { data: transactions = [] } = useUserTransactions(user?.id);
@@ -72,18 +74,6 @@ export default function SellerDashboardPage() {
   const pendingSales = allSales.filter((s) => ['paid_in_escrow', 'shipped', 'disputed'].includes(s.status));
   const totalRevenue = completedSales.reduce((s, t) => s + t.seller_payout_thb, 0);
   const pendingRevenue = pendingSales.reduce((s, t) => s + t.seller_payout_thb, 0);
-
-  const handleViewSlip = useCallback(async (path?: string) => {
-    if (!path) { toast.error(t('common:errors.generic')); return; }
-    const url = await getSignedSlipUrl(path);
-    if (url) window.open(url, '_blank', 'noopener');
-    else toast.error(t('common:errors.generic'));
-  }, [t]);
-
-  const handleConfirmPayment = useCallback(async (orderId: string) => {
-    await confirmPaymentReceived(orderId);
-    toast.success(t('checkout:order.confirmPayment'));
-  }, [t]);
 
   const handleWithdraw = async (id: string) => {
     try {
@@ -118,6 +108,25 @@ export default function SellerDashboardPage() {
   const handleDuplicate = useCallback(async () => {
     toast.info(t('dashboard:seller.duplicateComingSoon'));
   }, [t]);
+
+  const handleConnectStripe = useCallback(async () => {
+    setStripeConnecting(true);
+    try {
+      const { url } = await onboardStripeConnect();
+      window.open(url, '_blank');
+      await refreshProfile();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
+    } finally {
+      setStripeConnecting(false);
+    }
+  }, [t, refreshProfile]);
+
+  const handleShipped = useCallback(() => {
+    if (user?.id) {
+      queryClient.invalidateQueries({ queryKey: userKeys.transactions(user.id) });
+    }
+  }, [user?.id]);
 
   const filteredOrders = orderFilter === 'all' ? allSales : allSales.filter((o) => o.status === orderFilter);
 
@@ -160,7 +169,7 @@ export default function SellerDashboardPage() {
           />
         )}
         {shipModalOrder && (
-          <MarkShippedModal orderId={shipModalOrder} onClose={() => setShipModalOrder(null)} onShipped={() => {}} />
+          <MarkShippedModal orderId={shipModalOrder} onClose={() => setShipModalOrder(null)} onShipped={handleShipped} />
         )}
 
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-5 mb-6">
@@ -204,10 +213,10 @@ export default function SellerDashboardPage() {
           <ListingsTab listings={listings} sales={allSales} onWithdraw={setWithdrawConfirm} onMarkSold={setMarkSoldConfirm} onDuplicate={handleDuplicate} t={t} />
         )}
         {activeTab === 'orders' && (
-          <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onViewSlip={handleViewSlip} onConfirmPayment={handleConfirmPayment} onShip={setShipModalOrder} onDeliver={handleMarkDelivered} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
+          <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onShip={setShipModalOrder} onDeliver={handleMarkDelivered} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
         )}
         {activeTab === 'offers' && <OffersTab offers={offers} currentUserId={user?.id || ''} t={t} />}
-        {activeTab === 'payouts' && <PayoutsTab payouts={payouts} expandedPayout={expandedPayout} setExpandedPayout={setExpandedPayout} totalRevenue={totalRevenue} completedSales={completedSales} pendingRevenue={pendingRevenue} pendingSales={pendingSales} t={t} />}
+        {activeTab === 'payouts' && <PayoutsTab payouts={payouts} expandedPayout={expandedPayout} setExpandedPayout={setExpandedPayout} totalRevenue={totalRevenue} completedSales={completedSales} pendingRevenue={pendingRevenue} pendingSales={pendingSales} stripeOnboardingComplete={me?.stripe_onboarding_complete === true} stripeConnecting={stripeConnecting} onConnectStripe={handleConnectStripe} t={t} />}
         {activeTab === 'analytics' && <AnalyticsTab listings={listings} allSales={allSales} t={t} />}
         {activeTab === 'performance' && <PerformanceTab allSales={allSales} t={t} />}
         {activeTab === 'inventory' && <InventoryTab listings={listings} t={t} />}
