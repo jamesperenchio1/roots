@@ -16,7 +16,7 @@ import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { useListingsBySpecies } from '@/hooks/queries/useListings';
 import type { LucideIcon } from 'lucide-react';
-import type { Category, SizeCategory, MarketOverview } from '@/types';
+import type { Category, SizeCategory, MarketOverview, Species } from '@/types';
 
 function SectionHeader({ icon: Icon, titleKey, color }: { icon: LucideIcon; titleKey: string; color: string }) {
   const { t } = useTranslation('marketplace');
@@ -134,13 +134,12 @@ export default function MarketPage() {
 
   const marketSpecies = useMemo(() => getMarketSpeciesFromOverview(market), [market]);
 
-  const selectedSpecies = useMemo(() => {
-    if (selectedSpeciesId) {
-      const saved = getSpeciesById(selectedSpeciesId);
-      if (saved && marketSpecies.some((s) => s.id === saved.id)) return saved;
-    }
-    return market?.trending_up[0]?.species ?? market?.most_traded[0]?.species;
-  }, [selectedSpeciesId, marketSpecies, market]);
+  const selectedSpecies = useMemo<Species | null>(() => {
+    if (!selectedSpeciesId) return null;
+    const saved = getSpeciesById(selectedSpeciesId);
+    if (saved && marketSpecies.some((s) => s.id === saved.id)) return saved;
+    return null;
+  }, [selectedSpeciesId, marketSpecies]);
 
   const filteredMarket = useMemo(
     () => ({
@@ -201,7 +200,7 @@ export default function MarketPage() {
           <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-4 gap-4">
             <div>
               <h2 className="text-lg font-medium mb-1">
-                {selectedSpecies ? selectedSpecies.scientific_name : t('marketplace:create.speciesPlaceholder')}
+                {selectedSpecies ? selectedSpecies.scientific_name : t('marketplace:browse.allPlants')}
               </h2>
               <p className="text-sm text-zinc-500">{t('marketplace:market.priceHistoryVolume')}</p>
             </div>
@@ -241,12 +240,18 @@ export default function MarketPage() {
               </div>
             </div>
           </div>
-          <LazyPriceChart
-            key={`${selectedSpecies?.id ?? 'none'}-${sizeFilter}`}
-            data={priceData}
-            height={300}
-            showVolume={true}
-          />
+          {selectedSpecies ? (
+            <LazyPriceChart
+              key={`${selectedSpecies.id}-${sizeFilter}`}
+              data={priceData}
+              height={300}
+              showVolume={true}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-[300px] text-sm text-zinc-500 border border-white/5 rounded-xl">
+              All plants — select a species for price history
+            </div>
+          )}
           <div className="mt-6">
             {selectedSpecies && (
               <StatsPanel speciesId={selectedSpecies.id} sizeCategory={sizeFilter || undefined} />
@@ -320,7 +325,7 @@ export default function MarketPage() {
                   <div key={tx.id} className="grid grid-cols-4 gap-4 px-6 py-3 text-sm border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                     <span className="truncate">{tx.listing?.species?.scientific_name ?? tx.plant_id}</span>
                     <span className="text-zinc-400 truncate">{tx.seller?.display_name}</span>
-                    <span className="text-right font-medium">{tx.sale_price_thb.toLocaleString()} {t('common:currency')}</span>
+                    <span className="text-right font-medium">{(tx.sale_price_thb ?? 0).toLocaleString()} {t('common:currency')}</span>
                     <span className="text-right">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
                         {t(`common:status.${tx.status}`)}

@@ -272,7 +272,7 @@ export default function OrderPage() {
           </div>
         )}
 
-        {status === 'delivered' && (
+        {status === 'delivered' && user?.id === tx.buyer_id && (
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <QrCode className="w-4 h-4 text-emerald-400" />

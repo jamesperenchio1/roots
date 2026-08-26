@@ -93,6 +93,11 @@ Deno.serve(async (req) => {
       },
     });
 
+    await admin
+      .from('profiles')
+      .update({ stripe_onboarding_complete: true })
+      .eq('id', user.id);
+
     return jsonResponse({ url: link.url, accountId }, 200, headers);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

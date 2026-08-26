@@ -71,9 +71,9 @@ describe('getMarketOverview', () => {
   it('filters high-value sales to completed transactions >= 5000 THB', () => {
     const now = new Date().toISOString();
     TRANSACTIONS.push(
-      { id: 'tx-1', listing_id: 'l-1', buyer_id: 'b-1', seller_id: 's-1', plant_id: 'p-1', sale_price_thb: 6000, platform_fee_thb: 480, seller_payout_thb: 5520, status: 'completed', delivery_method: 'ship', created_at: now },
-      { id: 'tx-2', listing_id: 'l-2', buyer_id: 'b-1', seller_id: 's-1', plant_id: 'p-2', sale_price_thb: 4000, platform_fee_thb: 320, seller_payout_thb: 3680, status: 'completed', delivery_method: 'ship', created_at: now },
-      { id: 'tx-3', listing_id: 'l-3', buyer_id: 'b-1', seller_id: 's-1', plant_id: 'p-3', sale_price_thb: 7000, platform_fee_thb: 560, seller_payout_thb: 6440, status: 'pending_payment', delivery_method: 'ship', created_at: now },
+      { id: 'tx-1', listing_id: 'l-1', buyer_id: 'b-1', seller_id: 's-1', plant_id: 'p-1', sale_price_thb: 6000, platform_fee_thb: 0, seller_payout_thb: 6000, status: 'completed', delivery_method: 'ship', created_at: now },
+      { id: 'tx-2', listing_id: 'l-2', buyer_id: 'b-1', seller_id: 's-1', plant_id: 'p-2', sale_price_thb: 4000, platform_fee_thb: 0, seller_payout_thb: 4000, status: 'completed', delivery_method: 'ship', created_at: now },
+      { id: 'tx-3', listing_id: 'l-3', buyer_id: 'b-1', seller_id: 's-1', plant_id: 'p-3', sale_price_thb: 7000, platform_fee_thb: 0, seller_payout_thb: 7000, status: 'pending_payment', delivery_method: 'ship', created_at: now },
     );
     const overview = getMarketOverview();
     expect(overview.high_value_sales).toHaveLength(1);

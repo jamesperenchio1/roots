@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 
-import { ArrowLeft, Shield, CreditCard, MessagesSquare, Truck, Lock, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Shield, CreditCard, MessagesSquare, Truck, Lock, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useListing } from '@/hooks/queries/useListings';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { createOrder, createStripePaymentIntent } from '@/lib/api';
+import { createOrder, createStripePaymentIntent, updateOrderStatus } from '@/lib/api';
 import { validateShippingAddress } from '@/lib/validation';
 import { supabase } from '@/lib/supabase/client';
 import { loadStripe } from '@stripe/stripe-js';
@@ -22,7 +22,7 @@ const MAX_POLL_MS = 10 * 60 * 1000;
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 const STRIPE_ENABLED = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-function StripePaymentForm({ clientSecret, onPaid, totalLabel }: { clientSecret: string; onPaid: () => void; totalLabel: string }) {
+function StripePaymentForm({ onPaid, totalLabel }: { onPaid: () => void; totalLabel: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +69,6 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'direct'>('stripe');
   const [paying, setPaying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [clientSecret, setClientSecret] = useState('');
   const [orderId, setOrderId] = useState('');
   const pollStartRef = useRef<number>(0);
@@ -106,7 +105,6 @@ export default function CheckoutPage() {
           .single();
         if (error) throw error;
         if (data && (data.payment_confirmed === true || data.status === 'paid_in_escrow')) {
-          setPaymentConfirmed(true);
           router.push(`/order/${id}`);
           return;
         }
@@ -143,6 +141,7 @@ export default function CheckoutPage() {
     if (!user || !listing) return;
     setShowConfirmModal(false);
     setPaying(true);
+    let createdOrderId: string | undefined;
     try {
       const tx = await createOrder({
         listing,
@@ -152,6 +151,7 @@ export default function CheckoutPage() {
         payment_method: paymentMethod,
       });
       setOrderId(tx.id);
+      createdOrderId = tx.id;
 
       if (paymentMethod === 'direct') {
         // Direct / P2P payment — no platform money movement.
@@ -166,6 +166,11 @@ export default function CheckoutPage() {
       toast.success(t('checkout:toast.orderCreated'));
       setPaying(false);
     } catch (err) {
+      // If the order was created but the payment intent failed, cancel the order
+      // so the listing is restored to 'active' and the buyer can retry.
+      if (createdOrderId) {
+        updateOrderStatus(createdOrderId, { status: 'cancelled' }).catch(() => {});
+      }
       toast.error(err instanceof Error ? err.message : t('checkout:checkout.orderError'));
       setPaying(false);
     }
@@ -288,7 +293,6 @@ export default function CheckoutPage() {
                 options={{ clientSecret, appearance: { theme: 'night' } }}
               >
                 <StripePaymentForm
-                  clientSecret={clientSecret}
                   onPaid={handleStripePaid}
                   totalLabel={t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}
                 />

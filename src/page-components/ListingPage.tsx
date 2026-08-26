@@ -17,7 +17,9 @@ import { LazyPriceChart } from '@/components/LazyPriceChart';
 import { StatsPanel } from '@/components/StatsPanel';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { toggleWatch, getOrCreateThreadId, fetchPlant } from '@/lib/api';
+import { toggleWatch, getOrCreateThreadId, fetchPlant, generateQrProvenance } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { publicKeys } from '@/lib/queryKeys';
 
 import { generateQR } from '@/lib/promptpay';
 import MakeOfferModal from '@/components/MakeOfferModal';
@@ -40,6 +42,7 @@ export default function ListingPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [generatingQr, setGeneratingQr] = useState(false);
   const { recordView } = useRecentlyViewed();
 
   useEffect(() => {
@@ -336,9 +339,30 @@ export default function ListingPage() {
               <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <Shield className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-zinc-300">{t('marketplace:provenance.noQrTag')}</p>
                     <p className="text-xs text-zinc-500 mt-1">{t('marketplace:provenance.noQrTagDescription')}</p>
+                    {user?.id === listing.seller_id && (
+                      <Button
+                        className="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium"
+                        disabled={generatingQr}
+                        onClick={async () => {
+                          setGeneratingQr(true);
+                          try {
+                            const plantId = await generateQrProvenance(listing.id);
+                            if (!plantId) throw new Error('no plant id');
+                            await queryClient.invalidateQueries({ queryKey: publicKeys.listing(listing.id) });
+                            toast.success(t('marketplace:provenance.generateQrTag'));
+                          } catch {
+                            toast.error(t('common:errors.generic'));
+                          } finally {
+                            setGeneratingQr(false);
+                          }
+                        }}
+                      >
+                        {t('marketplace:provenance.generateQrTag')}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

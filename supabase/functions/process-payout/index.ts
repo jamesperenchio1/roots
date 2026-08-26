@@ -15,6 +15,7 @@ interface Transaction {
   sale_price_thb: number;
   seller_payout_thb: number;
   status: string;
+  payment_method: string;
   payout_status: string | null;
   payout_transfer_id: string | null;
   stripe_payment_intent_id: string | null;
@@ -60,6 +61,10 @@ Deno.serve(async (req) => {
     if (txError || !tx) return errorResponse('Transaction not found', 404, headers);
     const transaction = tx as Transaction;
 
+    if (transaction.payment_method !== 'stripe' || !transaction.stripe_payment_intent_id) {
+      return jsonResponse({ skipped: true, reason: 'direct_payment' }, 200, headers);
+    }
+
     const { data: sellerProfile, error: profileError } = await admin
       .from('profiles')
       .select('id, stripe_account_id, stripe_onboarding_complete')
@@ -73,10 +78,10 @@ Deno.serve(async (req) => {
     // Allow buyer, seller, or admin to trigger payout.
     const { data: callerProfile } = await admin
       .from('profiles')
-      .select('role')
+      .select('is_admin')
       .eq('id', user.id)
       .single();
-    const isAdmin = callerProfile?.role === 'admin';
+    const isAdmin = callerProfile?.is_admin === true;
     if (!isAdmin && user.id !== transaction.buyer_id && user.id !== transaction.seller_id) {
       return errorResponse('Forbidden', 403, headers);
     }
@@ -117,6 +122,7 @@ Deno.serve(async (req) => {
       currency: 'thb',
       destination: seller.stripe_account_id,
       transfer_group: orderId,
+      idempotency_key: orderId,
     };
     // Anchor the transfer to the charge so it is guaranteed by available balance.
     if (transaction.stripe_payment_intent_id) {

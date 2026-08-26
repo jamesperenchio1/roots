@@ -37,6 +37,14 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
 
     async function load() {
       setLoading(true);
+
+      // Local-first: render badges immediately from the local species DB
+      const fallbackResults = searchSpecies(speciesName, 1);
+      if (cancelled) return;
+      setCare({ perenual: null, guide: null, fallback: fallbackResults[0] ?? null });
+      setLoading(false);
+
+      // Progressive enhancement: upgrade with Perenual data when it resolves
       try {
         const searchResults = await searchPerenualPlants(speciesName);
         if (cancelled) return;
@@ -48,22 +56,11 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
             getCareGuide(first.id),
           ]);
           if (!cancelled) {
-            setCare({ perenual: details ?? first, guide, fallback: null });
-          }
-        } else {
-          // Fallback to local database
-          const fallbackResults = searchSpecies(speciesName, 1);
-          if (!cancelled) {
-            setCare({ perenual: null, guide: null, fallback: fallbackResults[0] ?? null });
+            setCare({ perenual: details ?? first, guide, fallback: fallbackResults[0] ?? null });
           }
         }
       } catch {
-        if (!cancelled) {
-          const fallbackResults = searchSpecies(speciesName, 1);
-          setCare({ perenual: null, guide: null, fallback: fallbackResults[0] ?? null });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        // Local fallback already rendered — nothing more to do
       }
     }
 
@@ -117,15 +114,15 @@ export default function PlantCareCard({ speciesName, compact }: PlantCareCardPro
       <div className="flex items-center gap-2 flex-wrap">
         <span title={t('plantCare.careLevelTitle', { level: careLevel })} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Sprout className="w-3 h-3 text-emerald-400" />
-          {careLevel}
+          {t('plantCare.careLevel', { level: careLevel })}
         </span>
         <span title={t('plantCare.wateringTitle', { level: wateringToIcon(watering) })} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Droplets className="w-3 h-3 text-sky-400" />
-          {wateringToIcon(watering)}
+          {t('plantCare.water', { level: wateringToIcon(watering) })}
         </span>
         <span title={t('plantCare.lightTitle', { level: sunlight.join(', ') })} className="inline-flex items-center gap-1 bg-zinc-800/50 px-2.5 py-1 rounded-full text-xs text-zinc-300 cursor-help">
           <Sun className="w-3 h-3 text-amber-400" />
-          {sunlightToEmoji(sunlight)}
+          {t('plantCare.light', { level: sunlightToEmoji(sunlight), detail: sunlight.join(', ') })}
         </span>
       </div>
     );

@@ -1,10 +1,16 @@
 'use client'
 
 import Link from 'next/link';
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import type { TFunction } from 'i18next';
 import { MoreHorizontal, Eye, Settings, ScanSearch, DollarSign, Copy, Archive, Printer, Rocket } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import type { Listing } from '@/types';
@@ -19,7 +25,6 @@ interface ListingActionsProps {
 
 export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t }: ListingActionsProps) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -42,7 +47,7 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
   };
 
   return (
-    <div className="relative">
+    <>
       <input
         ref={fileRef}
         type="file"
@@ -54,36 +59,43 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
           if (file) handleVerifyFile(file);
         }}
       />
-      <button onClick={() => setOpen(!open)} disabled={verifying} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50">
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-20 py-1">
-          <Link href={`/listing/${listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Eye className="w-3.5 h-3.5" /> {t('common:actions.view')}</Link>
-          <Link href={`/listing/${listing.id}/edit`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Settings className="w-3.5 h-3.5" /> {t('common:actions.edit')}</Link>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button disabled={verifying} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50">
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-zinc-900 border-white/10 text-white">
+          <DropdownMenuItem asChild className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+            <Link href={`/listing/${listing.id}`}><Eye className="size-3.5 mr-2" /> {t('common:actions.view')}</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+            <Link href={`/listing/${listing.id}/edit`}><Settings className="size-3.5 mr-2" /> {t('common:actions.edit')}</Link>
+          </DropdownMenuItem>
           {listing.status === 'pending_review' && (
-            <button
-              onClick={() => { fileRef.current?.click(); setOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-white/5"
-            >
-              <ScanSearch className="w-3.5 h-3.5" /> {t('dashboard:verifyQr')}
-            </button>
+            <DropdownMenuItem onClick={() => fileRef.current?.click()} className="cursor-pointer text-emerald-400 focus:text-emerald-400 hover:bg-white/5 focus:bg-white/5">
+              <ScanSearch className="size-3.5 mr-2" /> {t('dashboard:verifyQr')}
+            </DropdownMenuItem>
           )}
           {(listing.status === 'active' || listing.status === 'pending_review') && (
-            <button
-              onClick={() => { onMarkSold(listing.id); setOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-white/5"
-            >
-              <DollarSign className="w-3.5 h-3.5" /> {t('dashboard:seller.markAsSold')}
-            </button>
+            <DropdownMenuItem onClick={() => onMarkSold(listing.id)} className="cursor-pointer text-emerald-400 focus:text-emerald-400 hover:bg-white/5 focus:bg-white/5">
+              <DollarSign className="size-3.5 mr-2" /> {t('dashboard:seller.markAsSold')}
+            </DropdownMenuItem>
           )}
-          <button onClick={() => { onDuplicate(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Copy className="w-3.5 h-3.5" /> {t('common:actions.duplicate')}</button>
-          <button onClick={() => { onWithdraw(listing.id); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-white/5"><Archive className="w-3.5 h-3.5" /> {t('common:actions.withdraw')}</button>
-          <Link href={`/p/${listing.plant_id || listing.id}`} onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Printer className="w-3.5 h-3.5" /> {t('common:actions.print')} QR</Link>
-          <button onClick={() => { toast.info(t('dashboard:seller.boostComingSoon')); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><Rocket className="w-3.5 h-3.5" /> {t('common:actions.boost')}</button>
-        </div>
-      )}
-      {open && <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />}
-    </div>
+          <DropdownMenuItem onClick={onDuplicate} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+            <Copy className="size-3.5 mr-2" /> {t('common:actions.duplicate')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onWithdraw(listing.id)} className="cursor-pointer text-amber-400 focus:text-amber-400 hover:bg-white/5 focus:bg-white/5">
+            <Archive className="size-3.5 mr-2" /> {t('common:actions.withdraw')}
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+            <Link href={`/p/${listing.plant_id || listing.id}`}><Printer className="size-3.5 mr-2" /> {t('common:actions.print')} QR</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => toast.info(t('dashboard:seller.boostComingSoon'))} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+            <Rocket className="size-3.5 mr-2" /> {t('common:actions.boost')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

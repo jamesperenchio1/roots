@@ -56,7 +56,7 @@ export async function loadThaiResources() {
 
 export type SupportedLanguage = 'en' | 'th';
 
-const baseConfig = {
+export const baseConfig = {
   resources,
   fallbackLng: 'en' as const,
   defaultNS,
@@ -65,31 +65,10 @@ const baseConfig = {
   },
 };
 
-// Initialize the core i18next instance on both server and client. React-specific
-// plugins are loaded dynamically in the browser so the config file remains safe
-// for import in server-side code (e.g., App Router Server Components).
+// Initialize the core i18next instance on both server and client. The React
+// plugin is registered in the browser client provider (and in the vitest
+// setup) so this config file stays free of `react`/`react-i18next` imports
+// and remains safe for import in Server Components.
 i18n.init(baseConfig);
-
-if (typeof window !== 'undefined') {
-  Promise.all([
-    import('react-i18next'),
-    import('i18next-browser-languagedetector'),
-  ]).then(([{ initReactI18next }, { default: LanguageDetector }]) => {
-    i18n
-      .use(LanguageDetector)
-      .use(initReactI18next)
-      .init({
-        ...baseConfig,
-        detection: {
-          order: ['localStorage', 'navigator', 'htmlTag'],
-          caches: ['localStorage'],
-          lookupLocalStorage: 'roots-language',
-        },
-      });
-    if (i18n.language?.startsWith('th')) {
-      loadThaiResources().catch(() => {});
-    }
-  });
-}
 
 export default i18n;

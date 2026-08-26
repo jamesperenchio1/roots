@@ -45,13 +45,19 @@ function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
 }
 
+const FETCH_TIMEOUT_MS = 6000;
+
 async function fetchJson<T>(url: string): Promise<T | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

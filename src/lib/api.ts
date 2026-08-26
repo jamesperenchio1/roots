@@ -188,7 +188,7 @@ async function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Prom
     buyer_id: buyerId,
     seller_id: sellerId,
     plant_id: listing.plant_id || listingId || id,
-    sale_price_thb: r.sale_price_thb as number,
+    sale_price_thb: (r.sale_price_thb ?? 0) as number,
     platform_fee_thb: (r.platform_fee_thb as number | undefined) ?? 0,
     seller_payout_thb: (r.seller_payout_thb as number | undefined) ?? 0,
     status: r.status as Transaction['status'],
@@ -500,7 +500,9 @@ export async function fetchProfiles(): Promise<Profile[]> {
 const PUBLIC_DATA_LISTING_LIMIT = 500;
 const PUBLIC_DATA_REVIEW_LIMIT = 100;
 const PUBLIC_DATA_TRANSACTION_LIMIT = 100;
-const PRICE_SNAPSHOT_DAYS = 60;
+// Match the 90-day price-history chart window so the overview's prev-30/current-30
+// split always has enough data, even when snapshot dates are sparse.
+const PRICE_SNAPSHOT_DAYS = 90;
 
 async function fetchPublicDataRaw(): Promise<PublicData> {
   const timeoutMs = 8000;
@@ -715,17 +717,22 @@ export function getMarketOverviewFromData(data: PublicData): MarketOverview {
   const allStats = speciesIds
     .map((sid) => {
       const last30 = getSpeciesPriceStatsFromData(priceSnapshots, listings, sid, 30);
-      const prev60to30 = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 60).slice(0, 30);
+      const last60 = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 60);
       const prevMedian =
-        prev60to30.length > 0
-          ? Math.round(prev60to30.reduce((s, p) => s + p.median_price_thb, 0) / prev60to30.length)
+        last60.length > 30
+          ? Math.round(last60.slice(0, last60.length - 30).reduce((s, p) => s + p.median_price_thb, 0) / (last60.length - 30))
           : last30?.median || 0;
       const sales30d = last30?.totalSales || 0;
       const sparkline = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 30).map(
         (d) => d.median_price_thb
       );
-      const species = getSpeciesById(sid);
-      if (!species) return null;
+      const species = getSpeciesById(sid) ?? listings.find((l) => l.species?.id === sid)?.species ?? {
+        id: sid,
+        scientific_name: sid,
+        synonyms: [],
+        category: 'other' as Category,
+        created_at: '',
+      };
       return {
         species,
         current_median: last30?.median || 0,
@@ -1206,6 +1213,7 @@ const ALLOWED_ORDER_UPDATE_FIELDS = new Set([
   'tracking_number',
   'dispute_reason',
   'receipt_photo_path',
+  'shipment_photo_url',
 ]);
 
 export async function updateOrderStatus(id: string, patch: Partial<Record<string, unknown>>): Promise<void> {
@@ -1214,7 +1222,7 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
 
   const { data: tx, error: txError } = await supabase
     .from('transactions')
-    .select('id, buyer_id, seller_id, status')
+    .select('id, buyer_id, seller_id, listing_id, status')
     .eq('id', id)
     .single();
   if (txError || !tx) throw txError || new Error('Transaction not found');
@@ -1266,6 +1274,18 @@ export async function updateOrderStatus(id: string, patch: Partial<Record<string
   if (newStatus === 'shipped' && localTx) {
     const courier = (patch.courier as string | undefined) || localTx.courier || 'courier';
     notifyOrderShipped(localTx.buyer_id, id, courier);
+  }
+
+  // Restore the listing when an order is cancelled so it can be relisted.
+  if (newStatus === 'cancelled' && tx.listing_id) {
+    await supabase.from('listings').update({ status: 'active' }).eq('id', tx.listing_id);
+    const localListing = LISTINGS.find((l) => l.id === tx.listing_id);
+    if (localListing) {
+      localListing.status = 'active';
+      invalidatePublicQueries();
+      invalidateUserQueries(localListing.seller_id);
+    }
+    notifyOrderCancelled(tx.buyer_id as string, id);
   }
 
   // Trigger seller payout when an order is completed.
@@ -1536,6 +1556,15 @@ export async function fetchQRScans(plantId: string): Promise<QRScan[]> {
 
 export function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+export async function generateQrProvenance(listingId: string): Promise<string | null> {
+  if (!isValidUuid(listingId)) return null;
+  const { data, error } = await supabase.rpc('generate_qr_provenance', {
+    p_listing_id: listingId,
+  });
+  if (error) throw error;
+  return (data as string | null) ?? null;
 }
 
 export async function verifyQRSignature(plantId: string, signature: string): Promise<boolean> {
@@ -1959,6 +1988,17 @@ export function notifyOrderShipped(buyerId: string, orderId: string, courier: st
     type: 'shipment',
     title: 'Order shipped',
     message: `Your order has been shipped via ${courier}`,
+    link: `/order/${orderId}`,
+    read: false,
+  });
+}
+
+export function notifyOrderCancelled(buyerId: string, orderId: string) {
+  return createNotification({
+    user_id: buyerId,
+    type: 'order',
+    title: 'Order cancelled',
+    message: `Your order has been cancelled`,
     link: `/order/${orderId}`,
     read: false,
   });

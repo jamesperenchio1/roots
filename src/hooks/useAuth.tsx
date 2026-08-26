@@ -147,12 +147,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           // localStorage may be unavailable.
         }
-        const { data } = await supabase.auth.getSession();
-        const uid = data.session?.user?.id;
+        const { data: { user } } = await supabase.auth.getUser();
+        const uid = user?.id;
         if (uid && active) {
           let p = await fetchProfile(uid);
-          if (!p && data.session?.user) {
-            await ensureProfile(uid, data.session.user.user_metadata);
+          if (!p && user) {
+            await ensureProfile(uid, user.user_metadata);
             p = await fetchProfile(uid);
           }
           if (active && p) {
@@ -295,6 +295,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithOAuth = useCallback(async (provider: Provider, redirectTo?: string): Promise<{ ok: boolean; error?: string }> => {
     setIsLoading(true);
     try {
+      try {
+        localStorage.setItem('roots.rememberMe', 'true');
+      } catch {
+        // localStorage may be unavailable in restricted contexts.
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -350,6 +355,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
     } catch (err) {
       logger.warn('logout failed', { error: err instanceof Error ? err.message : String(err) });
+    }
+    try {
+      localStorage.removeItem('roots.rememberMe');
+    } catch {
+      // localStorage may be unavailable in restricted contexts.
     }
     setUser(null);
     setFreshSignup(false);

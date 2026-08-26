@@ -1,6 +1,9 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
-import '@/i18n/config';
+import { initReactI18next } from 'react-i18next';
+import i18n, { baseConfig } from '@/i18n/config';
+
+i18n.use(initReactI18next).init(baseConfig);
 
 // Set runtime env vars so the browser Supabase client can initialize in tests.
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test.supabase.co';
