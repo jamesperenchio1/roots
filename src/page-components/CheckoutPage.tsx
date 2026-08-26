@@ -4,15 +4,59 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 
-import { ArrowLeft, Shield, QrCode, Truck, Lock, Upload, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Shield, CreditCard, MessagesSquare, Truck, Lock, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useListing } from '@/hooks/queries/useListings';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { createOrder, uploadPaymentSlip, requestSlipVerification } from '@/lib/api';
-import { generatePromptPayQR } from '@/lib/promptpay';
+import { createOrder, createStripePaymentIntent } from '@/lib/api';
 import { validateShippingAddress } from '@/lib/validation';
+import { supabase } from '@/lib/supabase/client';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+
+const POLL_INTERVAL_MS = 3000;
+const MAX_POLL_MS = 10 * 60 * 1000;
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+const STRIPE_ENABLED = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+function StripePaymentForm({ clientSecret, onPaid, totalLabel }: { clientSecret: string; onPaid: () => void; totalLabel: string }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+  const { t } = useTranslation(['checkout', 'common']);
+
+  const handleSubmit = async () => {
+    if (!stripe || !elements) return;
+    setSubmitting(true);
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: `${window.location.origin}/checkout/complete` },
+      redirect: 'if_required',
+    });
+    setSubmitting(false);
+    if (error) {
+      toast.error(error.message || t('checkout:checkout.orderError'));
+      return;
+    }
+    onPaid();
+  };
+
+  return (
+    <div>
+      <PaymentElement options={{ layout: 'tabs' }} />
+      <Button
+        onClick={handleSubmit}
+        disabled={submitting}
+        className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
+      >
+        {submitting ? t('checkout:confirming') : totalLabel}
+      </Button>
+    </div>
+  );
+}
 
 export default function CheckoutPage() {
   const { listingId } = useParams<{ listingId?: string }>() ?? { listingId: '' };
@@ -20,28 +64,26 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const { t } = useTranslation(['checkout', 'common']);
   const router = useRouter();
-  const method = 'promptpay' as const;
   const [address, setAddress] = useState({ name: '', address: '', district: '', province: '', postal: '', phone: '' });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'direct'>('stripe');
   const [paying, setPaying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [slipFile, setSlipFile] = useState<File | null>(null);
-  const [slipPreview, setSlipPreview] = useState('');
-  const [refNumber, setRefNumber] = useState('');
-  const [qr, setQr] = useState('');
-  const slipInputRef = useRef<HTMLInputElement>(null);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [clientSecret, setClientSecret] = useState('');
+  const [orderId, setOrderId] = useState('');
+  const pollStartRef = useRef<number>(0);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const shipping = listing?.shipping_cost_thb || 0;
   const total = (listing?.price_thb || 0) + shipping;
-  const sellerPromptPay = listing?.seller?.promptpay_id;
-  const canCheckout = Boolean(sellerPromptPay);
   const isOwnListing = user?.id === listing?.seller_id;
 
   useEffect(() => {
-    if (listing && method === 'promptpay' && sellerPromptPay) {
-      generatePromptPayQR(sellerPromptPay, total).then(setQr).catch(() => setQr(''));
-    }
-  }, [listing, method, sellerPromptPay, total]);
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, []);
 
   if (!listing) {
     return (
@@ -52,6 +94,33 @@ export default function CheckoutPage() {
     );
   }
 
+  const startPolling = (id: string) => {
+    pollStartRef.current = Date.now();
+
+    const poll = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('payment_confirmed,status')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        if (data && (data.payment_confirmed === true || data.status === 'paid_in_escrow')) {
+          setPaymentConfirmed(true);
+          router.push(`/order/${id}`);
+          return;
+        }
+      } catch {
+        // Keep polling; the webhook will eventually update the row.
+      }
+      if (Date.now() - pollStartRef.current < MAX_POLL_MS) {
+        pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+      }
+    };
+
+    poll();
+  };
+
   const handlePay = () => {
     if (!user) {
       router.push('/login');
@@ -59,10 +128,6 @@ export default function CheckoutPage() {
     }
     if (isOwnListing) {
       toast.error(t('checkout:errors.ownListing'));
-      return;
-    }
-    if (!canCheckout) {
-      toast.error(t('checkout:errors.sellerNoPromptPay'));
       return;
     }
     const validation = validateShippingAddress(address);
@@ -75,37 +140,39 @@ export default function CheckoutPage() {
   };
 
   const handleConfirmPayment = async () => {
-    if (!user) return;
-    if (!slipFile) {
-      toast.error(t('checkout:errors.slipRequired'));
-      return;
-    }
+    if (!user || !listing) return;
     setShowConfirmModal(false);
     setPaying(true);
     try {
-      const slipPath = await uploadPaymentSlip(slipFile, user.id);
       const tx = await createOrder({
         listing,
         buyer: user,
         delivery_method: listing.delivery_options?.includes('ship') ? 'ship' : 'pickup',
         shipping_address: address,
-        payment_slip_path: slipPath,
-        payment_ref: refNumber.trim() || undefined,
+        payment_method: paymentMethod,
       });
-      // Try automated SlipOK verification; falls back to manual seller confirm.
-      const verdict = await requestSlipVerification(tx.id);
-      if (verdict === 'verified') {
-        toast.success(t('checkout:toast.paymentAutoVerified'));
-      } else if (verdict === 'failed') {
-        toast.info(t('checkout:toast.paymentManual'));
-      } else {
-        toast.success(t('checkout:toast.slipSubmitted'));
+      setOrderId(tx.id);
+
+      if (paymentMethod === 'direct') {
+        // Direct / P2P payment — no platform money movement.
+        toast.success(t('checkout:toast.orderCreated'));
+        router.push(`/order/${tx.id}`);
+        setPaying(false);
+        return;
       }
-      router.push(`/order/${tx.id}`);
+
+      const pi = await createStripePaymentIntent(tx.id);
+      setClientSecret(pi.clientSecret);
+      toast.success(t('checkout:toast.orderCreated'));
+      setPaying(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('checkout:checkout.orderError'));
       setPaying(false);
     }
+  };
+
+  const handleStripePaid = () => {
+    if (orderId) startPolling(orderId);
   };
 
   return (
@@ -180,50 +247,84 @@ export default function CheckoutPage() {
             {t('checkout:securePayment')}
           </h2>
 
-          {/* Payment method */}
-          <div className="flex items-center justify-center gap-2 py-3 mb-5 rounded-lg border border-emerald-500 bg-emerald-500/5 text-emerald-400 text-sm">
-            <QrCode className="w-4 h-4" />
-            {t('checkout:checkout.promptPay')}
+          {/* Payment method selector */}
+          <div className="grid sm:grid-cols-2 gap-3 mb-5">
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('stripe')}
+              className={`text-left p-4 rounded-xl border transition-colors ${paymentMethod === 'stripe' ? 'border-emerald-500 bg-emerald-500/5' : 'border-white/10 hover:border-white/20'}`}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <CreditCard className={`w-4 h-4 ${paymentMethod === 'stripe' ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                <p className="text-sm font-medium">{t('checkout:paymentMethod.stripe')}</p>
+              </div>
+              <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:paymentMethod.stripeDescription')}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('direct')}
+              className={`text-left p-4 rounded-xl border transition-colors ${paymentMethod === 'direct' ? 'border-amber-500 bg-amber-500/5' : 'border-white/10 hover:border-white/20'}`}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <MessagesSquare className={`w-4 h-4 ${paymentMethod === 'direct' ? 'text-amber-400' : 'text-zinc-400'}`} />
+                <p className="text-sm font-medium">{t('checkout:paymentMethod.direct')}</p>
+              </div>
+              <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:paymentMethod.directDescription')}</p>
+            </button>
           </div>
 
-          {/* PromptPay Panel */}
-          {method === 'promptpay' && (
-            <div className="text-center py-6 bg-zinc-800/30 rounded-lg border border-white/5">
-              {!canCheckout ? (
-                <div className="flex flex-col items-center gap-3 text-red-400">
-                  <QrCode className="w-12 h-12 opacity-50" />
-                  <p className="text-sm font-medium">{t('checkout:errors.sellerNoPromptPay')}</p>
-                </div>
-              ) : (
-                <>
-                  <div className="w-44 h-44 bg-white rounded-xl mx-auto mb-4 p-2 shadow-lg flex items-center justify-center">
-                    {qr
-                      ? <img src={qr} alt={t('checkout:promptPayQrAlt')} loading="lazy" decoding="async" className="w-full h-full object-contain" />
-                      : <QrCode className="w-12 h-12 text-zinc-400" />}
-                  </div>
-                  <p className="text-sm text-zinc-300 mb-1">{t('checkout:scanToPay', { total: total.toLocaleString(), currency: t('common:currency') })}</p>
-                  <p className="text-xs text-zinc-500">{t('checkout:paysSellerDirectly', { seller: listing.seller?.display_name || t('common:unknown') })}</p>
-                  <p className="text-[11px] text-zinc-600 mt-1">{t('checkout:afterPayConfirm')}</p>
-                  <div className="flex items-center justify-center gap-3 mt-3">
-                    {(t('checkout:supportedBanks', { returnObjects: true }) as string[]).map((bank) => (
-                      <span key={bank} className="text-[10px] bg-zinc-800 px-2 py-1 rounded text-zinc-500">{bank}</span>
-                    ))}
-                  </div>
-                </>
-              )}
+          {paymentMethod === 'direct' && (
+            <div className="flex items-start gap-3 text-sm text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 mb-5">
+              <Shield className="w-5 h-5 shrink-0 mt-0.5" />
+              <p>{t('checkout:paymentMethod.directWarning')}</p>
             </div>
           )}
 
+          {/* Stripe Payment Element */}
+          {paymentMethod === 'stripe' && STRIPE_ENABLED && clientSecret && (
+            <div className="text-left py-4 bg-zinc-800/30 rounded-lg border border-white/5 px-4">
+              <Elements
+                stripe={stripePromise}
+                options={{ clientSecret, appearance: { theme: 'night' } }}
+              >
+                <StripePaymentForm
+                  clientSecret={clientSecret}
+                  onPaid={handleStripePaid}
+                  totalLabel={t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}
+                />
+              </Elements>
+            </div>
+          )}
+
+          {paymentMethod === 'stripe' && !clientSecret && (
+            <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-zinc-400">
+              {t('checkout:qrWillAppear')}
+            </div>
+          )}
+
+          {paymentMethod === 'stripe' && !STRIPE_ENABLED && (
+            <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-amber-400">
+              Stripe is not configured.
+            </div>
+          )}
+
+          {paymentMethod === 'direct' && (
+            <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-zinc-400">
+              {t('checkout:paymentMethod.directDescription')}
+            </div>
+          )}
         </div>
 
         {/* Escrow Notice */}
-        <div className="flex items-start gap-3 text-sm text-zinc-500 mb-6 bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-4">
-          <Shield className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-emerald-400 font-medium mb-0.5">{t('checkout:buyerProtection.title')}</p>
-            <p>{t('checkout:buyerProtection.description')}</p>
+        {paymentMethod === 'stripe' && (
+          <div className="flex items-start gap-3 text-sm text-zinc-500 mb-6 bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-4">
+            <Shield className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-emerald-400 font-medium mb-0.5">{t('checkout:buyerProtection.title')}</p>
+              <p>{t('checkout:buyerProtection.description')}</p>
+            </div>
           </div>
-        </div>
+        )}
 
         {isOwnListing && (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6 text-sm text-amber-400">
@@ -231,18 +332,12 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {!canCheckout && !isOwnListing && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 text-sm text-red-400">
-            {t('checkout:errors.sellerNoPromptPay')}
-          </div>
-        )}
-
         <Button
           onClick={handlePay}
-          disabled={paying || !canCheckout || isOwnListing}
+          disabled={paying || isOwnListing || !!clientSecret}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
         >
-          {paying ? t('checkout:confirming') : t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}
+          {paying ? t('checkout:confirming') : clientSecret ? t('checkout:completePayment') : t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}
         </Button>
 
         <p className="text-xs text-zinc-500 text-center mt-3">
@@ -259,82 +354,26 @@ export default function CheckoutPage() {
                 <CheckCircle className="w-5 h-5 text-emerald-400" />
                 {t('checkout:confirmPayment.title')}
               </h3>
-              <button onClick={() => setShowConfirmModal(false)} className="text-zinc-500 hover:text-white" aria-label={t('common:actions.close')}>
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
-            <p className="text-sm text-zinc-400 mb-4">
-              {t('checkout:confirmPayment.description')}
+            <p className="text-sm text-zinc-400 mb-6">
+              {t('checkout:confirmPayment.description', { total: total.toLocaleString(), currency: t('common:currency') })}
             </p>
 
-            <div className="space-y-4">
-              {/* Slip upload */}
-              <div>
-                <label className="text-sm text-zinc-400 mb-1.5 block">{t('checkout:confirmPayment.slipLabel')} <span className="text-emerald-400">*</span></label>
-                <input
-                  ref={slipInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setSlipFile(file);
-                      const reader = new FileReader();
-                      reader.onload = (ev) => setSlipPreview(ev.target?.result as string);
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                {slipPreview ? (
-                  <div className="relative rounded-lg overflow-hidden border border-white/10">
-                    <img src={slipPreview} alt={t('checkout:confirmPayment.slipLabel')} className="w-full h-32 object-contain bg-zinc-800" />
-                    <button
-                      onClick={() => { setSlipPreview(''); setSlipFile(null); }}
-                      className="absolute top-1 right-1 bg-black/70 rounded-full p-1"
-                      aria-label={t('common:actions.close')}
-                    >
-                      <X className="w-3 h-3 text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => slipInputRef.current?.click()}
-                    className="w-full py-6 border border-dashed border-white/10 rounded-lg text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition-colors flex flex-col items-center gap-1"
-                  >
-                    <Upload className="w-5 h-5" />
-                    <span className="text-xs">{t('checkout:confirmPayment.uploadSlipScreenshot')}</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Reference number */}
-              <div>
-                <label className="text-sm text-zinc-400 mb-1.5 block">{t('checkout:confirmPayment.transactionReference')}</label>
-                <input
-                  type="text"
-                  value={refNumber}
-                  onChange={(e) => setRefNumber(e.target.value)}
-                  placeholder={t('checkout:confirmPayment.referencePlaceholder')}
-                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirmModal(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5 transition-colors"
+                disabled={paying}
+                className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 hover:bg-white/5 transition-colors disabled:opacity-50"
               >
                 {t('common:actions.cancel')}
               </button>
               <button
                 onClick={handleConfirmPayment}
-                disabled={paying || !slipFile}
+                disabled={paying}
                 className="flex-1 py-2.5 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
               >
-                {paying ? t('checkout:confirmPayment.submitting') : t('checkout:confirmPayment.submitPaymentSlip')}
+                {paying ? t('checkout:confirmPayment.submitting') : t('checkout:confirmPayment.confirm')}
               </button>
             </div>
           </div>

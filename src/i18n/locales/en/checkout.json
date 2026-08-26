@@ -6,7 +6,7 @@
     "price": "Price",
     "shipping": "Shipping",
     "total": "Total",
-    "sellerFeeNote": "Seller pays 8% platform fee",
+    "sellerFeeNote": "Seller pays platform fee",
     "shippingAddress": "Shipping address",
     "fullName": "Full name",
     "phone": "Phone number",
@@ -17,13 +17,26 @@
     "postalCode": "Postal code",
     "payment": "Payment",
     "promptPay": "PromptPay",
+    "paymentMethod": {
+      "title": "Payment method",
+      "stripe": "Pay online (card / bank)",
+      "stripeDescription": "Pay securely with Stripe. Your payment is held in escrow until you confirm delivery.",
+      "direct": "Pay the seller directly",
+      "directDescription": "Binance-P2P style. Arrange payment with the seller in chat and pay them directly. The platform does not verify funds — you pay at your own risk.",
+      "directWarning": "Direct payments are not protected by escrow. Only pay after agreeing with the seller in chat, and keep records of your payment."
+    },
     "scanQr": "Scan this QR with any Thai banking app",
     "uploadSlip": "Upload payment slip",
     "slipRequired": "Payment slip is required",
     "confirmPayment": "I have paid",
     "processing": "Processing...",
     "orderCreated": "Order created",
-    "orderError": "Could not create order"
+    "orderError": "Could not create order",
+    "scanWithBankApp": "Scan with your banking app to pay",
+    "qrWillAppear": "Your PromptPay QR will appear here after you confirm.",
+    "waitingForPayment": "Waiting for payment confirmation…",
+    "paymentConfirmed": "Payment confirmed",
+    "completePayment": "Complete payment in your banking app"
   },
   "order": {
     "title": "Order",
@@ -60,17 +73,18 @@
     "idLabel": "Order #{{id}}",
     "yourPlant": "Your plant",
     "plantPrice": "Plant",
-    "paymentVerifiedDate": "Payment verified by the seller on {{date}}",
-    "paymentVerified": "Payment verified by the seller",
-    "paymentPending": "Payment slip submitted — waiting for the seller to verify it against their bank before they ship.",
+    "paymentVerifiedDate": "Payment confirmed on {{date}}",
+    "paymentVerified": "Payment confirmed",
+    "paymentPending": "Waiting for payment confirmation. Please complete payment in your banking app.",
     "trackingLabel": "Tracking: {{number}}",
     "pickupLocation": "Pickup location",
     "openPin": "Open exact pin in Maps →",
-    "escrowInfo": "Payment verified via PromptPay. Funds are held in escrow until you confirm delivery.",
+    "escrowInfo": "Payment is held in escrow. Funds are released to the seller after you confirm delivery.",
     "disputeInfo": "If the plant does not match the listing, you can open a dispute within 48 hours of delivery.",
-    "confirmReceiptDescription": "Scan the QR code on the plant's tag to verify authenticity and confirm receipt. This will release funds to the seller.",
+    "confirmReceiptDescription": "Scan the QR code on the plant's tag to verify authenticity and confirm receipt, or upload a photo of the plant you received. This will release funds to the seller.",
     "scanQr": "Scan QR Code",
     "uploadPhoto": "Upload Photo",
+    "receiptSaved": "Receipt photo saved.",
     "statusMessages": {
       "shipped": "Your plant is on the way! You will be able to confirm receipt once it arrives.",
       "paid": "Waiting for seller to ship. You will receive tracking info once shipped.",
@@ -102,9 +116,9 @@
   "promptPayQrAlt": "PromptPay QR",
   "scanToPay": "Scan with your banking app to pay {{total}} {{currency}}",
   "paysSellerDirectly": "Pays {{seller}} directly via any Thai bank",
-  "afterPayConfirm": "After paying, tap the button below to confirm.",
+  "afterPayConfirm": "After paying, complete the payment in your banking app.",
   "confirming": "Confirming…",
-  "confirmPaid": "I've paid {{total}} {{currency}}",
+  "confirmPaid": "Pay {{total}} {{currency}}",
   "footer": "Your payment is held safely until you confirm delivery. No hidden fees — the price above is all you pay.",
   "packedShipmentAlt": "Packed shipment",
   "labels": {
@@ -123,20 +137,22 @@
   "toast": {
     "paymentAutoVerified": "Payment verified automatically — your order is protected by escrow.",
     "paymentManual": "We couldn't auto-verify your slip; the seller will review it manually.",
-    "slipSubmitted": "Slip submitted — the seller will verify your payment, then ship."
+    "slipSubmitted": "Slip submitted — the seller will verify your payment, then ship.",
+    "orderCreated": "Order created — scan the QR code to complete payment."
   },
   "buyerProtection": {
     "title": "Buyer Protection",
     "description": "Your payment is held in escrow. The seller only receives the money after you confirm the plant arrived safely. If there's a problem, you can open a dispute within 48 hours."
   },
   "confirmPayment": {
-    "title": "Confirm Your Payment",
-    "description": "After paying via your banking app, upload your payment slip. The seller verifies it against their bank before shipping — this protects you both.",
+    "title": "Confirm Your Order",
+    "description": "You are about to pay {{total}} {{currency}}. After confirming, a PromptPay QR code will be generated for you to complete the payment.",
     "slipLabel": "Payment Slip",
     "uploadSlipScreenshot": "Upload payment slip screenshot",
     "transactionReference": "Transaction Reference (optional)",
     "referencePlaceholder": "e.g. 20240605ABC123",
-    "submitting": "Submitting…",
+    "submitting": "Creating order…",
+    "confirm": "Confirm & Pay",
     "submitPaymentSlip": "Submit Payment Slip"
   },
   "markShipped": {

@@ -376,8 +376,8 @@
         "desc": "Pay via PromptPay, funds held in escrow until you confirm delivery with a QR scan. Sellers get paid, buyers get protection."
       },
       "fee": {
-        "title": "8% Flat Fee",
-        "desc": "No listing fees, no monthly subscriptions, no featured placement charges. We take 8% when you sell. That is it."
+        "title": "Simple Fee",
+        "desc": "No listing fees, no monthly subscriptions, no featured placement charges. Platform fee is applied only when you sell."
       },
       "everyPlant": {
         "title": "For Every Plant",
@@ -547,7 +547,7 @@
     "faq": {
       "title": "Common Questions",
       "startSelling": "How do I start selling?",
-      "startSellingAnswer": "Create an account, go to Seller Dashboard, and click \"New Listing\". You will need a PromptPay ID for payouts.",
+      "startSellingAnswer": "Create an account, go to Seller Dashboard, and click \"New Listing\". You will need a verified payout method to receive funds.",
       "damaged": "What if my plant arrives damaged?",
       "damagedAnswer": "Open a dispute within 48 hours of delivery. Upload photos and our team will review within 24 hours.",
       "qr": "How does the QR provenance work?",
@@ -555,7 +555,7 @@
       "commonPlants": "Can I sell common plants?",
       "commonPlantsAnswer": "Absolutely. Root is for every plant, common or rare.",
       "paid": "When do I get paid as a seller?",
-      "paidAnswer": "Funds are released 48 hours after delivery confirmation (or auto-confirmed). Payouts process within 1-2 business days.",
+      "paidAnswer": "Funds are released after delivery confirmation. Payouts process within 1-2 business days once you have a verified payout method.",
       "refunds": "Can I get a refund?",
       "refundsAnswer": "Refunds are handled through our dispute process. Open a dispute within 48 hours of delivery with photos and details. Our team will review and may issue a full or partial refund.",
       "disputes": "How do disputes work?",
@@ -582,7 +582,7 @@
   },
   "fees": {
     "title": "Simple, Transparent Fees",
-    "subtitle": "8% from sellers only. No hidden costs, no monthly fees.",
+    "subtitle": "{{percent}}% from sellers only. No hidden costs, no monthly fees.",
     "buyers": {
       "title": "Buyers",
       "price": "Free",
@@ -596,8 +596,9 @@
     },
     "sellers": {
       "title": "Sellers",
-      "price": "8%",
+      "price": "{{percent}}%",
       "note": "of sale price only when sold",
+      "free": "Free",
       "features": {
         "freeListings": "Unlimited free listings",
         "qrTag": "QR provenance tag generation",
@@ -609,7 +610,7 @@
     "example": {
       "title": "Example Breakdown",
       "soldFor": "Plant sold for",
-      "platformFee": "Platform fee (8%)",
+      "platformFee": "Platform fee ({{percent}}%)",
       "youReceive": "You receive",
       "soldForValue": "{{value}} {{currency}}",
       "platformFeeValue": "{{value}} {{currency}}",
@@ -638,7 +639,7 @@
       },
       "escrow": {
         "title": "3. Secure Escrow Payment",
-        "desc": "Pay via PromptPay or card. Your money is held in escrow — the seller only receives it after you confirm delivery. Platform fee is 8%, taken from the seller's side only."
+        "desc": "Pay via PromptPay or card. Your money is held in escrow — the seller only receives it after you confirm delivery. Platform fee is {{percent}}%, taken from the seller's side only."
       },
       "ship": {
         "title": "4. Seller Ships with QR",
@@ -893,7 +894,7 @@
     },
     "fees": {
       "title": "6. Fees",
-      "text": "Root charges an 8% platform fee on the sale price, deducted from the seller's payout. There are no listing fees, no monthly fees, and no buyer fees. Payouts are processed to the seller's registered PromptPay ID within 1-2 business days of transaction completion."
+      "text": "Root charges a {{percent}}% platform fee on the sale price, deducted from the seller's payout. There are no listing fees, no monthly fees, and no buyer fees. Payouts are processed to the seller's registered payout method within 1-2 business days of transaction completion."
     },
     "prohibited": {
       "title": "7. Prohibited Items",

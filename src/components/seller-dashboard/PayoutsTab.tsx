@@ -3,7 +3,8 @@
 
 import Link from 'next/link';
 import type { TFunction } from 'i18next';
-import { ArrowDownLeft } from 'lucide-react';
+import { ArrowDownLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { PLATFORM_FEE_PERCENT } from '@/lib/platform-config';
 import type { Transaction } from '@/types';
 
 export interface TransactionPayoutItem {
@@ -34,12 +35,37 @@ interface PayoutsTabProps {
   completedSales: Transaction[];
   pendingRevenue: number;
   pendingSales: Transaction[];
+  stripeOnboardingComplete: boolean;
+  stripeConnecting: boolean;
+  onConnectStripe: () => void;
   t: TFunction;
 }
 
-export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRevenue, completedSales, pendingRevenue, pendingSales, t }: PayoutsTabProps) {
+export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRevenue, completedSales, pendingRevenue, pendingSales, stripeOnboardingComplete, stripeConnecting, onConnectStripe, t }: PayoutsTabProps) {
   return (
     <div className="space-y-6">
+      {stripeOnboardingComplete ? (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-300">{t('dashboard:seller.stripeConnected')}</p>
+        </div>
+      ) : (
+        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">{t('dashboard:seller.connectStripe')}</p>
+            <p className="text-xs text-zinc-500 mt-1">{t('dashboard:seller.connectStripeHint')}</p>
+          </div>
+          <button
+            onClick={onConnectStripe}
+            disabled={stripeConnecting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 shrink-0"
+          >
+            {stripeConnecting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {stripeConnecting ? t('dashboard:seller.connectingStripe') : t('dashboard:seller.connectStripe')}
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.availableBalance')}</p>
@@ -54,7 +80,7 @@ export function PayoutsTab({ payouts, expandedPayout, setExpandedPayout, totalRe
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.totalFees')}</p>
           <p className="text-xl font-semibold text-amber-400">{completedSales.reduce((sum: number, sale: Transaction) => sum + sale.platform_fee_thb, 0).toLocaleString()} {t('common:currency')}</p>
-          <p className="text-xs text-zinc-600 mt-1">8% {t('dashboard:seller.perSale')}</p>
+          <p className="text-xs text-zinc-600 mt-1">{PLATFORM_FEE_PERCENT === 0 ? t('dashboard:seller.noFee') : `${PLATFORM_FEE_PERCENT}% ${t('dashboard:seller.perSale')}`}</p>
         </div>
         <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
           <p className="text-xs text-zinc-500 mb-1">{t('dashboard:seller.payoutMethod')}</p>

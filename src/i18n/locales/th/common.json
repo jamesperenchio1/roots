@@ -376,8 +376,8 @@
         "desc": "จ่ายผ่าน PromptPay เงินจะถูกเก็บไว้ในเอสโครว์จนกว่าคุณจะยืนยันการรับสินค้าด้วยการสแกน QR ผู้ขายได้เงิน ผู้ซื้อได้ความคุ้มครอง"
       },
       "fee": {
-        "title": "ค่าธรรมเนียม 8%",
-        "desc": "ไม่มีค่าลงขาย ไม่มีค่าสมาชิกรายเดือน ไม่มีค่าโปรโมต เราหัก 8% เมื่อคุณขายได้เท่านั้น"
+        "title": "Simple Fee",
+        "desc": "No listing fees, no monthly subscriptions, no featured placement charges. Platform fee is applied only when you sell."
       },
       "everyPlant": {
         "title": "สำหรับทุกต้นไม้",
@@ -547,7 +547,7 @@
     "faq": {
       "title": "คำถามที่พบบ่อย",
       "startSelling": "เริ่มขายต้นไม้อย่างไร?",
-      "startSellingAnswer": "สร้างบัญชี ไปที่บัญชีผู้ขาย แล้วคลิก \"ลงขายใหม่\" คุณจะต้องมี PromptPay ID สำหรับรับเงิน",
+      "startSellingAnswer": "Create an account, go to Seller Dashboard, and click \"New Listing\". You will need a verified payout method to receive funds.",
       "damaged": "หากต้นไม้ได้รับความเสียหายจากการจัดส่งต้องทำอย่างไร?",
       "damagedAnswer": "เปิดข้อพิพาทภายใน 48 ชั่วโมงหลังได้รับสินค้า อัปโหลดรูปภาพและทีมงานของเราจะพิจารณาภายใน 24 ชั่วโมง",
       "qr": "QR พิสูจน์ต้นกำเนิดทำงานอย่างไร?",
@@ -555,7 +555,7 @@
       "commonPlants": "ขายต้นไม้ธรรมดาได้หรือไม่?",
       "commonPlantsAnswer": "ได้แน่นอน ROOTS เปิดรับทุกต้นไม้ ไม่ว่าจะหายากหรือธรรมดา",
       "paid": "ผู้ขายจะได้รับเงินเมื่อใด?",
-      "paidAnswer": "เงินจะถูกปล่อย 48 ชั่วโมงหลังจากผู้ซื้อยืนยันการรับสินค้า (หรือยืนยันอัตโนมัติ) การโอนเงินจะดำเนินการภายใน 1-2 วันทำการ",
+      "paidAnswer": "Funds are released after delivery confirmation. Payouts process within 1-2 business days once you have a verified payout method.",
       "refunds": "ขอคืนเงินได้หรือไม่?",
       "refundsAnswer": "การคืนเงินจะดำเนินการผ่านกระบวนการข้อพิพาท เปิดข้อพิพาทภายใน 48 ชั่วโมงหลังได้รับสินค้า พร้อมรูปภาพและรายละเอียด ทีมงานจะพิจารณาและอาจคืนเงินเต็มจำนวนหรือบางส่วน",
       "disputes": "ข้อพิพาททำงานอย่างไร?",
@@ -582,7 +582,7 @@
   },
   "fees": {
     "title": "ค่าธรรมเนียมที่เรียบง่ายและโปร่งใส",
-    "subtitle": "เก็บจากผู้ขายเพียง 8% ไม่มีค่าใช้จ่ายแอบแฝง ไม่มีค่าสมาชิกรายเดือน",
+    "subtitle": "{{percent}}% from sellers only. No hidden costs, no monthly fees.",
     "buyers": {
       "title": "ผู้ซื้อ",
       "price": "ฟรี",
@@ -596,8 +596,9 @@
     },
     "sellers": {
       "title": "ผู้ขาย",
-      "price": "8%",
-      "note": "ของราคาขายเท่านั้นเมื่อขายได้",
+      "price": "{{percent}}%",
+      "note": "of sale price only when sold",
+      "free": "Free",
       "features": {
         "freeListings": "ลงขายได้ไม่จำกัด",
         "qrTag": "สร้างแท็ก QR พิสูจน์ต้นกำเนิด",
@@ -609,8 +610,8 @@
     "example": {
       "title": "ตัวอย่างการคำนวณ",
       "soldFor": "ขายต้นไม้ได้",
-      "platformFee": "ค่าธรรมเนียมแพลตฟอร์ม (8%)",
-      "youReceive": "คุณได้รับ",
+      "platformFee": "Platform fee ({{percent}}%)",
+      "youReceive": "You receive",
       "soldForValue": "{{value}} {{currency}}",
       "platformFeeValue": "{{value}} {{currency}}",
       "youReceiveValue": "{{value}} {{currency}}"
@@ -638,7 +639,7 @@
       },
       "escrow": {
         "title": "3. ชำระเงินผ่านเอสโครว์",
-        "desc": "จ่ายผ่าน PromptPay หรือบัตร เงินของคุณจะถูกเก็บไว้ในเอสโครว์ — ผู้ขายจะได้รับเงินหลังจากคุณยืนยันการรับสินค้า ค่าธรรมเนียมแพลตฟอร์ม 8% หักจากฝั่งผู้ขายเท่านั้น"
+        "desc": "Pay via PromptPay or card. Your money is held in escrow — the seller only receives it after you confirm delivery. Platform fee is {{percent}}%, taken from the seller's side only."
       },
       "ship": {
         "title": "4. ผู้ขายจัดส่งพร้อม QR",
@@ -893,7 +894,7 @@
     },
     "fees": {
       "title": "6. ค่าธรรมเนียม",
-      "text": "ROOTS คิดค่าธรรมเนียมแพลตฟอร์ม 8% จากราคาขาย หักจากเงินที่จ่ายให้ผู้ขาย ไม่มีค่าลงขาย ไม่มีค่าสมาชิกรายเดือน และไม่มีค่าธรรมเนียมผู้ซื้อ การจ่ายเงินจะดำเนินการไปยัง PromptPay ID ที่ลงทะเบียนของผู้ขายภายใน 1-2 วันทำการหลังจากธุรกรรมเสร็จสิ้น"
+      "text": "Root charges a {{percent}}% platform fee on the sale price, deducted from the seller's payout. There are no listing fees, no monthly fees, and no buyer fees. Payouts are processed to the seller's registered payout method within 1-2 business days of transaction completion."
     },
     "prohibited": {
       "title": "7. สินค้าห้ามลงขาย",

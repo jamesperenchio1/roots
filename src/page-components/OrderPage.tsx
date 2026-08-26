@@ -8,7 +8,7 @@ import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageS
 import { useTranslation } from 'react-i18next';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
-import { updateOrderStatus, uploadDisputeEvidence, hasReviewedTransaction, getTransactionEvents } from '@/lib/api';
+import { updateOrderStatus, uploadReceiptPhoto, hasReviewedTransaction, getTransactionEvents, confirmDirectPayment } from '@/lib/api';
 import { verifyQrFromFile } from '@/lib/qr-verify';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,7 +25,9 @@ export default function OrderPage() {
   const [events, setEvents] = useState<TransactionEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [directConfirming, setDirectConfirming] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!transactionId) return;
@@ -78,10 +80,15 @@ export default function OrderPage() {
           return;
         }
       }
-      await uploadDisputeEvidence(file, tx.buyer_id || 'anonymous');
+      let photoUrl: string | undefined;
+      if (method === 'photo' && file) {
+        photoUrl = await uploadReceiptPhoto(file, user?.id || tx.buyer_id || 'anonymous');
+        setReceiptPhotoUrl(photoUrl);
+      }
       await updateOrderStatus(tx.id, {
         status: 'completed',
         completed_at: new Date().toISOString(),
+        ...(photoUrl ? { receipt_photo_path: photoUrl } : {}),
       });
       toast.success(method === 'qr' ? t('checkout:order.qrVerified') : t('checkout:order.photoVerified'));
       setTimeout(() => router.push('/dashboard'), 1500);
@@ -89,6 +96,19 @@ export default function OrderPage() {
       toast.error(err instanceof Error ? err.message : t('checkout:order.confirmError'));
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const handleConfirmDirect = async () => {
+    setDirectConfirming(true);
+    try {
+      await confirmDirectPayment(tx.id);
+      toast.success(t('checkout:paymentConfirmed'));
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('checkout:order.confirmError'));
+    } finally {
+      setDirectConfirming(false);
     }
   };
 
@@ -223,6 +243,35 @@ export default function OrderPage() {
         </div>
 
         {/* Actions */}
+        {/* Direct payment confirmation */}
+        {status === 'pending_payment' && tx.payment_method === 'direct' && (
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6 mb-6">
+            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-amber-400" />
+              {t('checkout:paymentMethod.direct')}
+            </h3>
+            <p className="text-sm text-zinc-500 mb-4">{t('checkout:paymentMethod.directDescription')}</p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link href="/dashboard/messages" className="flex-1">
+                <Button variant="outline" className="w-full border-white/10 hover:bg-white/5">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  {t('marketplace:listing.messageSeller')}
+                </Button>
+              </Link>
+              {user && tx.buyer_id === user.id && (
+                <Button
+                  onClick={handleConfirmDirect}
+                  disabled={directConfirming}
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black"
+                >
+                  {directConfirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                  {t('checkout:confirmPayment.confirm')}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {status === 'delivered' && (
           <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -232,6 +281,9 @@ export default function OrderPage() {
             <p className="text-sm text-zinc-500 mb-4">
               {t('checkout:order.confirmReceiptDescription')}
             </p>
+            {receiptPhotoUrl && (
+              <p className="text-xs text-emerald-400 mb-3">{t('checkout:order.receiptSaved')}</p>
+            )}
             <div className="flex gap-3">
               <label className="flex-1 cursor-pointer">
                 <input
