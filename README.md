@@ -17,9 +17,11 @@ nurseries and collectors.
 - **Frontend:** Next.js 15 App Router + React 19 + TypeScript + Tailwind + shadcn/ui.
 - **Backend:** Supabase (Postgres + Auth + Storage + Row Level Security), free tier.
   Project ref: `daacilgagkphafpjdcte`.
-- **Payments:** Omise PromptPay. The platform collects buyer payments, holds
-  funds, and settles sellers via Omise Transfers. Webhooks update order status
-  automatically.
+- **Payments:** Stripe + direct (P2P). Buyers pay online via Stripe Payment
+  Element (cards / bank) or arrange direct payment with the seller in chat
+  (Binance-P2P style — the platform does not verify direct payments). Stripe
+  orders are held in escrow and settled to sellers via Stripe Connect Express
+  transfers; `stripe-webhook` updates order status automatically.
 - **Testing:** Vitest + jsdom + @testing-library/react.
 - **Deploy:** Vercel (preview deploy per push; production tracks `main`).
 
@@ -33,8 +35,10 @@ nurseries and collectors.
    curated taxonomy, set price, size, delivery options. Pickup listings can carry
    an area/landmark plus optional exact GPS pin. A provenance QR is generated for
    the physical plant tag.
-3. **Browse & buy** — checkout renders a real PromptPay QR for the exact amount,
-   payable to the seller. Confirming creates an escrow-style order.
+3. **Browse & buy** — at checkout the buyer picks a payment method: **Stripe**
+   (pay online via Payment Element; funds are held in escrow) or **Direct**
+   (arrange and pay the seller in chat; the platform does not verify funds, so
+   pay at your own risk). Confirming creates an order.
 4. **Fulfil** — orders move `paid_in_escrow → shipped → delivered → completed`.
    Sellers mark shipped (courier + tracking + optional photo of the packed box);
    the exact pickup pin is revealed to the buyer post-purchase.
@@ -72,7 +76,8 @@ in-memory-only (they work in-session, then vanish on reload). See the table belo
 Other conventions:
 - `src/lib/api.ts` is the single data-access layer — all Supabase calls live here.
 - `src/lib/supabase.ts` holds the client; `src/lib/validation.ts` does input
-  sanitisation; `src/lib/promptpay.ts` builds the EMVCo QR payload;
+  sanitisation; `src/lib/platform-config.ts` holds the platform fee config
+  (currently 0% — the platform takes no fee during the pilot);
   `src/lib/logger.ts` is the logging shim (wire Sentry here).
 - Auth is in `src/hooks/useAuth.tsx`; route guards are `AuthGuard`/`AdminGuard`.
 
@@ -173,18 +178,18 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
 - ✅ **Durable reviews / price_alerts / disputes** — the last three ephemeral
   features now persist (tables + RLS + hydration). All social features survive
   reload.
-- ✅ **Payment-slip verification** — the buyer's slip is now *required* and saved
-  to a private `payment-slips` bucket (was previously discarded). The order is
-  created `payment_confirmed=false`; the **seller** reviews the slip (signed URL)
-  and confirms receipt against their own bank, which unlocks shipping. Closes the
-  one-click "I've paid" self-confirm hole.
-- ✅ **Automated SlipOK verification** — the `verify-slip` edge function (called
-  from checkout) downloads the slip, sends it to SlipOK, and on a genuine,
-  amount-matching slip flips `payment_confirmed` server-side (service role) so no
-  seller action is needed. Gated behind `SLIPOK_*` secrets; without them it
-  returns `manual` and the seller-confirm path is used. A DB trigger
-  (`guard_payment_confirmed`) ensures only the seller or the edge function — not
-  the buyer — can set `payment_confirmed`.
+- ✅ **Two-payment model** — buyers choose **Stripe** (online via Payment
+  Element; funds held in escrow, settled to the seller via Stripe Connect
+  Express transfer on completion) or **Direct** (Binance-P2P style payment
+  arranged in chat; the platform does not verify funds and the order advances
+  via manual confirmations). Checkout re-routes Stripe redirects through
+  `/checkout/complete`.
+- ✅ **Stripe payouts & seller onboarding** — sellers connect a Stripe Express
+  account from the dashboard (Payouts tab); `process-payout` transfers to the
+  seller's connected account once an order completes (Stripe orders only).
+- ✅ **Platform fee = 0%** — the platform takes no fee during the pilot
+  (`PLATFORM_FEE_PERCENT` defaults to 0 in `src/lib/platform-config.ts`); all
+  fee UI/strings were removed.
 - ✅ **Real marketplace data everywhere** — market charts, trending panels
   (Hot/High-value/Cooling Off), species pages, and browse listings are now
   populated from live Supabase data instead of empty/mock state.
@@ -204,34 +209,38 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
 
 1. Apply the latest `supabase/migrations/` files to the live DB if not already
    done (`supabase db push` or run them in the Supabase SQL Editor).
-2. Tighten the production checklist items below (email verification, admin
-   bypass, storage-bucket listing policy, PromptPay slip verification).
-3. Perf: the largest remaining chunk is `recharts` (~415KB) — consider a lighter
+2. Configure the Stripe webhook endpoint (`/functions/v1/stripe-webhook`) in the
+   Stripe dashboard (test + live) with `STRIPE_WEBHOOK_SECRET`, and set the
+   Stripe env vars (see below).
+3. Tighten the production checklist items below (email verification, admin
+   bypass, storage-bucket listing policy).
+4. Perf: the largest remaining chunk is `recharts` (~415KB) — consider a lighter
    charting lib or lazy-mounting charts below the fold.
 
-**Workflow note:** development happens on `claude/exciting-allen-2j8tm2`, and
-finished features are pushed **directly to `main`** (the owner opted out of PR
-review for this cluster). Each Vercel preview/prod deploy is automatic.
+**Workflow note:** finished features are pushed **directly to `main`** (the
+owner opted out of PR review for this cluster). Each Vercel preview/prod deploy
+is automatic.
 
 ---
 
 ## Production checklist
 
-- [ ] Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars
+- [ ] Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` env vars
 - [x] Create the referenced tables with proper RLS + hydration
 - [ ] Apply the latest `supabase/migrations/` files to the live DB (`supabase db push` or SQL Editor)
 - [ ] Storage buckets exist/public with a 5MB limit (`listing-photos`)
 - [ ] Tighten RLS policies (esp. `updateProfile`); add RLS policy tests
-- [x] **PromptPay trust model:** buyer uploads a required payment slip; it is
-      auto-verified via SlipOK when configured, else the seller confirms receipt
-      manually before shipping. `payment_confirmed` is protected by a DB trigger
-      (only the seller or the service-role edge function may set it — the buyer
-      cannot forge it).
-      - **To enable auto-verification:** set `SLIPOK_BRANCH_ID` and
-        `SLIPOK_API_KEY` as secrets on the `verify-slip` edge function. Until
-        then it returns `manual` and the seller-confirm flow is used.
-      - *Next:* tighten the `payment-slips` storage SELECT policy to the two
-        transaction parties; consider EasySlip/RDCW as alternative providers.
+- [ ] **Stripe payment trust model:** set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
+      `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and
+      `STRIPE_CONNECT_CLIENT_ID` (test + live) in Vercel. Configure the
+      `stripe-webhook` endpoint in the Stripe dashboard (test + live) so order
+      status updates automatically. Sellers connect a Stripe Express account
+      from the Payouts tab to receive transfers.
+      - *Direct (P2P) payments are not platform-verified* — the buyer pays the
+        seller in chat at their own risk; the platform shows a trust warning.
+      - *Note:* Thailand-based platforms cannot self-serve Stripe Express
+        accounts for Thai connected accounts via the API in all cases — contact
+        Stripe sales if onboarding fails.
 - [ ] Enable email verification (pilot auto-confirms accounts)
 - [ ] Hide `loginAsLocalAdmin()` dev bypass before public launch
 - [ ] Configure Supabase auth email templates + Storage CORS + custom domain
@@ -241,8 +250,11 @@ review for this cluster). Each Vercel preview/prod deploy is automatic.
 
 ## Architecture decisions
 
-- **HashRouter** for static-host compatibility (Vercel/GitHub Pages/Netlify).
-- **Client-side PromptPay** keeps the app free-tier; no payment gateway needed.
+- **App Router routes** for all pages (no HashRouter); a client `HashRedirect`
+  shim rewrites legacy `#/…` links for static-host compatibility
+  (Vercel/GitHub Pages/Netlify).
+- **Client-side Stripe + direct payments** keeps the app free-tier; no gateway
+  processing fees on the platform beyond Stripe's own rates.
 - **Live Supabase data only** — no fabricated listings; real data hydrates the
   in-memory store at boot.
 - **In-memory store + Supabase hydration** (see Architecture) — fast synchronous

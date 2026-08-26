@@ -6,7 +6,7 @@
 
 ## 1. What this repo is
 
-**Roots** is a Thai plant-trading marketplace. Sellers list plants, buyers pay via PromptPay QR, and the site mediates shipping + escrow. It is currently a Vite + React 19 SPA deployed as static files on Vercel, backed by Supabase (PostgreSQL + Storage + Auth + Realtime).
+**Roots** is a Thai plant-trading marketplace. Sellers list plants, buyers pay via Stripe (or arrange a direct P2P payment in chat), and the site mediates shipping + escrow. It is currently a Next.js 15 App Router app deployed on Vercel, backed by Supabase (PostgreSQL + Storage + Auth + Realtime).
 
 **Goal of this migration:** Add SSR so that public listing pages, seller profiles, and species pages are visible to search engines and generate correct Open Graph previews when shared in LINE and Facebook groups.
 
@@ -131,7 +131,6 @@ src/
     contact/page.tsx
     how-it-works/page.tsx
     provenance/page.tsx
-    fees/page.tsx
     shipping-guide/page.tsx
     scan/page.tsx
     identify/page.tsx

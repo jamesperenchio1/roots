@@ -7,7 +7,7 @@ This document tracks the security hardening work applied to ROOTS and any remain
 ### Phase 1 — Critical exposures & backdoors
 - Moved Upstash Redis REST token out of the browser bundle into a Supabase Edge Function (`rate-limit`).
 - Added caller authorization to all Edge Functions via shared `CRON_SECRET` / `Authorization` checks.
-- Secured `verify-slip` so only transaction buyer/seller can trigger SlipOK verification.
+- Secured `stripe-webhook` via Stripe's signed webhook signatures (HMAC) so only genuine Stripe events update order status.
 - Removed the `loginAsLocalAdmin` development bypass from the production bundle.
 - Added security headers and a strict Content-Security-Policy in `vercel.json`.
 - Removed hardcoded Supabase credentials from `vercel.json` build env and `src/lib/supabase.ts`.
@@ -25,7 +25,7 @@ This document tracks the security hardening work applied to ROOTS and any remain
 - Tightened messaging RLS policies for participants, reactions, and attachments.
 - Fixed `qr_scans` SELECT policy to join `plants.current_owner_id`.
 - Removed arbitrary anonymous write access to plant identification requests and dependent rows.
-- Removed the hardcoded PromptPay fallback in checkout; checkout is blocked if the seller has no PromptPay ID.
+- Removed the hardcoded PromptPay fallback in checkout; checkout now requires a valid payment method (Stripe or direct).
 - Strengthened Supabase password policy to 8+ chars with uppercase, lowercase, number, and symbol.
 - Added `listings` RLS policies (select public active/own/admin, insert/update/delete own/admin).
 - Made `create_plant_for_listing()` `SECURITY DEFINER` so authenticated sellers can create listings while `plants` remains service-write-only.
