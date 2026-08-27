@@ -1,22 +1,33 @@
 'use client'
 
 
+import { useState } from 'react';
 import Link from 'next/link';
 import type { TFunction } from 'i18next';
-import { Package, CheckCircle } from 'lucide-react';
+import { Package, CheckCircle, Loader2 } from 'lucide-react';
 import type { Transaction } from '@/types';
 
 interface OrderCardProps {
   order: Transaction;
   onShip: (id: string) => void;
   onDeliver: (id: string) => void;
-  onConfirmReceived: (id: string) => void;
+  onConfirmReceived: (id: string) => void | Promise<void>;
   t: TFunction;
 }
 
 export function OrderCard({ order, onShip, onDeliver, onConfirmReceived, t }: OrderCardProps) {
   const timeline = ['pending_payment', 'paid_in_escrow', 'shipped', 'delivered', 'completed'];
   const step = timeline.indexOf(order.status);
+  const [confirmingReceived, setConfirmingReceived] = useState(false);
+
+  const handleConfirmReceived = async () => {
+    setConfirmingReceived(true);
+    try {
+      await onConfirmReceived(order.id);
+    } finally {
+      setConfirmingReceived(false);
+    }
+  };
 
   return (
     <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4">
@@ -59,7 +70,10 @@ export function OrderCard({ order, onShip, onDeliver, onConfirmReceived, t }: Or
               {t('checkout:order.youConfirmedReceivedDate', { date: new Date(order.seller_confirmed_received_at).toLocaleDateString() })}
             </p>
           ) : (
-            <button onClick={() => onConfirmReceived(order.id)} className="px-3 py-1.5 rounded-lg bg-white/10 text-white font-medium hover:bg-white/15">{t('checkout:order.markPaymentReceived')}</button>
+            <button onClick={handleConfirmReceived} disabled={confirmingReceived} className="px-3 py-1.5 rounded-lg bg-white/10 text-white font-medium hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
+              {confirmingReceived && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {t('checkout:order.markPaymentReceived')}
+            </button>
           )}
         </div>
       )}
