@@ -31,7 +31,7 @@ export default function MessagesSidebar({
 
   return (
     <div
-      className={`${hasActiveConversation ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/10 bg-zinc-900/20 flex-col md:min-h-[70vh]`}
+      className={`${hasActiveConversation ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/10 bg-zinc-900/20 flex-col min-h-0 md:h-[70vh]`}
     >
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-lg font-medium">{t('messages:title')}</h2>

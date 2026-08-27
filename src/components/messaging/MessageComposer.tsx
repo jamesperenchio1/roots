@@ -136,6 +136,9 @@ export default function MessageComposer({
       const dt = new DataTransfer();
       dt.items.add(file);
       addFiles(dt.files);
+    } catch (error) {
+      console.error('Failed to generate payment QR:', error);
+      toast.error(t('messages:paymentQrError'));
     } finally {
       setSharingQr(false);
     }
