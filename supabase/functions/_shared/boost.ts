@@ -4,15 +4,21 @@
  * continuous formula — keeps v1 simple and predictable to reason about on
  * both sides of the wire.
  *
- * This is the FRONTEND copy of the tier list, used by `BoostModal` to
- * render the slider/summary. The canonical, backend-side copy lives at
- * `supabase/functions/_shared/boost.ts` and is what `stripe-boost-checkout`
- * actually validates against server-side — Next.js code cannot import
- * from `supabase/functions/`, so the two files are necessarily separate
- * copies. They must stay numerically identical; `src/lib/boost.test.ts`
- * enforces this by importing both modules and deep-comparing `BOOST_TIERS`,
- * so any drift between them fails the test suite. If you change the
- * tiers, update BOTH files.
+ * This is the CANONICAL, backend-side copy of the tier list, imported by
+ * `stripe-boost-checkout` and any other edge function that needs to
+ * validate a boost purchase. It follows this repo's convention of shared
+ * Deno code living in `supabase/functions/_shared/` (see `auth.ts`,
+ * `cors.ts`, `stripe.ts` in this directory) rather than reaching across
+ * the `supabase/functions` boundary into the Next.js `src/` tree, which
+ * has no precedent elsewhere in this codebase and is fragile against a
+ * deploy pipeline that only ships `supabase/functions/**`.
+ *
+ * The frontend keeps its own copy at `src/lib/boost.ts` (Next.js code
+ * cannot import from `supabase/functions/`, which is excluded from the
+ * app's TypeScript/bundler project). The two files must stay numerically
+ * identical — `src/lib/boost.test.ts` asserts this by importing both
+ * modules and comparing `BOOST_TIERS` deeply, so any drift fails CI.
+ * If you change the tiers, update BOTH files.
  */
 
 export interface BoostTier {

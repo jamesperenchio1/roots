@@ -13,7 +13,7 @@ import {
   jsonResponse,
 } from '../_shared/auth.ts';
 import { stripeFetch } from '../_shared/stripe.ts';
-import { BOOST_TIERS, findMatchingBoostTier, getBoostTier } from '../../../src/lib/boost.ts';
+import { BOOST_TIERS, findMatchingBoostTier, getBoostTier } from '../_shared/boost.ts';
 
 interface Listing {
   id: string;

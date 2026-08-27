@@ -21,6 +21,26 @@ interface BoostModalProps {
   onClose: () => void;
 }
 
+// Maps each BOOST_TIERS entry (by its `hours` value) to the matching i18n
+// key in dashboard.json, so the modal renders a localized duration label
+// instead of the hardcoded English `tier.label` string from src/lib/boost.ts.
+const TIER_LABEL_KEYS: Record<number, string> = {
+  24: 'dashboard:seller.boost.tier24h',
+  72: 'dashboard:seller.boost.tier3d',
+  168: 'dashboard:seller.boost.tier7d',
+};
+
+function tierLabelKey(hours: number): string | undefined {
+  return TIER_LABEL_KEYS[hours];
+}
+
+function makeTierLabelGetter(t: (key: string, opts?: { defaultValue: string }) => string) {
+  return (tier: { hours: number; label: string }) => {
+    const key = tierLabelKey(tier.hours);
+    return key ? t(key, { defaultValue: tier.label }) : tier.label;
+  };
+}
+
 function BoostPaymentForm({ onPaid }: { onPaid: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -68,6 +88,7 @@ export function BoostModal({ listing, isOpen, onClose }: BoostModalProps) {
   if (!isOpen) return null;
 
   const tier = BOOST_TIERS[tierIndex];
+  const getTierLabel = makeTierLabelGetter(t);
   const isCurrentlyBoosted = !!listing.boosted_until && new Date(listing.boosted_until).getTime() > Date.now();
 
   const handleClose = () => {
@@ -149,7 +170,7 @@ export function BoostModal({ listing, isOpen, onClose }: BoostModalProps) {
               <div className="flex justify-between text-xs text-zinc-600 mt-1">
                 {BOOST_TIERS.map((bt, i) => (
                   <span key={i} className={i === tierIndex ? 'text-amber-400 font-medium' : ''}>
-                    {bt.label}
+                    {getTierLabel(bt)}
                   </span>
                 ))}
               </div>
@@ -159,7 +180,7 @@ export function BoostModal({ listing, isOpen, onClose }: BoostModalProps) {
               <p className="text-sm font-medium text-white">
                 {t('dashboard:seller.boost.summary', {
                   amount: tier.amountThb.toLocaleString(i18n.language),
-                  duration: tier.label,
+                  duration: getTierLabel(tier),
                 })}
               </p>
             </div>
