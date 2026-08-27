@@ -361,5 +361,12 @@ $$;
 -- scripts/seed-database.cjs, which runs with the service_role key).
 GRANT EXECUTE ON FUNCTION public.backfill_price_history(int) TO service_role;
 
--- Run the backfill now, for the last year, as part of applying this migration.
-SELECT public.backfill_price_history(365);
+-- Deliberately NOT invoked here. This function writes synthetic
+-- price_snapshots data, and the migration file is applied unconditionally by
+-- `supabase db push` / any migration deploy -- including production. The
+-- intent (see scripts/seed-database.cjs, which already calls this same RPC)
+-- was always to enrich SEED/DEMO data, not to silently rewrite a live
+-- market-data table as a side effect of shipping migrations. Run it
+-- deliberately instead, e.g. via `supabase functions invoke`/the SQL editor,
+-- or through scripts/seed-database.cjs for local/demo environments:
+--   SELECT public.backfill_price_history(365);

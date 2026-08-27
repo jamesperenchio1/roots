@@ -82,6 +82,7 @@
       "pending": "Your boost is being processed — it'll kick in within a minute.",
       "success": "Boost purchased! It'll take effect shortly.",
       "error": "Couldn't start the boost purchase. Please try again.",
+      "unavailable": "Boost isn't available right now.",
       "tier24h": "24 hours",
       "tier3d": "3 days",
       "tier7d": "7 days"
@@ -127,7 +128,6 @@
     "shippingSpeed": "Shipping speed",
     "plantCondition": "Plant condition",
     "communication": "Communication",
-    "valueForMoney": "Value for money",
     "listingAccuracy": "Listing accuracy",
     "noReviewsYet": "No reviews yet",
     "notEnoughData": "Not enough data",
@@ -135,7 +135,6 @@
     "topBuyers": "Top buyers",
     "noBuyerData": "No buyer data",
     "noRatingsYet": "No ratings yet",
-    "reviewsComingSoon": "Reviews coming soon",
     "newOrder": "New order received",
     "storeSettings": "Store settings",
     "paymentSettings": "Payment settings",

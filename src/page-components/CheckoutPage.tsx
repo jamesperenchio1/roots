@@ -317,12 +317,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {paymentMethod === 'stripe' && !STRIPE_CHECKOUT_AVAILABLE && (
-            <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-amber-400">
-              Stripe is not configured.
-            </div>
-          )}
-
           {paymentMethod === 'direct' && (
             <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-zinc-400">
               {t('checkout:paymentMethod.directDescription')}

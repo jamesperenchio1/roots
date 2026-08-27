@@ -25,6 +25,12 @@ interface MessageComposerProps {
   conversationId: string;
   messageId: string;
   onAttachmentsChange?: (attachments: import('@/types').MessageAttachment[]) => void;
+  // The listing's seller_id, when this conversation is tied to a listing.
+  // Used to distinguish "I'm the seller sharing my own payment QR for the
+  // buyer to pay" from "I'm the buyer" -- sharing a buyer's QR into the
+  // thread doesn't make sense since the seller is the one who's supposed to
+  // be paid.
+  listingSellerId?: string;
 }
 
 export default function MessageComposer({
@@ -38,6 +44,7 @@ export default function MessageComposer({
   conversationId,
   messageId,
   onAttachmentsChange,
+  listingSellerId,
 }: MessageComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
   const { user } = useAuth();
@@ -167,7 +174,19 @@ export default function MessageComposer({
     setIsDragging(false);
   };
 
+  // Only the listing's seller is who a buyer should pay, so only the seller
+  // sharing their own QR into the thread makes sense. When we know the
+  // listing's seller_id and the current user isn't it, disable sharing
+  // rather than let a buyer post their own (irrelevant, potentially
+  // confusing) payment QR. When there's no listing context (e.g. a
+  // non-listing DM), fall back to allowing it.
+  const isKnownNonSeller = !!listingSellerId && listingSellerId !== user?.id;
+
   const handleShareQr = async () => {
+    if (isKnownNonSeller) {
+      toast.error(t('messages:paymentQrSellerOnly'));
+      return;
+    }
     if (!user?.promptpay_id) {
       toast.error(t('messages:paymentQrMissing'));
       return;
@@ -319,9 +338,9 @@ export default function MessageComposer({
           size="icon"
           className="h-9 w-9 text-zinc-500 hover:text-white hover:bg-white/10"
           onClick={handleShareQr}
-          disabled={sharingQr}
-          aria-label={t('messages:sharePaymentQr')}
-          title={t('messages:sharePaymentQr')}
+          disabled={sharingQr || isKnownNonSeller}
+          aria-label={isKnownNonSeller ? t('messages:paymentQrSellerOnly') : t('messages:sharePaymentQr')}
+          title={isKnownNonSeller ? t('messages:paymentQrSellerOnly') : t('messages:sharePaymentQr')}
         >
           {sharingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
         </Button>

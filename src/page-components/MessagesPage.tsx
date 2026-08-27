@@ -353,6 +353,7 @@ export default function MessagesPage() {
               conversationId={activeConversationId}
               messageId={pendingMessageId}
               onAttachmentsChange={setPendingAttachments}
+              listingSellerId={activeConversation?.listing?.seller_id}
             />
           </>
         )}

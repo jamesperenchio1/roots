@@ -43,6 +43,7 @@
   "sharePaymentQr": "Share payment QR",
   "paymentQrMissing": "Add a PromptPay ID in Account settings before sharing a payment QR",
   "paymentQrError": "Failed to generate payment QR. Please try again.",
+  "paymentQrSellerOnly": "Only the seller can share a payment QR in this conversation",
   "paymentQrSafetyTip": "Only pay after you've confirmed this is really the seller — never send payment based on a QR from someone else",
   "today": "Today",
   "yesterday": "Yesterday",

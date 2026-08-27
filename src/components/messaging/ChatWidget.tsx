@@ -351,6 +351,7 @@ export default function ChatWidget() {
                     conversationId={activeConversationId}
                     messageId={pendingMessageId}
                     onAttachmentsChange={setPendingAttachments}
+                    listingSellerId={activeConversation?.listing?.seller_id}
                   />
                 </div>
               )}

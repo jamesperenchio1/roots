@@ -86,6 +86,7 @@
     "openPin": "เปิดหมุดในแผนที่ →",
     "escrowInfo": "Payment is held in escrow. Funds are released to the seller after you confirm delivery.",
     "disputeInfo": "หากต้นไม้ไม่ตรงกับรายการขาย คุณสามารถเปิดข้อพิพาทได้ภายใน 48 ชั่วโมงหลังได้รับสินค้า",
+    "directPaymentInfo": "การชำระเงินนี้นัดหมายโดยตรงกับผู้ขาย และไม่ได้ถูกเก็บหรือคุ้มครองโดยแพลตฟอร์ม กรุณาเก็บหลักฐานการชำระเงินและติดต่อผู้ขายในแชทหากมีปัญหา",
     "confirmReceiptDescription": "Scan the QR code on the plant's tag to verify authenticity and confirm receipt, or upload a photo of the plant you received. This will release funds to the seller.",
     "scanQr": "สแกน QR Code",
     "uploadPhoto": "อัปโหลดรูปภาพ",

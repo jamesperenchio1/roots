@@ -250,6 +250,12 @@ export type PaginatedListings = {
   total: number;
   page: number;
   pageSize: number;
+  // IDs of listings shown via the boost-aware "boosted first" query on page 0
+  // (see fetchListings below). Callers paginating with useInfiniteQuery should
+  // thread this through to subsequent-page calls so those listings aren't
+  // duplicated (shown again once their created_at naturally places them) or
+  // dropped (the listing they displaced never appearing on any page).
+  boostedIds: string[];
 };
 
 export async function fetchPublicData(): Promise<PublicData> {
@@ -323,9 +329,9 @@ async function mapRows(rows: DbRow[]): Promise<Listing[]> {
 
 export async function fetchListings(
   filters: ListingFilters,
-  pagination: { page: number; pageSize: number }
+  pagination: { page: number; pageSize: number; boostedIds?: string[] }
 ): Promise<PaginatedListings> {
-  const { page, pageSize } = pagination;
+  const { page, pageSize, boostedIds: carriedBoostedIds = [] } = pagination;
   const { category, size, province, minPrice, maxPrice, q, sortBy } = filters;
 
   const sellerIds = q && q.trim() ? await searchSellerIds(escapeLikePattern(q.trim())) : [];
@@ -400,6 +406,7 @@ export async function fetchListings(
       total: (count ?? normalRows.length) + boostedRows.length,
       page,
       pageSize,
+      boostedIds,
     };
   }
 
@@ -422,7 +429,19 @@ export async function fetchListings(
       query = query.order('created_at', { ascending: false });
   }
 
-  const from = page * pageSize;
+  // Default-sort pages beyond page 0 must exclude the boosted listings
+  // already surfaced on page 0's boost-aware query above, and shift their
+  // offset back by the same amount -- otherwise those listings render again
+  // once their created_at naturally places them (duplicate keys), and the
+  // listings they displaced from page 0 are skipped entirely (an
+  // off-by-boostedCount gap). Non-default sorts never run the boost-aware
+  // page-0 query, so there is nothing to exclude for them.
+  const boostedCount = isDefaultSort ? carriedBoostedIds.length : 0;
+  if (isDefaultSort && boostedCount > 0) {
+    query = query.not('id', 'in', `(${carriedBoostedIds.join(',')})`);
+  }
+
+  const from = Math.max(page * pageSize - boostedCount, 0);
   const to = from + pageSize - 1;
   query = query.range(from, to);
 
@@ -437,9 +456,10 @@ export async function fetchListings(
 
   return {
     listings,
-    total: count ?? listings.length,
+    total: (count ?? listings.length) + boostedCount,
     page,
     pageSize,
+    boostedIds: carriedBoostedIds,
   };
 }
 
@@ -2164,12 +2184,20 @@ export function notifyOrderCancelled(buyerId: string, orderId: string) {
   });
 }
 
+// Fires from confirmDirectPayment() above, right after the BUYER (not the
+// seller) marks that they sent a direct/P2P payment. The message must
+// describe that actor and action accurately -- direct payments are never
+// held by the platform, so this must not claim an escrow/protection
+// guarantee that doesn't exist for this payment method. (This function is
+// currently only wired to the direct-payment flow; if it's ever reused for
+// the Stripe path, where escrow language would be accurate, branch the
+// message on the transaction's payment_method instead of overwriting this.)
 export function notifyPaymentConfirmed(buyerId: string, orderId: string) {
   return createNotification({
     user_id: buyerId,
     type: 'order',
-    title: 'Payment confirmed',
-    message: 'The seller confirmed your payment. Your order is now protected by escrow.',
+    title: 'Payment marked as sent',
+    message: 'You marked this order as paid. The seller has been notified and will confirm receipt before shipping.',
     link: `/order/${orderId}`,
     read: false,
   });

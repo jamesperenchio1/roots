@@ -86,6 +86,7 @@
     "openPin": "Open exact pin in Maps →",
     "escrowInfo": "Payment is held in escrow. Funds are released to the seller after you confirm delivery.",
     "disputeInfo": "If the plant does not match the listing, you can open a dispute within 48 hours of delivery.",
+    "directPaymentInfo": "Payment was arranged directly with the seller and is not held or protected by the platform. Keep your payment records and contact the seller in chat if there's an issue.",
     "confirmReceiptDescription": "Scan the QR code on the plant's tag to verify authenticity and confirm receipt, or upload a photo of the plant you received. This will release funds to the seller.",
     "scanQr": "Scan QR Code",
     "uploadPhoto": "Upload Photo",

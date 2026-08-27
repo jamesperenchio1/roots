@@ -150,7 +150,7 @@ export function BoostModal({ listing, isOpen, onClose }: BoostModalProps) {
         {pending ? (
           <p className="text-sm text-zinc-400 text-center py-6">{t('dashboard:seller.boost.pending')}</p>
         ) : !STRIPE_KEY_CONFIGURED ? (
-          <p className="text-sm text-amber-400 text-center py-6">Stripe is not configured.</p>
+          <p className="text-sm text-amber-400 text-center py-6">{t('dashboard:seller.boost.unavailable')}</p>
         ) : clientSecret ? (
           <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}>
             <BoostPaymentForm onPaid={handlePaid} />

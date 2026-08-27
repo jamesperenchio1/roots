@@ -18,6 +18,7 @@ import { BOOST_TIERS, findMatchingBoostTier, getBoostTier } from '../_shared/boo
 interface Listing {
   id: string;
   seller_id: string;
+  status: string;
 }
 
 Deno.serve(async (req) => {
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
 
     const { data: listingRow, error: listingError } = await admin
       .from('listings')
-      .select('id, seller_id')
+      .select('id, seller_id, status')
       .eq('id', listingId)
       .single();
     if (listingError || !listingRow) {
@@ -75,6 +76,13 @@ Deno.serve(async (req) => {
     const listing = listingRow as Listing;
     if (listing.seller_id !== user.id) {
       return errorResponse('Forbidden', 403, headers);
+    }
+
+    // A boosted listing that isn't active (e.g. withdrawn/sold) would never
+    // actually surface anywhere -- don't let a seller pay for a boost that
+    // can never take effect.
+    if (listing.status !== 'active') {
+      return errorResponse('Only active listings can be boosted', 400, headers);
     }
 
     const secretKey = Deno.env.get('STRIPE_SECRET_KEY');
@@ -112,6 +120,15 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error('stripe-boost-checkout: failed to insert listing_boosts row', insertError.message);
+      // The ledger insert failed after the PaymentIntent was already created
+      // with Stripe -- without this, the intent would be orphaned (payable,
+      // but with no record tying it to a listing/seller). Cancel it so it
+      // can never be confirmed and paid.
+      try {
+        await stripeFetch(`/payment_intents/${intent.id}/cancel`, { method: 'POST', secretKey });
+      } catch (cancelErr) {
+        console.error('stripe-boost-checkout: failed to cancel orphaned PaymentIntent', intent.id, cancelErr);
+      }
       return errorResponse('Failed to record boost purchase', 500, headers);
     }
 

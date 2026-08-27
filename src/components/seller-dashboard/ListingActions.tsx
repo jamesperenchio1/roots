@@ -18,6 +18,7 @@ import { generateQrProvenance } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { publicKeys, userKeys } from '@/lib/queryKeys';
 import { BoostModal } from '@/components/seller-dashboard/BoostModal';
+import { STRIPE_KEY_CONFIGURED } from '@/lib/stripeClient';
 import type { Listing } from '@/types';
 
 interface ListingActionsProps {
@@ -122,12 +123,16 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
           >
             <Printer className="size-3.5 mr-2" /> {t('common:actions.print')} QR
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setBoostOpen(true)} className="cursor-pointer text-amber-400 focus:text-amber-400 hover:bg-white/5 focus:bg-white/5">
-            <Rocket className="size-3.5 mr-2" /> {t('common:actions.boost')}
-          </DropdownMenuItem>
+          {STRIPE_KEY_CONFIGURED && (
+            <DropdownMenuItem onClick={() => setBoostOpen(true)} className="cursor-pointer text-amber-400 focus:text-amber-400 hover:bg-white/5 focus:bg-white/5">
+              <Rocket className="size-3.5 mr-2" /> {t('common:actions.boost')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <BoostModal listing={listing} isOpen={boostOpen} onClose={() => setBoostOpen(false)} />
+      {STRIPE_KEY_CONFIGURED && (
+        <BoostModal listing={listing} isOpen={boostOpen} onClose={() => setBoostOpen(false)} />
+      )}
     </>
   );
 }
