@@ -1,11 +1,14 @@
 'use client'
 
 import { useRef, useEffect, useState, lazy, Suspense, useCallback } from 'react';
-import { Send, X, Smile, Paperclip, Image, File, Film, Music, Loader2 } from 'lucide-react';
+import { Send, X, Smile, Paperclip, Image, File as FileIcon, Film, Music, Loader2, QrCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import type { Message } from '@/types';
 import { useUploadQueue, usePasteFiles } from '@/hooks/useUploadQueue';
+import { useAuth } from '@/hooks/useAuth';
+import { generatePromptPayQR } from '@/lib/promptpay';
 
 // Lazy-load emoji picker to keep initial bundle small.
 const Picker = lazy(() => import('@emoji-mart/react'));
@@ -36,10 +39,12 @@ export default function MessageComposer({
   onAttachmentsChange,
 }: MessageComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
+  const { user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [sharingQr, setSharingQr] = useState(false);
   const { items, addFiles, removeItem, uploadAll, hasPending, hasErrors, clear } = useUploadQueue({
     conversationId,
     messageId,
@@ -118,12 +123,30 @@ export default function MessageComposer({
     setIsDragging(false);
   };
 
+  const handleShareQr = async () => {
+    if (!user?.promptpay_id) {
+      toast.error(t('messages:paymentQrMissing'));
+      return;
+    }
+    setSharingQr(true);
+    try {
+      const dataUrl = await generatePromptPayQR(user.promptpay_id);
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const file = new File([blob], 'promptpay-qr.png', { type: 'image/png' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      addFiles(dt.files);
+    } finally {
+      setSharingQr(false);
+    }
+  };
+
   const categoryIcon = (category: string) => {
     switch (category) {
       case 'image': return <Image className="w-4 h-4" />;
       case 'video': return <Film className="w-4 h-4" />;
       case 'audio': return <Music className="w-4 h-4" />;
-      default: return <File className="w-4 h-4" />;
+      default: return <FileIcon className="w-4 h-4" />;
     }
   };
 
@@ -158,6 +181,10 @@ export default function MessageComposer({
             <X className="w-4 h-4" />
           </Button>
         </div>
+      )}
+
+      {items.some((i) => i.file.name === 'promptpay-qr.png') && (
+        <p className="text-[11px] text-amber-400/90">{t('messages:paymentQrSafetyTip')}</p>
       )}
 
       {items.length > 0 && (
@@ -237,6 +264,18 @@ export default function MessageComposer({
           className="hidden"
           onChange={(e) => addFiles(e.target.files)}
         />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-zinc-500 hover:text-white hover:bg-white/10"
+          onClick={handleShareQr}
+          disabled={sharingQr}
+          aria-label={t('messages:sharePaymentQr')}
+          title={t('messages:sharePaymentQr')}
+        >
+          {sharingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+        </Button>
 
         <textarea
           ref={textareaRef}

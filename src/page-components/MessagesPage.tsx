@@ -285,7 +285,7 @@ export default function MessagesPage() {
   const legacyListingName = legacyListing?.species?.common_name_en;
 
   return (
-    <div className="pt-20 pb-0 md:pb-16 px-0 md:px-4 sm:px-6 flex flex-col md:flex-row max-w-7xl mx-auto min-h-[calc(100dvh-80px)] md:min-h-[70vh]">
+    <div className="pt-20 pb-0 md:pb-16 px-0 md:px-4 sm:px-6 flex flex-col md:flex-row max-w-7xl mx-auto h-[calc(100dvh-80px)] md:h-[70vh]">
       <MessagesSidebar
         hasActiveConversation={!!activeConversationId}
         conversations={conversations}
@@ -297,7 +297,7 @@ export default function MessagesPage() {
       />
 
       <div
-        className={`${!activeConversationId ? 'hidden md:flex' : 'flex'} flex-1 flex-col md:min-h-[70vh]`}
+        className={`${!activeConversationId ? 'hidden md:flex' : 'flex'} flex-1 flex-col min-h-0 md:h-[70vh]`}
       >
         {!activeConversationId ? (
           <EmptyConversation />
