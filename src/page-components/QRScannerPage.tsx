@@ -67,6 +67,20 @@ export default function QRScannerPage() {
     let scanner: Html5Qrcode | null = null;
 
     const init = async () => {
+      if (!window.isSecureContext) {
+        if (active) {
+          toast.error(t('common:qrScanner.errors.insecureContext'));
+          setMode('upload');
+        }
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (active) {
+          toast.error(t('common:qrScanner.errors.camera'));
+          setMode('upload');
+        }
+        return;
+      }
       try {
         const { Html5Qrcode: Html5QrcodeScanner } = await import('html5-qrcode');
         scanner = new Html5QrcodeScanner('qr-reader');
@@ -82,9 +96,16 @@ export default function QRScannerPage() {
         if (!active) {
           safeStopScanner(scanner);
         }
-      } catch {
+      } catch (err) {
         if (active) {
-          toast.error(t('common:qrScanner.errors.camera'));
+          const name = err instanceof Error ? err.name : '';
+          if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+            toast.error(t('common:qrScanner.errors.permissionDenied'));
+          } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+            toast.error(t('common:qrScanner.errors.noCamera'));
+          } else {
+            toast.error(t('common:qrScanner.errors.camera'));
+          }
           setMode('upload');
         }
       }

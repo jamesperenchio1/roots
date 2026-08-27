@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import type { TFunction } from 'i18next';
@@ -13,6 +14,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { generateQrProvenance } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { publicKeys, userKeys } from '@/lib/queryKeys';
 import type { Listing } from '@/types';
 
 interface ListingActionsProps {
@@ -25,7 +29,9 @@ interface ListingActionsProps {
 
 export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t }: ListingActionsProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [verifying, setVerifying] = useState(false);
+  const [generatingQr, setGeneratingQr] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleVerifyFile = async (file: File) => {
@@ -43,6 +49,25 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
       toast.error(err instanceof Error ? err.message : t('dashboard:seller.qrVerifyError'));
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handlePrintQr = async () => {
+    if (listing.plant_id) {
+      router.push(`/p/${listing.plant_id}`);
+      return;
+    }
+    setGeneratingQr(true);
+    try {
+      const plantId = await generateQrProvenance(listing.id);
+      if (!plantId) throw new Error('no plant id');
+      queryClient.invalidateQueries({ queryKey: publicKeys.listing(listing.id) });
+      if (user) queryClient.invalidateQueries({ queryKey: userKeys.sellerListings(user.id) });
+      router.push(`/p/${plantId}`);
+    } catch {
+      toast.error(t('common:errors.generic'));
+    } finally {
+      setGeneratingQr(false);
     }
   };
 
@@ -88,8 +113,12 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
           <DropdownMenuItem onClick={() => onWithdraw(listing.id)} className="cursor-pointer text-red-400 focus:text-red-400 hover:bg-white/5 focus:bg-white/5">
             <Archive className="size-3.5 mr-2" /> {t('common:actions.withdraw')}
           </DropdownMenuItem>
-          <DropdownMenuItem asChild className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
-            <Link href={`/p/${listing.plant_id || listing.id}`}><Printer className="size-3.5 mr-2" /> {t('common:actions.print')} QR</Link>
+          <DropdownMenuItem
+            disabled={generatingQr}
+            onClick={handlePrintQr}
+            className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5"
+          >
+            <Printer className="size-3.5 mr-2" /> {t('common:actions.print')} QR
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => toast.info(t('dashboard:seller.boostComingSoon'))} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
             <Rocket className="size-3.5 mr-2" /> {t('common:actions.boost')}

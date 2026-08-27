@@ -789,6 +789,9 @@
     "errors": {
       "invalid": "Not a valid Root provenance QR",
       "camera": "Could not access camera. Try upload mode instead.",
+      "insecureContext": "Camera access requires a secure (HTTPS) connection. Try upload mode instead.",
+      "permissionDenied": "Camera access was denied. Allow camera access in your browser settings, or try upload mode.",
+      "noCamera": "No camera was found on this device. Try upload mode instead.",
       "upload": "Could not read QR from image. Try manual entry.",
       "manual": "Enter a valid plant ID starting with p-"
     },

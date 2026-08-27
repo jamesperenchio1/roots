@@ -1630,7 +1630,7 @@ export async function fetchProvenance(
   signature?: string | null
 ): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[]; plant: Plant | null; scans: QRScan[]; signatureValid: boolean | null }> {
   const isUuid = isValidUuid(plantId);
-  const listing = (await fetchListingByPlantId(plantId)) || getListingByPlantId(plantId) || null;
+  const listing = (await fetchListingByPlantId(plantId)) || getListingByPlantId(plantId) || (isUuid ? await fetchListingById(plantId) : null) || null;
   const plant = isUuid ? await fetchPlant(plantId) : null;
 
   let signatureValid: boolean | null = null;

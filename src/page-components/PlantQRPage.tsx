@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 import {
@@ -9,9 +9,10 @@ import {
   ScanLine, History
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import PrintTag from '@/components/PrintTag';
 import { getSpeciesById, USERS } from '@/data/mockData';
-import { fetchProvenance, recordQRScan } from '@/lib/api';
+import { fetchProvenance, recordQRScan, generateQrProvenance } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
@@ -99,6 +100,7 @@ export default function PlantQRPage() {
   const signature = searchParams?.get('s') || '';
   const { user } = useAuth();
   const origin = useClientOrigin();
+  const router = useRouter();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [plant, setPlant] = useState<Plant | null>(null);
@@ -108,6 +110,7 @@ export default function PlantQRPage() {
   const [loading, setLoading] = useState(true);
   const [signatureValid, setSignatureValid] = useState<boolean | null>(null);
   const [showPrintTag, setShowPrintTag] = useState(false);
+  const [generatingQr, setGeneratingQr] = useState(false);
 
   const speciesId = plant?.species_id || listing?.species?.id || '';
   const dbSpecies = getSpeciesById(speciesId);
@@ -150,6 +153,20 @@ export default function PlantQRPage() {
 
   const coverImage = listing?.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg';
 
+  const handleGenerateQr = async () => {
+    if (!listing) return;
+    setGeneratingQr(true);
+    try {
+      const newPlantId = await generateQrProvenance(listing.id);
+      if (!newPlantId) throw new Error('no plant id');
+      router.push(`/p/${newPlantId}`);
+    } catch {
+      toast.error(t('common:errors.generic'));
+    } finally {
+      setGeneratingQr(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="pt-24 pb-16 px-4 text-center">
@@ -165,7 +182,17 @@ export default function PlantQRPage() {
           <QrCode className="w-14 h-14 text-zinc-600 mx-auto mb-4" />
           <h1 className="text-2xl font-light mb-2">{t('marketplace:provenance.noQrTitle')}</h1>
           <p className="text-zinc-500 mb-6">{t('marketplace:provenance.noQrSubtitle')}</p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
+            {user?.id === listing?.seller_id && (
+              <button
+                type="button"
+                disabled={generatingQr}
+                onClick={handleGenerateQr}
+                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                {t('marketplace:provenance.generateQrTag')}
+              </button>
+            )}
             {listing?.id && (
               <Link href={`/listing/${listing.id}`} className="bg-white text-black px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
                 {t('marketplace:provenance.backToListing')}
