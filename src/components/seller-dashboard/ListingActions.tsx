@@ -86,7 +86,7 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button disabled={verifying} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50">
+          <button disabled={verifying || generatingQr} className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50">
             <MoreHorizontal className="w-4 h-4" />
           </button>
         </DropdownMenuTrigger>

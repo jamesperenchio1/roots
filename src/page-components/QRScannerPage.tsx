@@ -98,10 +98,30 @@ export default function QRScannerPage() {
         }
       } catch (err) {
         if (active) {
-          const name = err instanceof Error ? err.name : '';
-          if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          // html5-qrcode's Html5Qrcode.start() does NOT propagate the raw
+          // getUserMedia DOMException. Internally (see CameraFactory /
+          // Html5Qrcode.start in html5-qrcode@2.3.8's src/html5-qrcode.ts)
+          // it catches the DOMException and re-rejects with
+          // `Html5QrcodeStrings.errorGettingUserMedia(error)`, which is a
+          // plain string built via template-literal coercion:
+          // `Error getting userMedia, error = ${error}` (src/strings.ts).
+          // Stringifying a DOMException uses the standard Error.toString()
+          // format "<name>: <message>" (e.g. "NotAllowedError: Permission
+          // denied"), so the DOMException's `name` survives only as
+          // *substring text* inside that string, not as `err.name`/
+          // `err instanceof Error`. Because of that we can't do a clean
+          // `instanceof`/`.name` check here — we have to pattern-match the
+          // stringified error. Do NOT "clean this up" back to
+          // `err instanceof Error && err.name === ...`; that silently
+          // regresses to dead code, since err is a string, not an Error.
+          const message = (typeof err === 'string' ? err : String(err)).toLowerCase();
+          if (message.includes('notallowederror') || message.includes('permission')) {
             toast.error(t('common:qrScanner.errors.permissionDenied'));
-          } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+          } else if (
+            message.includes('notfounderror') ||
+            message.includes('devicesnotfounderror') ||
+            message.includes('no camera')
+          ) {
             toast.error(t('common:qrScanner.errors.noCamera'));
           } else {
             toast.error(t('common:qrScanner.errors.camera'));
