@@ -101,6 +101,7 @@
     "reviews": "Reviews",
     "contact": "Contact seller",
     "verified": "Verified seller",
+    "promptpayVerified": "PromptPay verified",
     "notFound": "Seller not found",
     "backToBrowse": "Back to browse",
     "avatarAlt": "{{name}} avatar",

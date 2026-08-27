@@ -203,6 +203,7 @@ async function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Prom
     payout_transfer_id: (r.payout_transfer_id as string | undefined) || undefined,
     receipt_photo_path: (r.receipt_photo_path as string | undefined) || undefined,
     payment_confirmed_at: (r.payment_confirmed_at as string | undefined) || undefined,
+    seller_confirmed_received_at: (r.seller_confirmed_received_at as string | undefined) || undefined,
     created_at: r.created_at as string,
     shipped_at: (r.shipped_at as string | undefined) || undefined,
     delivered_at: (r.delivered_at as string | undefined) || undefined,
@@ -1379,6 +1380,53 @@ export async function confirmDirectPayment(id: string): Promise<void> {
   invalidateUserQueries(tx.seller_id as string);
 }
 
+// Direct/P2P payment: the seller acknowledges they received the buyer's
+// payment. This is a parallel attestation to the buyer's confirmDirectPayment
+// above — it does NOT change order status and is not a gate for shipping;
+// it just makes the trust/safety trail explicit and visible to both parties.
+export async function confirmDirectPaymentReceived(id: string): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id, buyer_id, seller_id, status, payment_method, seller_confirmed_received_at')
+    .eq('id', id)
+    .single();
+  if (txError || !tx) throw txError || new Error('Transaction not found');
+
+  const isSeller = tx.seller_id === userData.user.id;
+  const profile = await fetchProfile(userData.user.id);
+  const isAdmin = !!profile?.is_admin;
+  if (!isSeller && !isAdmin) {
+    throw new Error('Only the seller can confirm payment received');
+  }
+  if (tx.payment_method !== 'direct') {
+    throw new Error('This is only applicable to direct payment orders');
+  }
+  if (tx.status !== 'paid_in_escrow') {
+    throw new Error('Only orders the buyer has already marked as paid can be confirmed received');
+  }
+  if (tx.seller_confirmed_received_at) {
+    throw new Error('Payment receipt already confirmed');
+  }
+
+  const confirmedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from('transactions')
+    .update({ seller_confirmed_received_at: confirmedAt })
+    .eq('id', id);
+  if (error) throw error;
+  const localTx = TRANSACTIONS.find((t) => t.id === id);
+  if (localTx) {
+    localTx.seller_confirmed_received_at = confirmedAt;
+  }
+  notifyPaymentReceivedBySeller(tx.buyer_id as string, id);
+  invalidateTransactionDetail(id);
+  invalidateUserQueries(tx.buyer_id as string);
+  invalidateUserQueries(tx.seller_id as string);
+}
+
 export async function getTransactionEvents(transactionId: string): Promise<TransactionEvent[]> {
   const { data, error } = await supabase
     .from('transaction_events')
@@ -2015,6 +2063,17 @@ export function notifyPaymentConfirmed(buyerId: string, orderId: string) {
     type: 'order',
     title: 'Payment confirmed',
     message: 'The seller confirmed your payment. Your order is now protected by escrow.',
+    link: `/order/${orderId}`,
+    read: false,
+  });
+}
+
+export function notifyPaymentReceivedBySeller(buyerId: string, orderId: string) {
+  return createNotification({
+    user_id: buyerId,
+    type: 'order',
+    title: 'Payment receipt confirmed',
+    message: 'The seller confirmed they received your payment.',
     link: `/order/${orderId}`,
     read: false,
   });

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  withdrawListing, markListingSold, markOrderDelivered, onboardStripeConnect,
+  withdrawListing, markListingSold, markOrderDelivered, onboardStripeConnect, confirmDirectPaymentReceived,
 } from '@/lib/api';
 import MarkShippedModal from '@/components/MarkShippedModal';
 import { toast } from 'sonner';
@@ -102,6 +102,18 @@ export default function SellerDashboardPage() {
       toast.success(t('dashboard:seller.markedDelivered'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common:errors.generic'));
+    }
+  };
+
+  const handleConfirmReceived = async (orderId: string) => {
+    try {
+      await confirmDirectPaymentReceived(orderId);
+      toast.success(t('checkout:order.confirmPaymentReceivedSuccess'));
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: userKeys.transactions(user.id) });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('checkout:order.confirmPaymentReceivedError'));
     }
   };
 
@@ -217,7 +229,7 @@ export default function SellerDashboardPage() {
           <ListingsTab listings={listings} sales={allSales} onWithdraw={setWithdrawConfirm} onMarkSold={setMarkSoldConfirm} onDuplicate={handleDuplicate} t={t} />
         )}
         {activeTab === 'orders' && (
-          <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onShip={setShipModalOrder} onDeliver={handleMarkDelivered} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
+          <OrdersTab orders={filteredOrders} orderFilter={orderFilter} setOrderFilter={setOrderFilter} onShip={setShipModalOrder} onDeliver={handleMarkDelivered} onConfirmReceived={handleConfirmReceived} pendingRevenue={pendingRevenue} totalRevenue={totalRevenue} pendingSales={pendingSales} completedSales={completedSales} t={t} />
         )}
         {activeTab === 'offers' && <OffersTab offers={offers} currentUserId={user?.id || ''} t={t} />}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} expandedPayout={expandedPayout} setExpandedPayout={setExpandedPayout} totalRevenue={totalRevenue} completedSales={completedSales} pendingRevenue={pendingRevenue} pendingSales={pendingSales} stripeOnboardingComplete={me?.stripe_onboarding_complete === true} stripeConnecting={stripeConnecting} onConnectStripe={handleConnectStripe} t={t} />}

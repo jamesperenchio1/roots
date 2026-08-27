@@ -3,17 +3,18 @@
 
 import Link from 'next/link';
 import type { TFunction } from 'i18next';
-import { Package } from 'lucide-react';
+import { Package, CheckCircle } from 'lucide-react';
 import type { Transaction } from '@/types';
 
 interface OrderCardProps {
   order: Transaction;
   onShip: (id: string) => void;
   onDeliver: (id: string) => void;
+  onConfirmReceived: (id: string) => void;
   t: TFunction;
 }
 
-export function OrderCard({ order, onShip, onDeliver, t }: OrderCardProps) {
+export function OrderCard({ order, onShip, onDeliver, onConfirmReceived, t }: OrderCardProps) {
   const timeline = ['pending_payment', 'paid_in_escrow', 'shipped', 'delivered', 'completed'];
   const step = timeline.indexOf(order.status);
 
@@ -44,6 +45,24 @@ export function OrderCard({ order, onShip, onDeliver, t }: OrderCardProps) {
           </div>
         ))}
       </div>
+
+      {order.payment_method === 'direct' && order.status === 'paid_in_escrow' && (
+        <div className="mb-3 text-xs">
+          {order.payment_confirmed_at && (
+            <p className="text-zinc-400 mb-1.5">
+              {t('checkout:order.buyerConfirmedPaymentSentDate', { date: new Date(order.payment_confirmed_at).toLocaleDateString() })}
+            </p>
+          )}
+          {order.seller_confirmed_received_at ? (
+            <p className="flex items-center gap-1.5 text-emerald-400">
+              <CheckCircle className="w-3.5 h-3.5" />
+              {t('checkout:order.youConfirmedReceivedDate', { date: new Date(order.seller_confirmed_received_at).toLocaleDateString() })}
+            </p>
+          ) : (
+            <button onClick={() => onConfirmReceived(order.id)} className="px-3 py-1.5 rounded-lg bg-white/10 text-white font-medium hover:bg-white/15">{t('checkout:order.markPaymentReceived')}</button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {order.status === 'paid_in_escrow' && (

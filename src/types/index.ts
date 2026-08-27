@@ -163,6 +163,7 @@ export interface Transaction {
   payment_ref?: string;
   payment_confirmed?: boolean;
   payment_confirmed_at?: string;
+  seller_confirmed_received_at?: string;
   receipt_photo_path?: string;
   payment_gateway_fee_thb?: number;
   payout_status?: 'pending' | 'transferred' | 'failed';

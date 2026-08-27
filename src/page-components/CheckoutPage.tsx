@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase/client';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { STRIPE_CHECKOUT_ENABLED } from '@/lib/platform-config';
+import { PromptPayVerifiedBadge } from '@/components/PromptPayVerifiedBadge';
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_MS = 10 * 60 * 1000;
@@ -206,7 +207,10 @@ export default function CheckoutPage() {
               <p className="text-sm font-medium">{listing.species?.common_name_en}</p>
               <p className="text-xs text-zinc-500">{listing.species?.scientific_name}</p>
               <p className="text-xs text-zinc-500">{t('checkout:labels.size')}: {listing.size_category} {listing.pot_size_cm && `| ${t('checkout:labels.pot')}: ${listing.pot_size_cm}cm`}</p>
-              <p className="text-xs text-zinc-500">{t('checkout:labels.seller')}: {listing.seller?.display_name}</p>
+              <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+                <span>{t('checkout:labels.seller')}: {listing.seller?.display_name}</span>
+                {listing.seller?.promptpay_id && <PromptPayVerifiedBadge />}
+              </p>
             </div>
           </div>
           <div className="border-t border-white/5 pt-4 space-y-2 text-sm">
