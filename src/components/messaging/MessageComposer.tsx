@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, lazy, Suspense, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Send, X, Smile, Paperclip, Image, File as FileIcon, Film, Music, Loader2, QrCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -42,7 +43,9 @@ export default function MessageComposer({
   const { user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [sharingQr, setSharingQr] = useState(false);
   const { items, addFiles, removeItem, uploadAll, hasPending, hasErrors, clear } = useUploadQueue({
@@ -81,6 +84,47 @@ export default function MessageComposer({
     setShowEmoji(false);
     textareaRef.current?.focus();
   };
+
+  // The picker is rendered via a portal to <body> and positioned with
+  // fixed coordinates anchored to the trigger button's viewport rect, so it
+  // can't be clipped by an `overflow-hidden` ancestor (e.g. the chat widget
+  // panel). Recomputed on open and kept in sync on resize/scroll while open.
+  const PICKER_WIDTH = 320;
+  const PICKER_HEIGHT = 400;
+  const updatePickerPos = useCallback(() => {
+    const btn = emojiButtonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const margin = 8;
+    let left = rect.left;
+    if (left + PICKER_WIDTH > window.innerWidth - margin) {
+      left = window.innerWidth - PICKER_WIDTH - margin;
+    }
+    if (left < margin) left = margin;
+
+    let top = rect.top - PICKER_HEIGHT - margin;
+    if (top < margin) {
+      // Not enough room above the button — place it below instead.
+      top = rect.bottom + margin;
+    }
+    setPickerPos({ top, left });
+  }, []);
+
+  const toggleEmoji = () => {
+    if (!showEmoji) updatePickerPos();
+    setShowEmoji((s) => !s);
+  };
+
+  useEffect(() => {
+    if (!showEmoji) return;
+    updatePickerPos();
+    window.addEventListener('resize', updatePickerPos);
+    window.addEventListener('scroll', updatePickerPos, true);
+    return () => {
+      window.removeEventListener('resize', updatePickerPos);
+      window.removeEventListener('scroll', updatePickerPos, true);
+    };
+  }, [showEmoji, updatePickerPos]);
 
   const handleSend = async () => {
     if (hasErrors) {
@@ -227,16 +271,17 @@ export default function MessageComposer({
       <div className="flex gap-2 items-end">
         <div className="relative">
           <Button
+            ref={emojiButtonRef}
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-zinc-500 hover:text-white hover:bg-white/10"
-            onClick={() => setShowEmoji((s) => !s)}
+            onClick={toggleEmoji}
             aria-label={t('messages:addEmoji')}
           >
             <Smile className="w-5 h-5" />
           </Button>
-          {showEmoji && (
-            <div className="absolute bottom-12 left-0 z-50">
+          {showEmoji && pickerPos && typeof document !== 'undefined' && createPortal(
+            <div className="fixed z-[70]" style={{ top: pickerPos.top, left: pickerPos.left }}>
               <Suspense fallback={<div className="w-[320px] h-[400px] bg-zinc-900 rounded-lg animate-pulse" />}>
                 <Picker
                   data={async () => {
@@ -247,7 +292,8 @@ export default function MessageComposer({
                   theme="dark"
                 />
               </Suspense>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 
