@@ -85,7 +85,7 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
           <DropdownMenuItem onClick={onDuplicate} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
             <Copy className="size-3.5 mr-2" /> {t('common:actions.duplicate')}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onWithdraw(listing.id)} className="cursor-pointer text-amber-400 focus:text-amber-400 hover:bg-white/5 focus:bg-white/5">
+          <DropdownMenuItem onClick={() => onWithdraw(listing.id)} className="cursor-pointer text-red-400 focus:text-red-400 hover:bg-white/5 focus:bg-white/5">
             <Archive className="size-3.5 mr-2" /> {t('common:actions.withdraw')}
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">

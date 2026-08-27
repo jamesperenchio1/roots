@@ -1410,14 +1410,19 @@ export async function updateListing(id: string, patch: Partial<NewListingInput>)
 }
 
 export async function withdrawListing(id: string): Promise<void> {
-  const { error } = await supabase.from('listings').update({ status: 'withdrawn' }).eq('id', id);
+  const { data, error } = await supabase
+    .from('listings')
+    .update({ status: 'withdrawn' })
+    .eq('id', id)
+    .select('seller_id')
+    .single();
   if (error) throw error;
   const local = LISTINGS.find(l => l.id === id);
   if (local) {
     local.status = 'withdrawn';
-    invalidatePublicQueries();
-    invalidateUserQueries(local.seller_id);
   }
+  invalidatePublicQueries();
+  invalidateUserQueries(data.seller_id);
 }
 
 export async function markListingSold(id: string, sellerId: string, buyerId?: string): Promise<void> {
@@ -1443,9 +1448,9 @@ export async function markListingSold(id: string, sellerId: string, buyerId?: st
   const local = LISTINGS.find(l => l.id === id);
   if (local) {
     local.status = 'sold';
-    invalidatePublicQueries();
-    invalidateUserQueries(local.seller_id);
   }
+  invalidatePublicQueries();
+  invalidateUserQueries(listing.seller_id);
   // If a buyer is provided, record a manual transfer so provenance stays intact.
   if (buyerId && listing) {
     const { data: plant, error: plantError } = await supabase
