@@ -79,5 +79,9 @@
     "single": "{{name}} is typing",
     "two": "{{name1}} and {{name2}} are typing",
     "multiple": "{{name}} and {{count}} others are typing"
+  },
+  "widget": {
+    "openAria": "Open messages",
+    "expandAria": "Open in full page"
   }
 }

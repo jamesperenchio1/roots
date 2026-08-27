@@ -9,6 +9,7 @@ import { queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/hooks/useAuth';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import HashRedirect from '@/components/HashRedirect';
+import ChatWidget from '@/components/messaging/ChatWidget';
 
 function LanguageDetectorSync() {
   useEffect(() => {
@@ -46,7 +47,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <HashRedirect />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <ChatWidget />
+          </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>
       <LanguageDetectorSync />

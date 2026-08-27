@@ -79,5 +79,9 @@
     "single": "{{name}} กำลังพิมพ์",
     "two": "{{name1}} และ {{name2}} กำลังพิมพ์",
     "multiple": "{{name}} และอีก {{count}} คนกำลังพิมพ์"
+  },
+  "widget": {
+    "openAria": "เปิดข้อความ",
+    "expandAria": "เปิดในหน้าเต็ม"
   }
 }
