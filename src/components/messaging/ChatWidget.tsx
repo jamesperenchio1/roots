@@ -249,7 +249,7 @@ export default function ChatWidget() {
         <button
           onClick={handleBubbleClick}
           aria-label={t('messages:widget.openAria')}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[55] w-14 h-14 rounded-full bg-zinc-900 border border-white/10 shadow-xl shadow-black/40 flex items-center justify-center text-zinc-300 hover:text-white hover:border-white/20 transition-colors"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-14 h-14 rounded-full bg-zinc-900 border border-white/10 shadow-xl shadow-black/40 flex items-center justify-center text-zinc-300 hover:text-white hover:border-white/20 transition-colors"
         >
           <MessageCircle className="w-6 h-6" />
           {unreadCount > 0 && (
@@ -261,7 +261,7 @@ export default function ChatWidget() {
       )}
 
       {!collapsed && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[55] w-80 sm:w-96 h-[28rem] max-h-[70vh] bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-80 sm:w-96 h-[28rem] max-h-[70vh] bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden">
           {view === 'list' ? (
             <>
               <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
