@@ -77,7 +77,8 @@ Other conventions:
 - `src/lib/api.ts` is the single data-access layer — all Supabase calls live here.
 - `src/lib/supabase.ts` holds the client; `src/lib/validation.ts` does input
   sanitisation; `src/lib/platform-config.ts` holds the platform fee config
-  (currently 0% — the platform takes no fee during the pilot);
+  (0% — the platform takes no fee, ever; this is a fixed product decision,
+  not a temporary pilot default — see below);
   `src/lib/logger.ts` is the logging shim (wire Sentry here).
 - Auth is in `src/hooks/useAuth.tsx`; route guards are `AuthGuard`/`AdminGuard`.
 
@@ -207,6 +208,29 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
   indicators, and efficient realtime channel reuse.
 - ✅ **Thai i18n actually switches** — Thai resources are loaded on demand; all
   hard-coded UI strings are now translated.
+- ✅ **Boost** — paid listing visibility, separate from marketplace
+  transactions and always via Stripe (independent of the marketplace Stripe
+  toggle above). Sellers pick a budget tier (24h/99฿, 3 days/199฿, 7
+  days/399฿) to bump `boosted_until`, which affects browse sort and the
+  Featured rail. Tiers are defined in `src/lib/boost.ts` (frontend copy) and
+  validated server-side in `supabase/functions/stripe-boost-checkout/`.
+- ✅ **P2P payment-confirmation trail** — for Direct orders, the buyer
+  confirms payment sent (`confirmDirectPayment`) and the seller separately
+  confirms payment received (`confirmDirectPaymentReceived`); both
+  confirmations are visible on the order page and the seller dashboard. A
+  "PromptPay verified" badge is shown on a seller's profile/listings when
+  they have a saved PromptPay ID.
+- ✅ **Chat widget** — messaging is available both as a persistent
+  collapsible corner widget (app-wide, hidden on the full `/messages` pages
+  to avoid duplicate UI) and the full `/messages` page, reachable via
+  "expand" from the widget. The in-chat composer has a "Share Payment QR"
+  button that generates the seller's PromptPay QR code as an image attached
+  to the conversation.
+- ✅ **Price history backfill** — `price_snapshots` now carries a full year
+  of data per species/size (real transaction-derived where transactions
+  exist, plausible synthetic variation otherwise) via the
+  `backfill_price_history()` migration function, fixing previously-empty
+  market charts and the trending/hot/cold panels.
 
 **Next up (suggestions):**
 
