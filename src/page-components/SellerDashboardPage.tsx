@@ -184,7 +184,11 @@ export default function SellerDashboardPage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-light truncate">{me?.display_name || t('dashboard:seller.title')}</h1>
               <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 mt-1">
-                <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {me?.rating || '4.9'}</span>
+                {me?.rating ? (
+                  <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {me.rating}</span>
+                ) : (
+                  <span className="text-xs text-zinc-500">{t('dashboard:seller.noRatingsYet')}</span>
+                )}
                 <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {me?.sales_count || 0} {t('marketplace:seller.sales')}</span>
                 <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {me?.location || t('dashboard:seller.defaultLocation')}</span>
               </div>
@@ -218,7 +222,7 @@ export default function SellerDashboardPage() {
         {activeTab === 'offers' && <OffersTab offers={offers} currentUserId={user?.id || ''} t={t} />}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} expandedPayout={expandedPayout} setExpandedPayout={setExpandedPayout} totalRevenue={totalRevenue} completedSales={completedSales} pendingRevenue={pendingRevenue} pendingSales={pendingSales} stripeOnboardingComplete={me?.stripe_onboarding_complete === true} stripeConnecting={stripeConnecting} onConnectStripe={handleConnectStripe} t={t} />}
         {activeTab === 'analytics' && <AnalyticsTab listings={listings} allSales={allSales} t={t} />}
-        {activeTab === 'performance' && <PerformanceTab allSales={allSales} t={t} />}
+        {activeTab === 'performance' && <PerformanceTab allSales={allSales} sellerId={user?.id || ''} t={t} />}
         {activeTab === 'inventory' && <InventoryTab listings={listings} t={t} />}
         {activeTab === 'qr' && <QrManagementTab listings={listings.filter((l) => l.has_qr_provenance !== false && l.plant_id)} t={t} />}
         {activeTab === 'account' && <AccountTab me={me} t={t} />}
