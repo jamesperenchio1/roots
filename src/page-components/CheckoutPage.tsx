@@ -13,20 +13,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { createOrder, createStripePaymentIntent, updateOrderStatus } from '@/lib/api';
 import { validateShippingAddress } from '@/lib/validation';
 import { supabase } from '@/lib/supabase/client';
-import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { STRIPE_CHECKOUT_ENABLED } from '@/lib/platform-config';
+import { stripePromise, STRIPE_KEY_CONFIGURED } from '@/lib/stripeClient';
 import { PromptPayVerifiedBadge } from '@/components/PromptPayVerifiedBadge';
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_MS = 10 * 60 * 1000;
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
-// Key-presence check only. Whether the Stripe tab is actually offered to
-// buyers also requires STRIPE_CHECKOUT_ENABLED (a deliberate ops toggle,
-// independent of Boost/paid-listing-promotion which always uses Stripe).
-const STRIPE_ENABLED = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-const STRIPE_CHECKOUT_AVAILABLE = STRIPE_CHECKOUT_ENABLED && STRIPE_ENABLED;
+// Whether the Stripe tab is actually offered to buyers also requires
+// STRIPE_CHECKOUT_ENABLED (a deliberate ops toggle, independent of
+// Boost/paid-listing-promotion which always uses Stripe).
+const STRIPE_CHECKOUT_AVAILABLE = STRIPE_CHECKOUT_ENABLED && STRIPE_KEY_CONFIGURED;
 
 function StripePaymentForm({ onPaid, totalLabel }: { onPaid: () => void; totalLabel: string }) {
   const stripe = useStripe();

@@ -43,6 +43,7 @@
     "other": "Other"
   },
   "listing": {
+    "boosted": "Boosted",
     "buy": "Buy now",
     "makeOffer": "Make offer",
     "messageSeller": "Message seller",

@@ -9,6 +9,8 @@
     "ctaSell": "Start Selling"
   },
   "sections": {
+    "featured": "Featured",
+    "featuredSubtitle": "Boosted listings from sellers putting their best plants forward",
     "recentlyViewed": "Recently Viewed",
     "recentlyViewedSubtitle": "Pick up where you left off",
     "freshListings": "Fresh Listings",

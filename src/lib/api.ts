@@ -131,6 +131,7 @@ export async function mapListing(r: DbRow, profiles: Record<string, Profile>): P
     view_count: (r.view_count as number | undefined) ?? 0,
     tags: (r.tags as string[] | undefined) || [],
     watch_count: (r.watch_count as number | undefined) ?? WATCHLIST.filter(w => w.watch_type === 'listing' && w.target_id === r.id).length,
+    boosted_until: (r.boosted_until as string | undefined) || undefined,
     species: speciesFromRow(r),
     seller,
     photos: photos.map((url, i) => ({
@@ -314,6 +315,12 @@ async function searchSellerIds(q: string): Promise<string[]> {
   }
 }
 
+async function mapRows(rows: DbRow[]): Promise<Listing[]> {
+  const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+  const profiles = await fetchProfilesByIds(sellerIds);
+  return Promise.all(rows.map((r) => mapListing(r, profiles)));
+}
+
 export async function fetchListings(
   filters: ListingFilters,
   pagination: { page: number; pageSize: number }
@@ -321,29 +328,88 @@ export async function fetchListings(
   const { page, pageSize } = pagination;
   const { category, size, province, minPrice, maxPrice, q, sortBy } = filters;
 
-  let query = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
-
-  if (category) query = query.eq('category', category);
-  if (size) query = query.eq('size_category', size);
-  if (province) query = query.eq('pickup_province', province);
-  if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) query = query.gte('price_thb', minPrice);
-  if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) query = query.lte('price_thb', maxPrice);
-
-  if (q && q.trim()) {
+  const sellerIds = q && q.trim() ? await searchSellerIds(escapeLikePattern(q.trim())) : [];
+  const orConditions: string[] | null = (() => {
+    if (!q || !q.trim()) return null;
     const term = escapeLikePattern(q.trim());
     const pattern = `%${term}%`;
-    const sellerIds = await searchSellerIds(term);
     const conditions: string[] = [
       `species_common_en.ilike.${pattern}`,
       `species_scientific.ilike.${pattern}`,
       `description.ilike.${pattern}`,
       `pickup_province.ilike.${pattern}`,
     ];
-    if (sellerIds.length > 0) {
-      conditions.push(`seller_id.in.(${sellerIds.join(',')})`);
+    if (sellerIds.length > 0) conditions.push(`seller_id.in.(${sellerIds.join(',')})`);
+    return conditions;
+  })();
+
+  // Deliberate v1 simplification: boost-aware ordering only applies to page 0
+  // of the default sort (no explicit sortBy — today's created_at desc case).
+  // PostgREST/supabase-js can't cleanly order by an "is this boost still
+  // active right now" computed expression via a single .order() call, so for
+  // that one case we run two queries and concatenate boosted-first. Every
+  // other page/sort combination just runs the normal single query, unboosted.
+  const isDefaultSort = !sortBy;
+  if (page === 0 && isDefaultSort) {
+    const nowIso = new Date().toISOString();
+    const BOOSTED_CAP = 8;
+
+    let boostedQuery = supabase.from('listings').select('*').eq('status', 'active').gt('boosted_until', nowIso);
+    if (category) boostedQuery = boostedQuery.eq('category', category);
+    if (size) boostedQuery = boostedQuery.eq('size_category', size);
+    if (province) boostedQuery = boostedQuery.eq('pickup_province', province);
+    if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) boostedQuery = boostedQuery.gte('price_thb', minPrice);
+    if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) boostedQuery = boostedQuery.lte('price_thb', maxPrice);
+    if (orConditions) boostedQuery = boostedQuery.or(orConditions.join(','));
+    boostedQuery = boostedQuery.order('boosted_until', { ascending: false }).limit(BOOSTED_CAP);
+
+    const { data: boostedData, error: boostedError } = await boostedQuery;
+    if (boostedError) {
+      logger.warn('fetchListings boosted query failed', { error: boostedError.message, filters, pagination });
     }
-    query = query.or(conditions.join(','));
+    const boostedRows = (boostedData || []) as DbRow[];
+    const boostedIds = boostedRows.map((r) => r.id as string);
+
+    let normalQuery = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+    if (category) normalQuery = normalQuery.eq('category', category);
+    if (size) normalQuery = normalQuery.eq('size_category', size);
+    if (province) normalQuery = normalQuery.eq('pickup_province', province);
+    if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) normalQuery = normalQuery.gte('price_thb', minPrice);
+    if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) normalQuery = normalQuery.lte('price_thb', maxPrice);
+    if (orConditions) normalQuery = normalQuery.or(orConditions.join(','));
+    if (boostedIds.length > 0) {
+      normalQuery = normalQuery.not('id', 'in', `(${boostedIds.join(',')})`);
+    }
+    normalQuery = normalQuery.order('created_at', { ascending: false });
+
+    const remaining = Math.max(pageSize - boostedRows.length, 0);
+    normalQuery = normalQuery.range(0, Math.max(remaining - 1, 0));
+
+    const { data: normalData, error: normalError, count } = await normalQuery;
+    if (normalError) {
+      logger.warn('fetchListings normal query failed', { error: normalError.message, filters, pagination });
+      throw normalError;
+    }
+
+    const normalRows = remaining > 0 ? ((normalData || []) as DbRow[]) : [];
+    const combinedRows = [...boostedRows, ...normalRows];
+    const listings = await mapRows(combinedRows);
+
+    return {
+      listings,
+      total: (count ?? normalRows.length) + boostedRows.length,
+      page,
+      pageSize,
+    };
   }
+
+  let query = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+  if (category) query = query.eq('category', category);
+  if (size) query = query.eq('size_category', size);
+  if (province) query = query.eq('pickup_province', province);
+  if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) query = query.gte('price_thb', minPrice);
+  if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) query = query.lte('price_thb', maxPrice);
+  if (orConditions) query = query.or(orConditions.join(','));
 
   switch (sortBy) {
     case 'price-low':
@@ -367,9 +433,7 @@ export async function fetchListings(
   }
 
   const rows = (data || []) as DbRow[];
-  const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
-  const profiles = await fetchProfilesByIds(sellerIds);
-  const listings = await Promise.all(rows.map((r) => mapListing(r, profiles)));
+  const listings = await mapRows(rows);
 
   return {
     listings,
@@ -377,6 +441,28 @@ export async function fetchListings(
     page,
     pageSize,
   };
+}
+
+// Homepage "Featured" rail: currently-boosted active listings, most-recently
+// boosted first. Callers should simply omit the section when this returns an
+// empty array (no empty-state skeleton needed — Featured is promotional and
+// shouldn't appear when nothing is boosted).
+export async function fetchFeaturedListings(limit = 8): Promise<Listing[]> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('status', 'active')
+      .gt('boosted_until', new Date().toISOString())
+      .order('boosted_until', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const rows = (data || []) as DbRow[];
+    return await mapRows(rows);
+  } catch (e) {
+    logger.warn('fetchFeaturedListings failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
 }
 
 export async function fetchRecentListings(limit = 8): Promise<Listing[]> {
@@ -1079,6 +1165,27 @@ export async function createStripePaymentIntent(orderId: string): Promise<{ paym
   if (error) {
     logger.error('createStripePaymentIntent failed', new Error(error.message));
     throw new Error(error.message || 'Failed to create payment');
+  }
+  return {
+    paymentIntentId: String(data.paymentIntentId || ''),
+    clientSecret: String(data.clientSecret || ''),
+  };
+}
+
+// Create a Stripe PaymentIntent for a Boost purchase (paid listing
+// visibility). Always uses Stripe regardless of STRIPE_CHECKOUT_ENABLED --
+// Boost is platform ad revenue, a different product from marketplace
+// checkout, and keeps working even when that flag is off.
+export async function createBoostPaymentIntent(
+  listingId: string,
+  tierIndex: number
+): Promise<{ paymentIntentId: string; clientSecret: string }> {
+  const { data, error } = await supabase.functions.invoke('stripe-boost-checkout', {
+    body: { listingId, tierIndex },
+  });
+  if (error) {
+    logger.error('createBoostPaymentIntent failed', new Error(error.message));
+    throw new Error(error.message || 'Failed to create boost payment');
   }
   return {
     paymentIntentId: String(data.paymentIntentId || ''),

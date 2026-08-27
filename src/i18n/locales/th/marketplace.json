@@ -43,6 +43,7 @@
     "other": "อื่นๆ"
   },
   "listing": {
+    "boosted": "โปรโมต",
     "buy": "ซื้อเลย",
     "makeOffer": "เสนอราคา",
     "messageSeller": "ส่งข้อความ",

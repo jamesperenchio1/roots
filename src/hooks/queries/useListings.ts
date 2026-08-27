@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { publicKeys } from '@/lib/queryKeys';
 import {
+  fetchFeaturedListings,
   fetchListingById,
   fetchListings,
   fetchListingsByIds,
@@ -55,6 +56,16 @@ export function useRecentListings(limit = 8) {
   return useQuery({
     queryKey: publicKeys.listings({ recent: true, limit }),
     queryFn: () => fetchRecentListings(limit),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function useFeaturedListings(limit = 8) {
+  return useQuery({
+    queryKey: publicKeys.listings({ featured: true, limit }),
+    queryFn: () => fetchFeaturedListings(limit),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 1,

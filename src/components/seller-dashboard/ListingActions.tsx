@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { generateQrProvenance } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { publicKeys, userKeys } from '@/lib/queryKeys';
+import { BoostModal } from '@/components/seller-dashboard/BoostModal';
 import type { Listing } from '@/types';
 
 interface ListingActionsProps {
@@ -32,6 +33,7 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
   const router = useRouter();
   const [verifying, setVerifying] = useState(false);
   const [generatingQr, setGeneratingQr] = useState(false);
+  const [boostOpen, setBoostOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleVerifyFile = async (file: File) => {
@@ -120,11 +122,12 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
           >
             <Printer className="size-3.5 mr-2" /> {t('common:actions.print')} QR
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast.info(t('dashboard:seller.boostComingSoon'))} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+          <DropdownMenuItem onClick={() => setBoostOpen(true)} className="cursor-pointer text-amber-400 focus:text-amber-400 hover:bg-white/5 focus:bg-white/5">
             <Rocket className="size-3.5 mr-2" /> {t('common:actions.boost')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <BoostModal listing={listing} isOpen={boostOpen} onClose={() => setBoostOpen(false)} />
     </>
   );
 }

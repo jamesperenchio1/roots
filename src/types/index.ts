@@ -125,6 +125,7 @@ export interface Listing {
   view_count?: number;
   watch_count?: number;
   tags?: string[];
+  boosted_until?: string;
 }
 
 export interface ListingPhoto {
