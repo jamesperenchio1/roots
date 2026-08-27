@@ -18,7 +18,7 @@ export default function HomePage() {
   const [textReady, setTextReady] = useState(false);
   const { data: listingsData } = useRecentListings(8);
   const listings = listingsData ?? [];
-  const { data: market } = useMarketOverview();
+  const { data: market, isLoading: isMarketLoading } = useMarketOverview();
   const { recentlyViewed: recentlyViewedIds } = useRecentlyViewed();
   const { data: recentlyViewedListings } = useListingsByIds(recentlyViewedIds);
   const recentlyViewed = useMemo(
@@ -165,7 +165,22 @@ export default function HomePage() {
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 {t('marketplace:market.trendingUp')}
               </h3>
-              {(market?.trending_up.length ?? 0) === 0 ? (
+              {isMarketLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-black/30 rounded-lg animate-pulse">
+                      <div>
+                        <div className="h-4 bg-zinc-800 rounded w-28 mb-2" />
+                        <div className="h-3 bg-zinc-800 rounded w-16" />
+                      </div>
+                      <div className="text-right">
+                        <div className="h-4 bg-zinc-800 rounded w-16 mb-2 ml-auto" />
+                        <div className="h-3 bg-zinc-800 rounded w-10 ml-auto" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (market?.trending_up.length ?? 0) === 0 ? (
                 <p className="text-zinc-600 text-sm py-8 text-center">{t('home:noPriceHistory')}</p>
               ) : (
                 <div className="space-y-3">

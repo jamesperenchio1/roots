@@ -36,6 +36,25 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   );
 }
 
+function BrushTraveller({ x, y, width, height }: { x?: number; y?: number; width?: number; height?: number }) {
+  const cx = (x ?? 0) + (width ?? 0) / 2;
+  const cy = (y ?? 0) + (height ?? 0) / 2;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={(y ?? 0) + (height ?? 0) / 4}
+        width={width}
+        height={(height ?? 0) / 2}
+        rx={(width ?? 0) / 2}
+        fill="#4ade80"
+      />
+      <line x1={cx - 1.5} y1={cy - 3} x2={cx - 1.5} y2={cy + 3} stroke="#18181b" strokeWidth={1} />
+      <line x1={cx + 1.5} y1={cy - 3} x2={cx + 1.5} y2={cy + 3} stroke="#18181b" strokeWidth={1} />
+    </g>
+  );
+}
+
 export function PriceChart({ data, height = 300, showArea = true, showVolume = false, color = '#4ade80' }: PriceChartProps) {
   const { t } = useTranslation(['marketplace', 'common']);
   const [range, setRange] = useState<'30d' | '90d' | '6m' | '1y' | 'all'>('90d');
@@ -137,7 +156,7 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
               {compare.start && <ReferenceLine yAxisId="price" x={compare.start} stroke="#facc15" strokeDasharray="4 4" />}
               {compare.end && <ReferenceLine yAxisId="price" x={compare.end} stroke="#facc15" strokeDasharray="4 4" />}
               {areaStart && areaEnd && <ReferenceArea yAxisId="price" x1={areaStart} x2={areaEnd} stroke="none" fill="#facc15" fillOpacity={0.1} />}
-              <Brush dataKey="date" height={30} stroke="#4ade80" travellerWidth={8} />
+              <Brush dataKey="date" height={30} stroke="#4ade80" fill="#18181b" travellerWidth={10} traveller={BrushTraveller} />
             </ComposedChart>
           ) : (
             <AreaChart data={filteredData} onClick={handleChartClick}>
@@ -155,7 +174,7 @@ export function PriceChart({ data, height = 300, showArea = true, showVolume = f
               {compare.start && <ReferenceLine x={compare.start} stroke="#facc15" strokeDasharray="4 4" />}
               {compare.end && <ReferenceLine x={compare.end} stroke="#facc15" strokeDasharray="4 4" />}
               {areaStart && areaEnd && <ReferenceArea x1={areaStart} x2={areaEnd} stroke="none" fill="#facc15" fillOpacity={0.1} />}
-              <Brush dataKey="date" height={30} stroke="#4ade80" travellerWidth={8} />
+              <Brush dataKey="date" height={30} stroke="#4ade80" fill="#18181b" travellerWidth={10} traveller={BrushTraveller} />
             </AreaChart>
           )}
         </ResponsiveContainer>

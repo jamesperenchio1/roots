@@ -171,7 +171,9 @@
     "tablePrice": "ราคา",
     "tableStatus": "สถานะ",
     "hotRightNow": "มาแรงตอนนี้",
-    "coolingOff": "ราคาเย็นลง"
+    "coolingOff": "ราคาเย็นลง",
+    "noSpeciesData": "ยังไม่มีข้อมูลในส่วนนี้",
+    "noHighValueSales": "ยังไม่มีการขายมูลค่าสูง"
   },
   "create": {
     "title": "สร้างรายการ",

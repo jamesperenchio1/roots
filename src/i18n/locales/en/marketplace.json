@@ -172,7 +172,9 @@
     "tablePrice": "Price",
     "tableStatus": "Status",
     "hotRightNow": "Hot Right Now",
-    "coolingOff": "Cooling Off"
+    "coolingOff": "Cooling Off",
+    "noSpeciesData": "No data yet for this section",
+    "noHighValueSales": "No high-value sales yet"
   },
   "create": {
     "title": "Create Listing",

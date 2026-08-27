@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { TrendingUp, TrendingDown, Flame, Snowflake, Activity, DollarSign } from 'lucide-react';
@@ -86,25 +86,30 @@ function SpeciesSection({
   icon,
   color,
   items,
+  isLoading,
 }: {
   titleKey: string;
   icon: LucideIcon;
   color: string;
   items: MarketOverview['trending_up'];
+  isLoading?: boolean;
 }) {
+  const { t } = useTranslation('marketplace');
   return (
     <section>
       <SectionHeader icon={icon} titleKey={titleKey} color={color} />
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {items.length > 0 ? (
-          items.map(item => <SpeciesCard key={item.species.id} item={item} />)
-        ) : (
+        {isLoading ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
           </>
+        ) : items.length > 0 ? (
+          items.map(item => <SpeciesCard key={item.species.id} item={item} />)
+        ) : (
+          <p className="text-zinc-500 text-sm py-4">{t('marketplace:market.noSpeciesData')}</p>
         )}
       </div>
     </section>
@@ -114,23 +119,12 @@ function SpeciesSection({
 const CATEGORIES: (Category | '')[] = ['', 'aroid', 'hoya', 'cactus', 'succulent', 'fern', 'orchid', 'other'];
 const SIZES: (SizeCategory | '')[] = ['', 'S', 'M', 'L', 'XL'];
 
-const SPECIES_STORAGE_KEY = 'roots.market.selectedSpecies';
-
 export default function MarketPage() {
   const { t } = useTranslation(['marketplace', 'common']);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(SPECIES_STORAGE_KEY);
-      if (saved) setSelectedSpeciesId(saved);
-    } catch {
-      // Ignore storage errors.
-    }
-  }, []);
   const [categoryFilter, setCategoryFilter] = useState<Category | ''>('');
   const [sizeFilter, setSizeFilter] = useState<SizeCategory | ''>('');
-  const { data: market } = useMarketOverview();
+  const { data: market, isLoading: isMarketLoading } = useMarketOverview();
 
   const marketSpecies = useMemo(() => getMarketSpeciesFromOverview(market), [market]);
 
@@ -180,11 +174,6 @@ export default function MarketPage() {
     const species = getSpeciesById(entry.id);
     if (!species) return;
     setSelectedSpeciesId(species.id);
-    try {
-      localStorage.setItem(SPECIES_STORAGE_KEY, species.id);
-    } catch {
-      // Ignore private mode / quota errors.
-    }
   };
 
   return (
@@ -280,6 +269,7 @@ export default function MarketPage() {
             icon={TrendingUp}
             color="text-emerald-400"
             items={filteredMarket.trending_up}
+            isLoading={isMarketLoading}
           />
 
           <SpeciesSection
@@ -287,6 +277,7 @@ export default function MarketPage() {
             icon={TrendingDown}
             color="text-red-400"
             items={filteredMarket.trending_down}
+            isLoading={isMarketLoading}
           />
 
           <SpeciesSection
@@ -294,6 +285,7 @@ export default function MarketPage() {
             icon={Activity}
             color="text-blue-400"
             items={filteredMarket.most_traded}
+            isLoading={isMarketLoading}
           />
 
           <SpeciesSection
@@ -301,6 +293,7 @@ export default function MarketPage() {
             icon={Flame}
             color="text-orange-400"
             items={filteredMarket.hot_right_now}
+            isLoading={isMarketLoading}
           />
 
           <SpeciesSection
@@ -308,6 +301,7 @@ export default function MarketPage() {
             icon={Snowflake}
             color="text-cyan-400"
             items={filteredMarket.cold}
+            isLoading={isMarketLoading}
           />
 
           {/* High Value Sales */}
@@ -320,7 +314,13 @@ export default function MarketPage() {
                 <span className="text-right">{t('marketplace:market.tablePrice')}</span>
                 <span className="text-right">{t('marketplace:market.tableStatus')}</span>
               </div>
-              {filteredMarket.high_value_sales.length > 0 ? (
+              {isMarketLoading ? (
+                <>
+                  <SkeletonTableRow />
+                  <SkeletonTableRow />
+                  <SkeletonTableRow />
+                </>
+              ) : filteredMarket.high_value_sales.length > 0 ? (
                 filteredMarket.high_value_sales.map(tx => (
                   <div key={tx.id} className="grid grid-cols-4 gap-4 px-6 py-3 text-sm border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                     <span className="truncate">{tx.listing?.species?.scientific_name ?? tx.plant_id}</span>
@@ -334,11 +334,7 @@ export default function MarketPage() {
                   </div>
                 ))
               ) : (
-                <>
-                  <SkeletonTableRow />
-                  <SkeletonTableRow />
-                  <SkeletonTableRow />
-                </>
+                <p className="px-6 py-6 text-sm text-zinc-500">{t('marketplace:market.noHighValueSales')}</p>
               )}
             </div>
           </section>
