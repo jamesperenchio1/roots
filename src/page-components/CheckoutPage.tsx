@@ -15,12 +15,17 @@ import { validateShippingAddress } from '@/lib/validation';
 import { supabase } from '@/lib/supabase/client';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { STRIPE_CHECKOUT_ENABLED } from '@/lib/platform-config';
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_MS = 10 * 60 * 1000;
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+// Key-presence check only. Whether the Stripe tab is actually offered to
+// buyers also requires STRIPE_CHECKOUT_ENABLED (a deliberate ops toggle,
+// independent of Boost/paid-listing-promotion which always uses Stripe).
 const STRIPE_ENABLED = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const STRIPE_CHECKOUT_AVAILABLE = STRIPE_CHECKOUT_ENABLED && STRIPE_ENABLED;
 
 function StripePaymentForm({ onPaid, totalLabel }: { onPaid: () => void; totalLabel: string }) {
   const stripe = useStripe();
@@ -66,7 +71,9 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [address, setAddress] = useState({ name: '', address: '', district: '', province: '', postal: '', phone: '' });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'direct'>('stripe');
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'direct'>(
+    STRIPE_CHECKOUT_AVAILABLE ? 'stripe' : 'direct'
+  );
   const [paying, setPaying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [clientSecret, setClientSecret] = useState('');
@@ -253,18 +260,20 @@ export default function CheckoutPage() {
           </h2>
 
           {/* Payment method selector */}
-          <div className="grid sm:grid-cols-2 gap-3 mb-5">
-            <button
-              type="button"
-              onClick={() => setPaymentMethod('stripe')}
-              className={`text-left p-4 rounded-xl border transition-colors ${paymentMethod === 'stripe' ? 'border-emerald-500 bg-emerald-500/5' : 'border-white/10 hover:border-white/20'}`}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <CreditCard className={`w-4 h-4 ${paymentMethod === 'stripe' ? 'text-emerald-400' : 'text-zinc-400'}`} />
-                <p className="text-sm font-medium">{t('checkout:paymentMethod.stripe')}</p>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:paymentMethod.stripeDescription')}</p>
-            </button>
+          <div className={`grid gap-3 mb-5 ${STRIPE_CHECKOUT_AVAILABLE ? 'sm:grid-cols-2' : ''}`}>
+            {STRIPE_CHECKOUT_AVAILABLE && (
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('stripe')}
+                className={`text-left p-4 rounded-xl border transition-colors ${paymentMethod === 'stripe' ? 'border-emerald-500 bg-emerald-500/5' : 'border-white/10 hover:border-white/20'}`}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <CreditCard className={`w-4 h-4 ${paymentMethod === 'stripe' ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                  <p className="text-sm font-medium">{t('checkout:paymentMethod.stripe')}</p>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:paymentMethod.stripeDescription')}</p>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPaymentMethod('direct')}
@@ -286,7 +295,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Stripe Payment Element */}
-          {paymentMethod === 'stripe' && STRIPE_ENABLED && clientSecret && (
+          {paymentMethod === 'stripe' && STRIPE_CHECKOUT_AVAILABLE && clientSecret && (
             <div className="text-left py-4 bg-zinc-800/30 rounded-lg border border-white/5 px-4">
               <Elements
                 stripe={stripePromise}
@@ -306,7 +315,7 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {paymentMethod === 'stripe' && !STRIPE_ENABLED && (
+          {paymentMethod === 'stripe' && !STRIPE_CHECKOUT_AVAILABLE && (
             <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-amber-400">
               Stripe is not configured.
             </div>

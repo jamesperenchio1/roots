@@ -187,9 +187,12 @@ Active work is a **UX-improvement cluster**. Recently shipped to `main`:
 - ✅ **Stripe payouts & seller onboarding** — sellers connect a Stripe Express
   account from the dashboard (Payouts tab); `process-payout` transfers to the
   seller's connected account once an order completes (Stripe orders only).
-- ✅ **Platform fee = 0%** — the platform takes no fee during the pilot
-  (`PLATFORM_FEE_PERCENT` defaults to 0 in `src/lib/platform-config.ts`); all
-  fee UI/strings were removed.
+- ✅ **Platform fee = 0%** — the platform takes no fee, ever
+  (`PLATFORM_FEE_PERCENT` is hardcoded to 0 in `src/lib/platform-config.ts`,
+  not configurable via env var); all fee UI/strings were removed.
+- ✅ **Stripe checkout toggle** — marketplace checkout defaults to Direct
+  (P2P) payment only; the Stripe tab is shown only when
+  `NEXT_PUBLIC_STRIPE_ENABLED=true` (independent of Boost's Stripe usage).
 - ✅ **Real marketplace data everywhere** — market charts, trending panels
   (Hot/High-value/Cooling Off), species pages, and browse listings are now
   populated from live Supabase data instead of empty/mock state.
