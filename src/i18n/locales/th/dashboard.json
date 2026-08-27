@@ -71,7 +71,6 @@
     "markedSold": "ทำเครื่องหมายว่าขายแล้วแล้ว",
     "markedDelivered": "ทำเครื่องหมายว่าส่งถึงแล้ว",
     "soldTo": "ขายให้ {{name}}",
-    "duplicateComingSoon": "ฟีเจอร์ทำซ้ำกำลังจะมาเร็ว ๆ นี้",
     "boostComingSoon": "ฟีเจอร์โปรโมตกำลังจะมาเร็ว ๆ นี้",
     "orderStatuses": "สถานะคำสั่งซื้อ",
     "revenue": "รายได้",

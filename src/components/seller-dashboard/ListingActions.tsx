@@ -19,7 +19,7 @@ interface ListingActionsProps {
   listing: Listing;
   onWithdraw: (id: string) => void;
   onMarkSold: (id: string) => void;
-  onDuplicate: () => void;
+  onDuplicate: (id: string) => void;
   t: TFunction;
 }
 
@@ -82,7 +82,7 @@ export function ListingActions({ listing, onWithdraw, onMarkSold, onDuplicate, t
               <DollarSign className="size-3.5 mr-2" /> {t('dashboard:seller.markAsSold')}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={onDuplicate} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
+          <DropdownMenuItem onClick={() => onDuplicate(listing.id)} className="cursor-pointer text-zinc-300 focus:text-zinc-300 hover:bg-white/5 focus:bg-white/5">
             <Copy className="size-3.5 mr-2" /> {t('common:actions.duplicate')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onWithdraw(listing.id)} className="cursor-pointer text-red-400 focus:text-red-400 hover:bg-white/5 focus:bg-white/5">

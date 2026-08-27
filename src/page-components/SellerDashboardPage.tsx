@@ -105,9 +105,9 @@ export default function SellerDashboardPage() {
     }
   };
 
-  const handleDuplicate = useCallback(async () => {
-    toast.info(t('dashboard:seller.duplicateComingSoon'));
-  }, [t]);
+  const handleDuplicate = useCallback((id: string) => {
+    router.push(`/seller-dashboard/listings/new?duplicateId=${id}`);
+  }, [router]);
 
   const handleConnectStripe = useCallback(async () => {
     setStripeConnecting(true);

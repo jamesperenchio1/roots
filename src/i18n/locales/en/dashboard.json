@@ -71,7 +71,6 @@
     "markedSold": "Listing marked as sold",
     "markedDelivered": "Order marked as delivered",
     "soldTo": "Sold to {{name}}",
-    "duplicateComingSoon": "Duplicate feature coming soon",
     "boostComingSoon": "Boost feature coming soon",
     "orderStatuses": "Order statuses",
     "revenue": "Revenue",

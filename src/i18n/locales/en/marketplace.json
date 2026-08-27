@@ -237,6 +237,8 @@
     "successDescription": "Once approved, buyers can find it, compare prices, and purchase with escrow protection.",
     "loadingIdentification": "Loading identification result…",
     "prefilledFromIdentification": "Prefilled from identification",
+    "loadingDuplicate": "Loading listing to duplicate…",
+    "duplicatePhotosNote": "Duplicated draft — please re-add photos.",
     "commonNames": "Common names: {{names}}",
     "suggestedPrice": "suggested price {{price}} {{currency}}",
     "loadingSavedPlaces": "Loading saved places…",

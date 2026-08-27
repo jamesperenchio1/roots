@@ -10,7 +10,7 @@ import { searchSpecies, type SpeciesEntry as SpeciesDbEntry } from '@/data/speci
 import type { SpeciesEntry } from '@/data/speciesDatabase';
 import { getLatestResult } from '@/lib/identification/api-identification';
 import { useAuth } from '@/hooks/useAuth';
-import { createListing, uploadListingPhoto, fetchPlant } from '@/lib/api';
+import { createListing, uploadListingPhoto, fetchPlant, fetchListingById } from '@/lib/api';
 import { getUserLocations } from '@/lib/locations';
 import type { UserLocation } from '@/types';
 import { generateQR } from '@/lib/promptpay';
@@ -37,9 +37,12 @@ export default function CreateListingPage() {
   const searchParams = useSearchParams();
   const identificationId = searchParams?.get('identificationId');
   const prefillSpeciesId = searchParams?.get('speciesId');
+  const duplicateId = searchParams?.get('duplicateId');
 
   const [prefillResult, setPrefillResult] = useState<IdentificationResult | null>(null);
   const [prefillLoading, setPrefillLoading] = useState(false);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [step, setStep] = useState<'form' | 'qr' | 'submitted'>('form');
   const [savedPlaces, setSavedPlaces] = useState<UserLocation[]>([]);
@@ -158,6 +161,47 @@ export default function CreateListingPage() {
       mounted = false;
     };
   }, [identificationId, prefillSpeciesId]);
+
+  useEffect(() => {
+    if (!duplicateId) return;
+    let mounted = true;
+    setDuplicateLoading(true);
+    fetchListingById(duplicateId)
+      .then((listing) => {
+        if (!listing || !mounted) return;
+        setIsDuplicate(true);
+        const speciesInfo = listing.species;
+        if (speciesInfo) {
+          const query = speciesInfo.scientific_name;
+          const candidates = searchSpecies(query, 10);
+          const match = candidates.find((s) => s.id === speciesInfo.id) || candidates[0];
+          setSpeciesQuery(match ? `${match.scientific_name} (${match.common_name_en})` : query);
+          if (match) setSpecies(match);
+        }
+        setPrice(String(listing.price_thb));
+        setSize(listing.size_category);
+        if (listing.pot_size_cm) setPotSize(String(listing.pot_size_cm));
+        setDescription(listing.description);
+        setDelivery(listing.delivery_options || []);
+        if (listing.shipping_cost_thb !== undefined) setShippingCost(String(listing.shipping_cost_thb));
+        if (listing.pickup_province) setProvince(listing.pickup_province);
+        if (listing.pickup_location) setPickupLocation(listing.pickup_location);
+        if (listing.pickup_lat && listing.pickup_lng) {
+          setPickupCoords({ lat: listing.pickup_lat, lng: listing.pickup_lng });
+        }
+        if (listing.tags?.length) setTags(listing.tags);
+        setHasQrProvenance(listing.has_qr_provenance !== false);
+      })
+      .catch(() => {
+        // Prefill is best-effort; ignore errors so the seller can still fill manually.
+      })
+      .finally(() => {
+        if (mounted) setDuplicateLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [duplicateId]);
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -288,8 +332,18 @@ export default function CreateListingPage() {
       <div className="max-w-2xl mx-auto">
         <CreateListingHeader />
         <PrefillBanner prefillLoading={prefillLoading} prefillResult={prefillResult} />
+        {duplicateLoading && (
+          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 text-sm text-emerald-200 mb-6">
+            {t('marketplace:create.loadingDuplicate')}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {isDuplicate && (
+            <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 text-sm text-amber-200">
+              {t('marketplace:create.duplicatePhotosNote')}
+            </div>
+          )}
           <PhotosSection
             fileInputRef={fileInputRef}
             photos={photos}
