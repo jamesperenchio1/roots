@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { MessageCircle, X, ChevronLeft, Maximize2 } from 'lucide-react';
@@ -46,8 +46,15 @@ export default function ChatWidget() {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<Array<{ user_id: string; display_name: string }>>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  // useId() (not Date.now()/Math.random()) for the initial value: it's the
+  // only value here computed during the SSR render pass, and Date.now()/
+  // Math.random() differ between server and client, causing a hydration
+  // mismatch (this widget is mounted globally, so every page load would hit
+  // it). Values set later via setPendingMessageId (in event handlers,
+  // client-only) are unaffected and can keep using Date.now()/Math.random().
+  const initialPendingMessageIdSeed = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [pendingMessageId, setPendingMessageId] = useState<string>(
-    `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    `m-${initialPendingMessageIdSeed}`
   );
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
 
