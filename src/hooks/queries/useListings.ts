@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { publicKeys } from '@/lib/queryKeys';
 import {
+  fetchFeaturedListings,
   fetchListingById,
   fetchListings,
   fetchListingsByIds,
@@ -31,18 +32,25 @@ export function useListings() {
   });
 }
 
+type ListingsPageParam = { page: number; boostedIds: string[] };
+
 export function usePaginatedListings(
   filters: ListingFilters,
   options: { pageSize?: number; enabled?: boolean } = {}
 ) {
   const { pageSize = 12, enabled = true } = options;
-  return useInfiniteQuery<PaginatedListings, Error>({
+  return useInfiniteQuery<PaginatedListings, Error, InfiniteData<PaginatedListings, ListingsPageParam>, ReadonlyArray<unknown>, ListingsPageParam>({
     queryKey: [...publicKeys.listings(filters), pageSize],
-    queryFn: ({ pageParam = 0 }) => fetchListings(filters, { page: pageParam as number, pageSize }),
-    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      fetchListings(filters, { page: pageParam.page, pageSize, boostedIds: pageParam.boostedIds }),
+    initialPageParam: { page: 0, boostedIds: [] },
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.page + 1;
-      return nextPage * lastPage.pageSize < lastPage.total ? nextPage : undefined;
+      // Carry the page-0 boosted IDs forward so subsequent pages continue
+      // to exclude them from the plain created_at-ordered query.
+      return nextPage * lastPage.pageSize < lastPage.total
+        ? { page: nextPage, boostedIds: lastPage.boostedIds }
+        : undefined;
     },
     enabled,
     staleTime: 2 * 60 * 1000,
@@ -55,6 +63,16 @@ export function useRecentListings(limit = 8) {
   return useQuery({
     queryKey: publicKeys.listings({ recent: true, limit }),
     queryFn: () => fetchRecentListings(limit),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function useFeaturedListings(limit = 8) {
+  return useQuery({
+    queryKey: publicKeys.listings({ featured: true, limit }),
+    queryFn: () => fetchFeaturedListings(limit),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 1,

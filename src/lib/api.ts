@@ -131,6 +131,7 @@ export async function mapListing(r: DbRow, profiles: Record<string, Profile>): P
     view_count: (r.view_count as number | undefined) ?? 0,
     tags: (r.tags as string[] | undefined) || [],
     watch_count: (r.watch_count as number | undefined) ?? WATCHLIST.filter(w => w.watch_type === 'listing' && w.target_id === r.id).length,
+    boosted_until: (r.boosted_until as string | undefined) || undefined,
     species: speciesFromRow(r),
     seller,
     photos: photos.map((url, i) => ({
@@ -203,6 +204,7 @@ async function mapTransaction(r: DbRow, profiles: Record<string, Profile>): Prom
     payout_transfer_id: (r.payout_transfer_id as string | undefined) || undefined,
     receipt_photo_path: (r.receipt_photo_path as string | undefined) || undefined,
     payment_confirmed_at: (r.payment_confirmed_at as string | undefined) || undefined,
+    seller_confirmed_received_at: (r.seller_confirmed_received_at as string | undefined) || undefined,
     created_at: r.created_at as string,
     shipped_at: (r.shipped_at as string | undefined) || undefined,
     delivered_at: (r.delivered_at as string | undefined) || undefined,
@@ -248,6 +250,12 @@ export type PaginatedListings = {
   total: number;
   page: number;
   pageSize: number;
+  // IDs of listings shown via the boost-aware "boosted first" query on page 0
+  // (see fetchListings below). Callers paginating with useInfiniteQuery should
+  // thread this through to subsequent-page calls so those listings aren't
+  // duplicated (shown again once their created_at naturally places them) or
+  // dropped (the listing they displaced never appearing on any page).
+  boostedIds: string[];
 };
 
 export async function fetchPublicData(): Promise<PublicData> {
@@ -313,36 +321,102 @@ async function searchSellerIds(q: string): Promise<string[]> {
   }
 }
 
+async function mapRows(rows: DbRow[]): Promise<Listing[]> {
+  const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
+  const profiles = await fetchProfilesByIds(sellerIds);
+  return Promise.all(rows.map((r) => mapListing(r, profiles)));
+}
+
 export async function fetchListings(
   filters: ListingFilters,
-  pagination: { page: number; pageSize: number }
+  pagination: { page: number; pageSize: number; boostedIds?: string[] }
 ): Promise<PaginatedListings> {
-  const { page, pageSize } = pagination;
+  const { page, pageSize, boostedIds: carriedBoostedIds = [] } = pagination;
   const { category, size, province, minPrice, maxPrice, q, sortBy } = filters;
 
-  let query = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
-
-  if (category) query = query.eq('category', category);
-  if (size) query = query.eq('size_category', size);
-  if (province) query = query.eq('pickup_province', province);
-  if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) query = query.gte('price_thb', minPrice);
-  if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) query = query.lte('price_thb', maxPrice);
-
-  if (q && q.trim()) {
+  const sellerIds = q && q.trim() ? await searchSellerIds(escapeLikePattern(q.trim())) : [];
+  const orConditions: string[] | null = (() => {
+    if (!q || !q.trim()) return null;
     const term = escapeLikePattern(q.trim());
     const pattern = `%${term}%`;
-    const sellerIds = await searchSellerIds(term);
     const conditions: string[] = [
       `species_common_en.ilike.${pattern}`,
       `species_scientific.ilike.${pattern}`,
       `description.ilike.${pattern}`,
       `pickup_province.ilike.${pattern}`,
     ];
-    if (sellerIds.length > 0) {
-      conditions.push(`seller_id.in.(${sellerIds.join(',')})`);
+    if (sellerIds.length > 0) conditions.push(`seller_id.in.(${sellerIds.join(',')})`);
+    return conditions;
+  })();
+
+  // Deliberate v1 simplification: boost-aware ordering only applies to page 0
+  // of the default sort (no explicit sortBy — today's created_at desc case).
+  // PostgREST/supabase-js can't cleanly order by an "is this boost still
+  // active right now" computed expression via a single .order() call, so for
+  // that one case we run two queries and concatenate boosted-first. Every
+  // other page/sort combination just runs the normal single query, unboosted.
+  const isDefaultSort = !sortBy;
+  if (page === 0 && isDefaultSort) {
+    const nowIso = new Date().toISOString();
+    const BOOSTED_CAP = 8;
+
+    let boostedQuery = supabase.from('listings').select('*').eq('status', 'active').gt('boosted_until', nowIso);
+    if (category) boostedQuery = boostedQuery.eq('category', category);
+    if (size) boostedQuery = boostedQuery.eq('size_category', size);
+    if (province) boostedQuery = boostedQuery.eq('pickup_province', province);
+    if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) boostedQuery = boostedQuery.gte('price_thb', minPrice);
+    if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) boostedQuery = boostedQuery.lte('price_thb', maxPrice);
+    if (orConditions) boostedQuery = boostedQuery.or(orConditions.join(','));
+    boostedQuery = boostedQuery.order('boosted_until', { ascending: false }).limit(BOOSTED_CAP);
+
+    const { data: boostedData, error: boostedError } = await boostedQuery;
+    if (boostedError) {
+      logger.warn('fetchListings boosted query failed', { error: boostedError.message, filters, pagination });
     }
-    query = query.or(conditions.join(','));
+    const boostedRows = (boostedData || []) as DbRow[];
+    const boostedIds = boostedRows.map((r) => r.id as string);
+
+    let normalQuery = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+    if (category) normalQuery = normalQuery.eq('category', category);
+    if (size) normalQuery = normalQuery.eq('size_category', size);
+    if (province) normalQuery = normalQuery.eq('pickup_province', province);
+    if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) normalQuery = normalQuery.gte('price_thb', minPrice);
+    if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) normalQuery = normalQuery.lte('price_thb', maxPrice);
+    if (orConditions) normalQuery = normalQuery.or(orConditions.join(','));
+    if (boostedIds.length > 0) {
+      normalQuery = normalQuery.not('id', 'in', `(${boostedIds.join(',')})`);
+    }
+    normalQuery = normalQuery.order('created_at', { ascending: false });
+
+    const remaining = Math.max(pageSize - boostedRows.length, 0);
+    normalQuery = normalQuery.range(0, Math.max(remaining - 1, 0));
+
+    const { data: normalData, error: normalError, count } = await normalQuery;
+    if (normalError) {
+      logger.warn('fetchListings normal query failed', { error: normalError.message, filters, pagination });
+      throw normalError;
+    }
+
+    const normalRows = remaining > 0 ? ((normalData || []) as DbRow[]) : [];
+    const combinedRows = [...boostedRows, ...normalRows];
+    const listings = await mapRows(combinedRows);
+
+    return {
+      listings,
+      total: (count ?? normalRows.length) + boostedRows.length,
+      page,
+      pageSize,
+      boostedIds,
+    };
   }
+
+  let query = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+  if (category) query = query.eq('category', category);
+  if (size) query = query.eq('size_category', size);
+  if (province) query = query.eq('pickup_province', province);
+  if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) query = query.gte('price_thb', minPrice);
+  if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) query = query.lte('price_thb', maxPrice);
+  if (orConditions) query = query.or(orConditions.join(','));
 
   switch (sortBy) {
     case 'price-low':
@@ -355,7 +429,19 @@ export async function fetchListings(
       query = query.order('created_at', { ascending: false });
   }
 
-  const from = page * pageSize;
+  // Default-sort pages beyond page 0 must exclude the boosted listings
+  // already surfaced on page 0's boost-aware query above, and shift their
+  // offset back by the same amount -- otherwise those listings render again
+  // once their created_at naturally places them (duplicate keys), and the
+  // listings they displaced from page 0 are skipped entirely (an
+  // off-by-boostedCount gap). Non-default sorts never run the boost-aware
+  // page-0 query, so there is nothing to exclude for them.
+  const boostedCount = isDefaultSort ? carriedBoostedIds.length : 0;
+  if (isDefaultSort && boostedCount > 0) {
+    query = query.not('id', 'in', `(${carriedBoostedIds.join(',')})`);
+  }
+
+  const from = Math.max(page * pageSize - boostedCount, 0);
   const to = from + pageSize - 1;
   query = query.range(from, to);
 
@@ -366,16 +452,37 @@ export async function fetchListings(
   }
 
   const rows = (data || []) as DbRow[];
-  const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string))).filter(Boolean);
-  const profiles = await fetchProfilesByIds(sellerIds);
-  const listings = await Promise.all(rows.map((r) => mapListing(r, profiles)));
+  const listings = await mapRows(rows);
 
   return {
     listings,
-    total: count ?? listings.length,
+    total: (count ?? listings.length) + boostedCount,
     page,
     pageSize,
+    boostedIds: carriedBoostedIds,
   };
+}
+
+// Homepage "Featured" rail: currently-boosted active listings, most-recently
+// boosted first. Callers should simply omit the section when this returns an
+// empty array (no empty-state skeleton needed — Featured is promotional and
+// shouldn't appear when nothing is boosted).
+export async function fetchFeaturedListings(limit = 8): Promise<Listing[]> {
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('status', 'active')
+      .gt('boosted_until', new Date().toISOString())
+      .order('boosted_until', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const rows = (data || []) as DbRow[];
+    return await mapRows(rows);
+  } catch (e) {
+    logger.warn('fetchFeaturedListings failed', { error: e instanceof Error ? e.message : String(e) });
+    return [];
+  }
 }
 
 export async function fetchRecentListings(limit = 8): Promise<Listing[]> {
@@ -1085,6 +1192,27 @@ export async function createStripePaymentIntent(orderId: string): Promise<{ paym
   };
 }
 
+// Create a Stripe PaymentIntent for a Boost purchase (paid listing
+// visibility). Always uses Stripe regardless of STRIPE_CHECKOUT_ENABLED --
+// Boost is platform ad revenue, a different product from marketplace
+// checkout, and keeps working even when that flag is off.
+export async function createBoostPaymentIntent(
+  listingId: string,
+  tierIndex: number
+): Promise<{ paymentIntentId: string; clientSecret: string }> {
+  const { data, error } = await supabase.functions.invoke('stripe-boost-checkout', {
+    body: { listingId, tierIndex },
+  });
+  if (error) {
+    logger.error('createBoostPaymentIntent failed', new Error(error.message));
+    throw new Error(error.message || 'Failed to create boost payment');
+  }
+  return {
+    paymentIntentId: String(data.paymentIntentId || ''),
+    clientSecret: String(data.clientSecret || ''),
+  };
+}
+
 // Create (or resume) the seller's Stripe Connect Express onboarding link.
 export async function onboardStripeConnect(): Promise<{ url: string; accountId: string }> {
   const { data, error } = await supabase.functions.invoke('stripe-connect-onboard', {
@@ -1379,6 +1507,53 @@ export async function confirmDirectPayment(id: string): Promise<void> {
   invalidateUserQueries(tx.seller_id as string);
 }
 
+// Direct/P2P payment: the seller acknowledges they received the buyer's
+// payment. This is a parallel attestation to the buyer's confirmDirectPayment
+// above — it does NOT change order status and is not a gate for shipping;
+// it just makes the trust/safety trail explicit and visible to both parties.
+export async function confirmDirectPaymentReceived(id: string): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id, buyer_id, seller_id, status, payment_method, seller_confirmed_received_at')
+    .eq('id', id)
+    .single();
+  if (txError || !tx) throw txError || new Error('Transaction not found');
+
+  const isSeller = tx.seller_id === userData.user.id;
+  const profile = await fetchProfile(userData.user.id);
+  const isAdmin = !!profile?.is_admin;
+  if (!isSeller && !isAdmin) {
+    throw new Error('Only the seller can confirm payment received');
+  }
+  if (tx.payment_method !== 'direct') {
+    throw new Error('This is only applicable to direct payment orders');
+  }
+  if (tx.status !== 'paid_in_escrow') {
+    throw new Error('Only orders the buyer has already marked as paid can be confirmed received');
+  }
+  if (tx.seller_confirmed_received_at) {
+    throw new Error('Payment receipt already confirmed');
+  }
+
+  const confirmedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from('transactions')
+    .update({ seller_confirmed_received_at: confirmedAt })
+    .eq('id', id);
+  if (error) throw error;
+  const localTx = TRANSACTIONS.find((t) => t.id === id);
+  if (localTx) {
+    localTx.seller_confirmed_received_at = confirmedAt;
+  }
+  notifyPaymentReceivedBySeller(tx.buyer_id as string, id);
+  invalidateTransactionDetail(id);
+  invalidateUserQueries(tx.buyer_id as string);
+  invalidateUserQueries(tx.seller_id as string);
+}
+
 export async function getTransactionEvents(transactionId: string): Promise<TransactionEvent[]> {
   const { data, error } = await supabase
     .from('transaction_events')
@@ -1410,14 +1585,19 @@ export async function updateListing(id: string, patch: Partial<NewListingInput>)
 }
 
 export async function withdrawListing(id: string): Promise<void> {
-  const { error } = await supabase.from('listings').update({ status: 'withdrawn' }).eq('id', id);
+  const { data, error } = await supabase
+    .from('listings')
+    .update({ status: 'withdrawn' })
+    .eq('id', id)
+    .select('seller_id')
+    .single();
   if (error) throw error;
   const local = LISTINGS.find(l => l.id === id);
   if (local) {
     local.status = 'withdrawn';
-    invalidatePublicQueries();
-    invalidateUserQueries(local.seller_id);
   }
+  invalidatePublicQueries();
+  invalidateUserQueries(data.seller_id);
 }
 
 export async function markListingSold(id: string, sellerId: string, buyerId?: string): Promise<void> {
@@ -1443,9 +1623,9 @@ export async function markListingSold(id: string, sellerId: string, buyerId?: st
   const local = LISTINGS.find(l => l.id === id);
   if (local) {
     local.status = 'sold';
-    invalidatePublicQueries();
-    invalidateUserQueries(local.seller_id);
   }
+  invalidatePublicQueries();
+  invalidateUserQueries(listing.seller_id);
   // If a buyer is provided, record a manual transfer so provenance stays intact.
   if (buyerId && listing) {
     const { data: plant, error: plantError } = await supabase
@@ -1625,7 +1805,7 @@ export async function fetchProvenance(
   signature?: string | null
 ): Promise<{ listing: Listing | null; transfers: import('@/types').Transfer[]; plant: Plant | null; scans: QRScan[]; signatureValid: boolean | null }> {
   const isUuid = isValidUuid(plantId);
-  const listing = (await fetchListingByPlantId(plantId)) || getListingByPlantId(plantId) || null;
+  const listing = (await fetchListingByPlantId(plantId)) || getListingByPlantId(plantId) || (isUuid ? await fetchListingById(plantId) : null) || null;
   const plant = isUuid ? await fetchPlant(plantId) : null;
 
   let signatureValid: boolean | null = null;
@@ -2004,12 +2184,31 @@ export function notifyOrderCancelled(buyerId: string, orderId: string) {
   });
 }
 
+// Fires from confirmDirectPayment() above, right after the BUYER (not the
+// seller) marks that they sent a direct/P2P payment. The message must
+// describe that actor and action accurately -- direct payments are never
+// held by the platform, so this must not claim an escrow/protection
+// guarantee that doesn't exist for this payment method. (This function is
+// currently only wired to the direct-payment flow; if it's ever reused for
+// the Stripe path, where escrow language would be accurate, branch the
+// message on the transaction's payment_method instead of overwriting this.)
 export function notifyPaymentConfirmed(buyerId: string, orderId: string) {
   return createNotification({
     user_id: buyerId,
     type: 'order',
-    title: 'Payment confirmed',
-    message: 'The seller confirmed your payment. Your order is now protected by escrow.',
+    title: 'Payment marked as sent',
+    message: 'You marked this order as paid. The seller has been notified and will confirm receipt before shipping.',
+    link: `/order/${orderId}`,
+    read: false,
+  });
+}
+
+export function notifyPaymentReceivedBySeller(buyerId: string, orderId: string) {
+  return createNotification({
+    user_id: buyerId,
+    type: 'order',
+    title: 'Payment receipt confirmed',
+    message: 'The seller confirmed they received your payment.',
     link: `/order/${orderId}`,
     read: false,
   });

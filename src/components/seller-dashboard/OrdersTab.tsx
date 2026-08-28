@@ -11,6 +11,7 @@ interface OrdersTabProps {
   setOrderFilter: (v: string) => void;
   onShip: (id: string) => void;
   onDeliver: (id: string) => void;
+  onConfirmReceived: (id: string) => void;
   pendingRevenue: number;
   totalRevenue: number;
   pendingSales: Transaction[];
@@ -18,7 +19,7 @@ interface OrdersTabProps {
   t: TFunction;
 }
 
-export function OrdersTab({ orders, orderFilter, setOrderFilter, onShip, onDeliver, pendingRevenue, totalRevenue, pendingSales, completedSales, t }: OrdersTabProps) {
+export function OrdersTab({ orders, orderFilter, setOrderFilter, onShip, onDeliver, onConfirmReceived, pendingRevenue, totalRevenue, pendingSales, completedSales, t }: OrdersTabProps) {
   const statusOptions = ['pending_payment', 'paid_in_escrow', 'shipped', 'delivered', 'completed', 'refunded', 'cancelled'];
 
   return (
@@ -47,7 +48,7 @@ export function OrdersTab({ orders, orderFilter, setOrderFilter, onShip, onDeliv
 
       <div className="space-y-3">
         {orders.length > 0 ? orders.map((o: Transaction) => (
-          <OrderCard key={o.id} order={o} onShip={onShip} onDeliver={onDeliver} t={t} />
+          <OrderCard key={o.id} order={o} onShip={onShip} onDeliver={onDeliver} onConfirmReceived={onConfirmReceived} t={t} />
         )) : (
           <div className="text-center py-12 bg-zinc-900/20 rounded-xl">
             <Truck className="w-10 h-10 text-zinc-700 mx-auto mb-3" />

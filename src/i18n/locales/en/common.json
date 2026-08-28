@@ -789,6 +789,9 @@
     "errors": {
       "invalid": "Not a valid Root provenance QR",
       "camera": "Could not access camera. Try upload mode instead.",
+      "insecureContext": "Camera access requires a secure (HTTPS) connection. Try upload mode instead.",
+      "permissionDenied": "Camera access was denied. Allow camera access in your browser settings, or try upload mode.",
+      "noCamera": "No camera was found on this device. Try upload mode instead.",
       "upload": "Could not read QR from image. Try manual entry.",
       "manual": "Enter a valid plant ID starting with p-"
     },
@@ -848,7 +851,7 @@
     },
     "fees": {
       "title": "6. Fees",
-      "text": "Root is completely free to use. There are no listing fees, no platform commission, no monthly fees, and no buyer fees — sellers keep 100% of the sale price. Payouts are processed to the seller's registered PromptPay ID within 1-2 business days of transaction completion."
+      "text": "Root is completely free to use. There are no listing fees, no platform commission, no monthly fees, and no buyer fees — sellers keep 100% of the sale price. By default, buyers pay sellers directly (for example via the seller's PromptPay QR shared using the \"Share payment QR\" chat feature) — Root never holds your funds, so there is no payout delay. Card or bank payment through Stripe is available as an alternative on some listings when enabled."
     },
     "prohibited": {
       "title": "7. Prohibited Items",

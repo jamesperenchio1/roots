@@ -1,15 +1,36 @@
 'use client'
 
+import { useMemo } from 'react';
 import type { TFunction } from 'i18next';
-import type { Transaction } from '@/types';
+import type { Transaction, SellerReview } from '@/types';
+import { getSellerReviews, getSellerReviewStats } from '@/lib/api';
 
 interface PerformanceTabProps {
   allSales: Transaction[];
+  sellerId: string;
   t: TFunction;
 }
 
-export function PerformanceTab({ allSales, t }: PerformanceTabProps) {
-  const avgRating = '5.0';
+function avgOf(reviews: SellerReview[], field: keyof SellerReview): number | undefined {
+  const values = reviews
+    .map((r) => r[field])
+    .filter((v): v is number => typeof v === 'number');
+  if (values.length === 0) return undefined;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+export function PerformanceTab({ allSales, sellerId, t }: PerformanceTabProps) {
+  const stats = useMemo(() => getSellerReviewStats(sellerId), [sellerId]);
+  const reviews = useMemo(() => getSellerReviews(sellerId), [sellerId]);
+  const hasReviews = stats.count > 0;
+
+  const subScores = [
+    { label: t('dashboard:seller.shippingSpeed'), avg: avgOf(reviews, 'shipping_speed_rating') },
+    { label: t('dashboard:seller.plantCondition'), avg: avgOf(reviews, 'plant_condition_rating') },
+    { label: t('dashboard:seller.communication'), avg: avgOf(reviews, 'communication_rating') },
+    { label: t('dashboard:seller.listingAccuracy'), avg: avgOf(reviews, 'listing_accuracy_rating') },
+  ].map((item) => ({ ...item, score: item.avg !== undefined ? Math.round(item.avg * 20) : undefined }));
+
   const months = t('dashboard:seller.monthLabels', { returnObjects: true }) as string[];
   const monthly = Array(12).fill(0);
   allSales.forEach((s) => { const d = new Date(s.created_at); monthly[d.getMonth()]++; });
@@ -29,19 +50,27 @@ export function PerformanceTab({ allSales, t }: PerformanceTabProps) {
         <h3 className="font-medium mb-4">{t('dashboard:seller.sellerScore')}</h3>
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-full border-4 border-emerald-500 flex items-center justify-center">
-            <div className="text-center"><p className="text-2xl font-semibold">{avgRating}</p><p className="text-xs text-zinc-500">{t('dashboard:seller.scoreOutOf')}</p></div>
+            {hasReviews ? (
+              <div className="text-center"><p className="text-2xl font-semibold">{stats.average}</p><p className="text-xs text-zinc-500">{t('dashboard:seller.scoreOutOf', { score: stats.average })}</p></div>
+            ) : (
+              <div className="text-center px-2"><p className="text-xs text-zinc-500">{t('dashboard:seller.noReviewsYet')}</p></div>
+            )}
           </div>
           <div className="flex-1 space-y-2">
-            {[
-              { label: t('dashboard:seller.shippingSpeed'), score: Math.min(98, 70 + allSales.length * 2) },
-              { label: t('dashboard:seller.plantCondition'), score: Math.min(98, 75 + allSales.length * 1.5) },
-              { label: t('dashboard:seller.communication'), score: Math.min(98, 80 + allSales.length) },
-              { label: t('dashboard:seller.valueForMoney'), score: Math.min(98, 72 + allSales.length * 1.2) },
-            ].map((item) => (
+            {subScores.map((item) => (
               <div key={item.label} className="flex items-center gap-3">
                 <span className="text-xs text-zinc-500 w-32">{item.label}</span>
-                <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${item.score}%` }} /></div>
-                <span className="text-xs text-zinc-500 w-8">{item.score}</span>
+                {item.score !== undefined ? (
+                  <>
+                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${item.score}%` }} /></div>
+                    <span className="text-xs text-zinc-500 w-8">{item.score}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden" />
+                    <span className="text-xs text-zinc-600 w-auto whitespace-nowrap">{t('dashboard:seller.notEnoughData')}</span>
+                  </>
+                )}
               </div>
             ))}
           </div>

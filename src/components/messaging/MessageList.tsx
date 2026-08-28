@@ -16,9 +16,9 @@ interface MessageListProps {
   endRef: React.RefObject<HTMLDivElement | null>;
   dateLocale: string;
   onReply: (message: Message) => void;
-  onEdit: (message: Message) => void;
-  onDelete: (message: Message) => void;
-  onReport: (message: Message) => void;
+  onEdit?: (message: Message) => void;
+  onDelete?: (message: Message) => void;
+  onReport?: (message: Message) => void;
   onReact: (messageId: string, reaction: string) => void;
   onRemoveReaction: (messageId: string, reaction: string) => void;
   formatTime: (dateStr: string) => string;

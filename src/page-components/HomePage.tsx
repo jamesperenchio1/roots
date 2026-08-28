@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { useEffect, useState, useMemo } from 'react';
 
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, TrendingUp, Search, Clock } from 'lucide-react';
-import { useListingsByIds, useRecentListings } from '@/hooks/queries/useListings';
+import { ArrowRight, TrendingUp, Search, Clock, Sparkles } from 'lucide-react';
+import { useFeaturedListings, useListingsByIds, useRecentListings } from '@/hooks/queries/useListings';
 import { useMarketOverview } from '@/hooks/queries/useMarketOverview';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
@@ -18,7 +18,9 @@ export default function HomePage() {
   const [textReady, setTextReady] = useState(false);
   const { data: listingsData } = useRecentListings(8);
   const listings = listingsData ?? [];
-  const { data: market } = useMarketOverview();
+  const { data: featuredData } = useFeaturedListings(8);
+  const featured = featuredData ?? [];
+  const { data: market, isLoading: isMarketLoading } = useMarketOverview();
   const { recentlyViewed: recentlyViewedIds } = useRecentlyViewed();
   const { data: recentlyViewedListings } = useListingsByIds(recentlyViewedIds);
   const recentlyViewed = useMemo(
@@ -90,6 +92,29 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Featured — boosted listings. Promotional, so simply omitted when
+          nothing is currently boosted (no empty-state skeleton). */}
+      {featured.length > 0 && (
+        <section className="pt-20 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-light tracking-tight mb-2 flex items-center gap-2">
+                  <Sparkles className="w-7 h-7 text-amber-400" />
+                  {t('home:sections.featured')}
+                </h2>
+                <p className="text-zinc-500">{t('home:sections.featuredSubtitle')}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {featured.map(listing => (
+                <ListingCard key={listing.id} listing={listing} layout="minimal" />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Recently Viewed */}
       {recentlyViewed.length > 0 && (
@@ -165,7 +190,22 @@ export default function HomePage() {
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 {t('marketplace:market.trendingUp')}
               </h3>
-              {(market?.trending_up.length ?? 0) === 0 ? (
+              {isMarketLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-black/30 rounded-lg animate-pulse">
+                      <div>
+                        <div className="h-4 bg-zinc-800 rounded w-28 mb-2" />
+                        <div className="h-3 bg-zinc-800 rounded w-16" />
+                      </div>
+                      <div className="text-right">
+                        <div className="h-4 bg-zinc-800 rounded w-16 mb-2 ml-auto" />
+                        <div className="h-3 bg-zinc-800 rounded w-10 ml-auto" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (market?.trending_up.length ?? 0) === 0 ? (
                 <p className="text-zinc-600 text-sm py-8 text-center">{t('home:noPriceHistory')}</p>
               ) : (
                 <div className="space-y-3">

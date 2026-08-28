@@ -166,10 +166,13 @@ site_url = "https://roots-rho-two.vercel.app"
 additional_redirect_urls = [
   "https://roots-rho-two.vercel.app/",
   "https://roots-rho-two.vercel.app/reset-password",
+  "https://roots-rho-two.vercel.app/auth/callback**",
   "https://roots.vercel.app/",
   "https://roots.vercel.app/reset-password",
+  "https://roots.vercel.app/auth/callback**",
   "http://localhost:3000/",
-  "http://localhost:3000/reset-password"
+  "http://localhost:3000/reset-password",
+  "http://localhost:3000/auth/callback**"
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

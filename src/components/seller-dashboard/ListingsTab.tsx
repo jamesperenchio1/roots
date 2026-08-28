@@ -15,7 +15,7 @@ interface ListingsTabProps {
   sales: Transaction[];
   onWithdraw: (id: string) => void;
   onMarkSold: (id: string) => void;
-  onDuplicate: () => void;
+  onDuplicate: (id: string) => void;
   t: TFunction;
 }
 

@@ -43,6 +43,7 @@
     "other": "อื่นๆ"
   },
   "listing": {
+    "boosted": "โปรโมต",
     "buy": "ซื้อเลย",
     "makeOffer": "เสนอราคา",
     "messageSeller": "ส่งข้อความ",
@@ -101,6 +102,7 @@
     "reviews": "รีวิว",
     "contact": "ติดต่อผู้ขาย",
     "verified": "ผู้ขายที่ตรวจสอบแล้ว",
+    "promptpayVerified": "ยืนยัน PromptPay แล้ว",
     "notFound": "ไม่พบผู้ขาย",
     "backToBrowse": "กลับไปหน้าค้นหา",
     "avatarAlt": "รูปโปรไฟล์ของ {{name}}",
@@ -171,7 +173,9 @@
     "tablePrice": "ราคา",
     "tableStatus": "สถานะ",
     "hotRightNow": "มาแรงตอนนี้",
-    "coolingOff": "ราคาเย็นลง"
+    "coolingOff": "ราคาเย็นลง",
+    "noSpeciesData": "ยังไม่มีข้อมูลในส่วนนี้",
+    "noHighValueSales": "ยังไม่มีการขายมูลค่าสูง"
   },
   "create": {
     "title": "สร้างรายการ",
@@ -236,6 +240,8 @@
     "successDescription": "เมื่อได้รับการอนุมัติ ผู้ซื้อจะสามารถค้นหา เปรียบเทียบราคา และซื้อด้วยการคุ้มครองเอสโครว์",
     "loadingIdentification": "กำลังโหลดผลการระบุพันธุ์…",
     "prefilledFromIdentification": "เติมข้อมูลจากการระบุพันธุ์",
+    "loadingDuplicate": "กำลังโหลดรายการที่จะทำซ้ำ…",
+    "duplicatePhotosNote": "แบบร่างที่ทำซ้ำ — กรุณาเพิ่มรูปภาพใหม่",
     "commonNames": "ชื่อสามัญ: {{names}}",
     "suggestedPrice": "ราคาแนะนำ {{price}} {{currency}}",
     "loadingSavedPlaces": "กำลังโหลดสถานที่บันทึกไว้…",

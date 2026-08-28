@@ -7,21 +7,25 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 interface SocialAuthButtonsProps {
-  /** Full URL used as Supabase redirectTo (must not contain a hash fragment). */
-  redirect?: string;
   /** In-app path to return the user to after OAuth succeeds (e.g. `/browse`). */
   returnPath?: string;
 }
 
-export function SocialAuthButtons({ redirect, returnPath }: SocialAuthButtonsProps) {
+export function SocialAuthButtons({ returnPath }: SocialAuthButtonsProps) {
   const { t } = useTranslation(['auth', 'common']);
   const { signInWithOAuth, isLoading } = useAuth();
 
   async function handleProvider(provider: Provider) {
-    // Google does not accept hash-router URLs as redirect URIs. Use the
-    // clean origin; Supabase appends the session tokens and the app's
-    // onAuthStateChange listener picks them up.
-    const cleanRedirect = redirect ? redirect.split('#')[0] : `${window.location.origin}/`;
+    // Google does not accept hash-router URLs as redirect URIs, and neither
+    // Google nor Apple should ever redirect straight back to an app page —
+    // that leaves a one-time PKCE `code` in a URL the user can refresh,
+    // which fails on re-exchange and signs them out. Always point at the
+    // dedicated server-side callback route, which exchanges the code for a
+    // session and redirects to a clean URL.
+    const origin = window.location.origin;
+    const cleanRedirect = returnPath
+      ? `${origin}/auth/callback?next=${encodeURIComponent(returnPath)}`
+      : `${origin}/auth/callback`;
     if (returnPath) {
       sessionStorage.setItem('oauth_return_path', returnPath);
     } else {

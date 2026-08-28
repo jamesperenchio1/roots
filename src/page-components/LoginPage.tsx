@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
@@ -22,6 +22,16 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = sanitizeRedirect(searchParams?.get('redirect'));
+
+  // src/app/auth/callback/route.ts redirects here with ?error=oauth_failed
+  // when the OAuth code exchange fails server-side. Surface it instead of
+  // silently bouncing to a blank login form.
+  useEffect(() => {
+    if (searchParams?.get('error') === 'oauth_failed') {
+      setError(t('auth:social.oauthFailed'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

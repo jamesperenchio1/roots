@@ -1,3 +1,10 @@
+> **⚠️ ARCHIVED — historical snapshot, not current.** This audit describes an
+> earlier state of the app (pre-Stripe, pre-messaging, Vite/SPA-era in
+> places) and is now significantly out of date — e.g. it describes card
+> payments as a non-functional placeholder and messaging as absent, both of
+> which are false today. For the current architecture and state, see
+> [README.md](README.md).
+
 # Roots Production Readiness Audit
 
 **Date:** 2026-07-15  

@@ -1137,28 +1137,11 @@ export async function getAttachmentSignedUrl(bucket: string, path: string, expir
   return data.signedUrl;
 }
 
-export async function ensureMessageAttachmentBucket(): Promise<void> {
-  try {
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const exists = buckets?.some((b) => b.name === MESSAGE_ATTACHMENT_BUCKET);
-    if (!exists) {
-      await supabase.storage.createBucket(MESSAGE_ATTACHMENT_BUCKET, {
-        public: false,
-        fileSizeLimit: 52428800, // 50 MiB
-      });
-    }
-  } catch (e) {
-    logger.warn('ensureMessageAttachmentBucket failed', { error: e instanceof Error ? e.message : String(e) });
-  }
-}
-
 export async function uploadMessageAttachment(
   file: File,
   conversationId: string,
   messageId: string
 ): Promise<MessageAttachment> {
-  await ensureMessageAttachmentBucket();
-
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user?.id;
   if (!userId) throw new Error('Authentication required to upload attachments');

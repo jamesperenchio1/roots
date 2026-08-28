@@ -8,7 +8,7 @@ import { ArrowLeft, Package, Truck, CheckCircle, QrCode, AlertTriangle, MessageS
 import { useTranslation } from 'react-i18next';
 import { getSrcSet } from '@/lib/images';
 import { Button } from '@/components/ui/button';
-import { updateOrderStatus, uploadReceiptPhoto, hasReviewedTransaction, getTransactionEvents, confirmDirectPayment } from '@/lib/api';
+import { updateOrderStatus, uploadReceiptPhoto, hasReviewedTransaction, getTransactionEvents, confirmDirectPayment, confirmDirectPaymentReceived } from '@/lib/api';
 import { verifyQrFromFile } from '@/lib/qr-verify';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +26,7 @@ export default function OrderPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [directConfirming, setDirectConfirming] = useState(false);
+  const [receivedConfirming, setReceivedConfirming] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string | null>(null);
 
@@ -112,6 +113,19 @@ export default function OrderPage() {
     }
   };
 
+  const handleConfirmReceived = async () => {
+    setReceivedConfirming(true);
+    try {
+      await confirmDirectPaymentReceived(tx.id);
+      toast.success(t('checkout:order.confirmPaymentReceivedSuccess'));
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('checkout:order.confirmPaymentReceivedError'));
+    } finally {
+      setReceivedConfirming(false);
+    }
+  };
+
   const handleFileSelect = (method: 'qr' | 'photo') => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -169,7 +183,7 @@ export default function OrderPage() {
           </div>
 
           {(tx.payment_slip_path || tx.payment_confirmed) && (
-            <div className="border-t border-white/5 pt-4">
+            <div className="border-t border-white/5 pt-4 space-y-1.5">
               {tx.payment_confirmed ? (
                 <div className="flex items-center gap-2 text-sm text-emerald-400">
                   <CheckCircle className="w-4 h-4" />
@@ -179,6 +193,12 @@ export default function OrderPage() {
                 <div className="flex items-start gap-2 text-sm text-amber-400">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{t('checkout:order.paymentPending')}</span>
+                </div>
+              )}
+              {tx.payment_method === 'direct' && tx.seller_confirmed_received_at && (
+                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{t('checkout:order.sellerConfirmedReceivedDate', { date: new Date(tx.seller_confirmed_received_at).toLocaleDateString(dateLocale) })}</span>
                 </div>
               )}
             </div>
@@ -231,12 +251,20 @@ export default function OrderPage() {
             <div className="flex items-start gap-2 text-xs text-zinc-500">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-zinc-400">
-                  {t('checkout:order.escrowInfo')}
-                </p>
-                <p className="mt-1">
-                  {t('checkout:order.disputeInfo')}
-                </p>
+                {tx.payment_method === 'stripe' ? (
+                  <>
+                    <p className="text-zinc-400">
+                      {t('checkout:order.escrowInfo')}
+                    </p>
+                    <p className="mt-1">
+                      {t('checkout:order.disputeInfo')}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-zinc-400">
+                    {t('checkout:order.directPaymentInfo')}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -329,6 +357,33 @@ export default function OrderPage() {
         {status === 'paid_in_escrow' && (
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 mb-6">
             <p className="text-sm text-amber-400">{t('checkout:order.statusMessages.paid')}</p>
+          </div>
+        )}
+
+        {status === 'paid_in_escrow' && tx.payment_method === 'direct' && user?.id === tx.seller_id && (
+          <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-6 mb-6">
+            {tx.seller_confirmed_received_at ? (
+              <p className="text-sm text-emerald-400 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                {t('checkout:order.youConfirmedReceivedDate', { date: new Date(tx.seller_confirmed_received_at).toLocaleDateString(dateLocale) })}
+              </p>
+            ) : (
+              <>
+                {tx.payment_confirmed_at && (
+                  <p className="text-sm text-zinc-400 mb-3">
+                    {t('checkout:order.buyerConfirmedPaymentSentDate', { date: new Date(tx.payment_confirmed_at).toLocaleDateString(dateLocale) })}
+                  </p>
+                )}
+                <Button
+                  onClick={handleConfirmReceived}
+                  disabled={receivedConfirming}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-black"
+                >
+                  {receivedConfirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                  {t('checkout:order.markPaymentReceived')}
+                </Button>
+              </>
+            )}
           </div>
         )}
 

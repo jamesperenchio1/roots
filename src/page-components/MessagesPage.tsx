@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 
 import { useTranslation } from 'react-i18next';
 import {
@@ -71,8 +71,14 @@ export default function MessagesPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Array<{ user_id: string; display_name: string }>>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  // useId() (not Date.now()/Math.random()) for the initial value: it's the
+  // only value here computed during the SSR render pass, and Date.now()/
+  // Math.random() differ between server and client, causing a hydration
+  // mismatch. Values set later via setPendingMessageId (in event handlers,
+  // client-only) are unaffected and can keep using Date.now()/Math.random().
+  const initialPendingMessageIdSeed = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [pendingMessageId, setPendingMessageId] = useState<string>(
-    `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    `m-${initialPendingMessageIdSeed}`
   );
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -285,7 +291,7 @@ export default function MessagesPage() {
   const legacyListingName = legacyListing?.species?.common_name_en;
 
   return (
-    <div className="pt-20 pb-0 md:pb-16 px-0 md:px-4 sm:px-6 flex flex-col md:flex-row max-w-7xl mx-auto min-h-[calc(100dvh-80px)] md:min-h-[70vh]">
+    <div className="pt-20 pb-0 md:pb-16 px-0 md:px-4 sm:px-6 flex flex-col md:flex-row max-w-7xl mx-auto h-[calc(100dvh-80px)] md:h-[70vh]">
       <MessagesSidebar
         hasActiveConversation={!!activeConversationId}
         conversations={conversations}
@@ -297,7 +303,7 @@ export default function MessagesPage() {
       />
 
       <div
-        className={`${!activeConversationId ? 'hidden md:flex' : 'flex'} flex-1 flex-col md:min-h-[70vh]`}
+        className={`${!activeConversationId ? 'hidden md:flex' : 'flex'} flex-1 flex-col min-h-0 md:h-[70vh]`}
       >
         {!activeConversationId ? (
           <EmptyConversation />
@@ -353,6 +359,7 @@ export default function MessagesPage() {
               conversationId={activeConversationId}
               messageId={pendingMessageId}
               onAttachmentsChange={setPendingAttachments}
+              listingSellerId={activeConversation?.listing?.seller_id}
             />
           </>
         )}

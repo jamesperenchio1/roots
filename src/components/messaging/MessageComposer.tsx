@@ -1,11 +1,15 @@
 'use client'
 
 import { useRef, useEffect, useState, lazy, Suspense, useCallback } from 'react';
-import { Send, X, Smile, Paperclip, Image, File, Film, Music, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Send, X, Smile, Paperclip, Image, File as FileIcon, Film, Music, Loader2, QrCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import type { Message } from '@/types';
 import { useUploadQueue, usePasteFiles } from '@/hooks/useUploadQueue';
+import { useAuth } from '@/hooks/useAuth';
+import { generatePromptPayQR } from '@/lib/promptpay';
 
 // Lazy-load emoji picker to keep initial bundle small.
 const Picker = lazy(() => import('@emoji-mart/react'));
@@ -21,6 +25,12 @@ interface MessageComposerProps {
   conversationId: string;
   messageId: string;
   onAttachmentsChange?: (attachments: import('@/types').MessageAttachment[]) => void;
+  // The listing's seller_id, when this conversation is tied to a listing.
+  // Used to distinguish "I'm the seller sharing my own payment QR for the
+  // buyer to pay" from "I'm the buyer" -- sharing a buyer's QR into the
+  // thread doesn't make sense since the seller is the one who's supposed to
+  // be paid.
+  listingSellerId?: string;
 }
 
 export default function MessageComposer({
@@ -34,12 +44,17 @@ export default function MessageComposer({
   conversationId,
   messageId,
   onAttachmentsChange,
+  listingSellerId,
 }: MessageComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
+  const { user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [sharingQr, setSharingQr] = useState(false);
   const { items, addFiles, removeItem, uploadAll, hasPending, hasErrors, clear } = useUploadQueue({
     conversationId,
     messageId,
@@ -76,6 +91,47 @@ export default function MessageComposer({
     setShowEmoji(false);
     textareaRef.current?.focus();
   };
+
+  // The picker is rendered via a portal to <body> and positioned with
+  // fixed coordinates anchored to the trigger button's viewport rect, so it
+  // can't be clipped by an `overflow-hidden` ancestor (e.g. the chat widget
+  // panel). Recomputed on open and kept in sync on resize/scroll while open.
+  const PICKER_WIDTH = 320;
+  const PICKER_HEIGHT = 400;
+  const updatePickerPos = useCallback(() => {
+    const btn = emojiButtonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const margin = 8;
+    let left = rect.left;
+    if (left + PICKER_WIDTH > window.innerWidth - margin) {
+      left = window.innerWidth - PICKER_WIDTH - margin;
+    }
+    if (left < margin) left = margin;
+
+    let top = rect.top - PICKER_HEIGHT - margin;
+    if (top < margin) {
+      // Not enough room above the button — place it below instead.
+      top = rect.bottom + margin;
+    }
+    setPickerPos({ top, left });
+  }, []);
+
+  const toggleEmoji = () => {
+    if (!showEmoji) updatePickerPos();
+    setShowEmoji((s) => !s);
+  };
+
+  useEffect(() => {
+    if (!showEmoji) return;
+    updatePickerPos();
+    window.addEventListener('resize', updatePickerPos);
+    window.addEventListener('scroll', updatePickerPos, true);
+    return () => {
+      window.removeEventListener('resize', updatePickerPos);
+      window.removeEventListener('scroll', updatePickerPos, true);
+    };
+  }, [showEmoji, updatePickerPos]);
 
   const handleSend = async () => {
     if (hasErrors) {
@@ -118,12 +174,45 @@ export default function MessageComposer({
     setIsDragging(false);
   };
 
+  // Only the listing's seller is who a buyer should pay, so only the seller
+  // sharing their own QR into the thread makes sense. When we know the
+  // listing's seller_id and the current user isn't it, disable sharing
+  // rather than let a buyer post their own (irrelevant, potentially
+  // confusing) payment QR. When there's no listing context (e.g. a
+  // non-listing DM), fall back to allowing it.
+  const isKnownNonSeller = !!listingSellerId && listingSellerId !== user?.id;
+
+  const handleShareQr = async () => {
+    if (isKnownNonSeller) {
+      toast.error(t('messages:paymentQrSellerOnly'));
+      return;
+    }
+    if (!user?.promptpay_id) {
+      toast.error(t('messages:paymentQrMissing'));
+      return;
+    }
+    setSharingQr(true);
+    try {
+      const dataUrl = await generatePromptPayQR(user.promptpay_id);
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const file = new File([blob], 'promptpay-qr.png', { type: 'image/png' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      addFiles(dt.files);
+    } catch (error) {
+      console.error('Failed to generate payment QR:', error);
+      toast.error(t('messages:paymentQrError'));
+    } finally {
+      setSharingQr(false);
+    }
+  };
+
   const categoryIcon = (category: string) => {
     switch (category) {
       case 'image': return <Image className="w-4 h-4" />;
       case 'video': return <Film className="w-4 h-4" />;
       case 'audio': return <Music className="w-4 h-4" />;
-      default: return <File className="w-4 h-4" />;
+      default: return <FileIcon className="w-4 h-4" />;
     }
   };
 
@@ -158,6 +247,10 @@ export default function MessageComposer({
             <X className="w-4 h-4" />
           </Button>
         </div>
+      )}
+
+      {items.some((i) => i.file.name === 'promptpay-qr.png') && (
+        <p className="text-[11px] text-amber-400/90">{t('messages:paymentQrSafetyTip')}</p>
       )}
 
       {items.length > 0 && (
@@ -197,16 +290,17 @@ export default function MessageComposer({
       <div className="flex gap-2 items-end">
         <div className="relative">
           <Button
+            ref={emojiButtonRef}
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-zinc-500 hover:text-white hover:bg-white/10"
-            onClick={() => setShowEmoji((s) => !s)}
+            onClick={toggleEmoji}
             aria-label={t('messages:addEmoji')}
           >
             <Smile className="w-5 h-5" />
           </Button>
-          {showEmoji && (
-            <div className="absolute bottom-12 left-0 z-50">
+          {showEmoji && pickerPos && typeof document !== 'undefined' && createPortal(
+            <div className="fixed z-[70]" style={{ top: pickerPos.top, left: pickerPos.left }}>
               <Suspense fallback={<div className="w-[320px] h-[400px] bg-zinc-900 rounded-lg animate-pulse" />}>
                 <Picker
                   data={async () => {
@@ -217,7 +311,8 @@ export default function MessageComposer({
                   theme="dark"
                 />
               </Suspense>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 
@@ -237,6 +332,18 @@ export default function MessageComposer({
           className="hidden"
           onChange={(e) => addFiles(e.target.files)}
         />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-zinc-500 hover:text-white hover:bg-white/10"
+          onClick={handleShareQr}
+          disabled={sharingQr || isKnownNonSeller}
+          aria-label={isKnownNonSeller ? t('messages:paymentQrSellerOnly') : t('messages:sharePaymentQr')}
+          title={isKnownNonSeller ? t('messages:paymentQrSellerOnly') : t('messages:sharePaymentQr')}
+        >
+          {sharingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+        </Button>
 
         <textarea
           ref={textareaRef}

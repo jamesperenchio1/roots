@@ -842,6 +842,14 @@ async function refreshPriceSnapshots() {
     return;
   }
   console.log('Price snapshots refreshed.');
+
+  console.log('Backfilling a year of price history...');
+  const { error: backfillError } = await supabase.rpc('backfill_price_history', { p_days: 365 });
+  if (backfillError) {
+    console.warn('Failed to backfill price history:', backfillError.message);
+    return;
+  }
+  console.log('Price history backfilled.');
 }
 
 async function main() {

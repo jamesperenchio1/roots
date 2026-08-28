@@ -10,6 +10,7 @@ import { useSeller } from '@/hooks/queries/useSeller';
 import { useListingsBySeller } from '@/hooks/queries/useListings';
 import { getProvinceLabel } from '@/lib/provinces';
 import { SellerReviewsSection } from '@/components/SellerReviewsSection';
+import { PromptPayVerifiedBadge } from '@/components/PromptPayVerifiedBadge';
 
 export default function SellerPage() {
   const { t, i18n } = useTranslation(['marketplace', 'common']);
@@ -53,7 +54,10 @@ export default function SellerPage() {
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-light tracking-tight mb-1">{seller.display_name}</h1>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-2xl font-light tracking-tight">{seller.display_name}</h1>
+                {seller.promptpay_id && <PromptPayVerifiedBadge />}
+              </div>
               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 mb-3">
                 {seller.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {getProvinceLabel(seller.location, i18n.language)}</span>}
                 {seller.rating && <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400" /> {seller.rating}</span>}

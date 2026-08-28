@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
+import { Sparkles } from 'lucide-react';
 import { LazyImage } from '@/components/LazyImage';
 import { Sparkline } from '@/components/Sparkline';
 import { getProvinceLabel } from '@/lib/provinces';
@@ -155,9 +156,18 @@ export function ListingCard({
   const srcSet = getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' });
   const alt = listing.species?.scientific_name || t('marketplace:listingAlt');
   const commonName = listing.species?.common_name_en || listing.species?.common_name_th;
+  const isBoosted = !!listing.boosted_until && new Date(listing.boosted_until).getTime() > Date.now();
+
+  const boostedBadge = isBoosted ? (
+    <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">
+      <Sparkles className="w-3 h-3" />
+      {t('marketplace:listing.boosted')}
+    </span>
+  ) : null;
 
   const image = config.imageWrapper ? (
-    <div className={config.imageWrapper}>
+    <div className={`relative ${config.imageWrapper}`}>
+      {boostedBadge}
       <LazyImage
         src={src}
         srcSet={srcSet}
@@ -169,15 +179,18 @@ export function ListingCard({
       />
     </div>
   ) : (
-    <LazyImage
-      src={src}
-      srcSet={srcSet}
-      sizes={sizes}
-      alt={alt}
-      aspectRatio={aspectRatio}
-      priority={priority}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-    />
+    <div className="relative">
+      {boostedBadge}
+      <LazyImage
+        src={src}
+        srcSet={srcSet}
+        sizes={sizes}
+        alt={alt}
+        aspectRatio={aspectRatio}
+        priority={priority}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+      />
+    </div>
   );
 
   const sizeClasses = showSizePill

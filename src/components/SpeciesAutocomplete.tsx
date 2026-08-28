@@ -29,6 +29,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const justSelected = useRef(false);
+  const userTypedRef = useRef(false);
 
   useEffect(() => {
     setQuery(value);
@@ -50,7 +51,10 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
       justSelected.current = false;
       return;
     }
-    setIsOpen(true);
+    if (userTypedRef.current) {
+      userTypedRef.current = false;
+      setIsOpen(true);
+    }
     setSelectedIndex(-1);
     setGbifResults([]);
 
@@ -98,6 +102,7 @@ export default function SpeciesAutocomplete({ value, onChange, placeholder, labe
   }, [gbifQuery, localResults.length, category]);
 
   const handleInputChange = useCallback((val: string) => {
+    userTypedRef.current = true;
     setQuery(val);
     onChange(val);
   }, [onChange]);
