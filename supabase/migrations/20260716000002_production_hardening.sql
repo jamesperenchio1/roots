@@ -88,8 +88,12 @@ ALTER TABLE public.offers
 -- ============================================================
 -- 4. HIGH: offers.conversation_id should reference conversations.
 --    Without the FK, orphaned conversation references accumulate
---    when conversations are deleted.
+--    when conversations are deleted. The column itself was missing on
+--    databases created before it was added to the app types, so create
+--    it first.
 -- ============================================================
+
+ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS conversation_id uuid;
 
 DO $$
 BEGIN

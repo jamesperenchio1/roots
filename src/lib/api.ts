@@ -892,7 +892,9 @@ export function getMarketOverviewFromData(data: PublicData): MarketOverview {
     trending_up,
     trending_down,
     most_traded,
-    high_value_sales: transactions.filter((t) => t.status === 'completed' && t.sale_price_thb >= 5000),
+    high_value_sales: transactions
+      .filter((t) => t.status === 'completed' && t.sale_price_thb >= 5000)
+      .slice(0, 10),
     hot_right_now,
     cold,
   };

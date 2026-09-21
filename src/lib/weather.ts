@@ -82,11 +82,20 @@ function setCache<T>(key: string, data: T): void {
 
 const FETCH_TIMEOUT_MS = 6000;
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+const WEATHER_REVALIDATE_SECONDS = 15 * 60; // 15 minutes
+const GEOCODE_REVALIDATE_SECONDS = 30 * 24 * 60 * 60; // 30 days (coords never change)
+
+async function fetchJson<T>(url: string, revalidateSeconds = WEATHER_REVALIDATE_SECONDS): Promise<T | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      // Opt into the Next.js Data Cache so upstream responses are reused across
+      // requests instead of re-hitting open-meteo on every page load. Ignored
+      // in the browser (where this module is also imported for PROVINCE_CITIES).
+      next: { revalidate: revalidateSeconds },
+    });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -104,7 +113,7 @@ export async function getCityCoords(
   if (cached) return cached;
 
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
-  const data = await fetchJson<GeocodingResult>(url);
+  const data = await fetchJson<GeocodingResult>(url, GEOCODE_REVALIDATE_SECONDS);
   const result = data?.results?.[0];
   if (!result) return null;
 

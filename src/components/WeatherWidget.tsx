@@ -6,6 +6,19 @@ import { CloudRain, Droplets, Sun, Cloud, Wind, Thermometer, Umbrella } from 'lu
 import { Skeleton } from '@/components/ui/skeleton';
 import { getWeatherForCity, type WeatherData } from '@/lib/weather';
 
+// Prefer the cached server route (/api/weather). It performs the geocode ->
+// forecast lookups once and serves a CDN-cached JSON response, so the browser
+// avoids two sequential cross-origin round trips on every page view.
+async function loadWeather(cityName: string): Promise<WeatherData | null> {
+  try {
+    const res = await fetch(`/api/weather?city=${encodeURIComponent(cityName)}`);
+    if (res.ok) return (await res.json()) as WeatherData;
+  } catch {
+    // fall through to the direct client fetch below
+  }
+  return getWeatherForCity(cityName);
+}
+
 interface WeatherWidgetProps {
   cityName: string;
   compact?: boolean;
@@ -48,7 +61,7 @@ export default function WeatherWidget({ cityName, compact }: WeatherWidgetProps)
       setLoading(true);
       setError(false);
       try {
-        const data = await getWeatherForCity(cityName);
+        const data = await loadWeather(cityName);
         if (cancelled) return;
         if (data) {
           setWeather(data);
