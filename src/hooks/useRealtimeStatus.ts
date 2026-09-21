@@ -3,10 +3,12 @@ import { supabase } from '@/lib/supabase/client';
 
 export type RealtimeConnectionState = 'connected' | 'connecting' | 'disconnected';
 
-export function useRealtimeStatus(): RealtimeConnectionState {
+export function useRealtimeStatus(enabled = true): RealtimeConnectionState {
   const [status, setStatus] = useState<RealtimeConnectionState>('connecting');
 
   useEffect(() => {
+    if (!enabled) return;
+
     // Probe with a heartbeat channel to track connection state.
     const channel = supabase.channel('__connection_probe__');
 
@@ -17,7 +19,7 @@ export function useRealtimeStatus(): RealtimeConnectionState {
     });
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [enabled]);
 
   return status;
 }

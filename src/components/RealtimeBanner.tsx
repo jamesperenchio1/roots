@@ -2,12 +2,18 @@
 
 import { WifiOff, Loader2 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
+import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
 export default function RealtimeBanner() {
-  const status = useRealtimeStatus();
+  const { user } = useAuth();
+  const status = useRealtimeStatus(!!user);
   const { t } = useTranslation('common');
 
+  // Only signed-in users have anything that needs live syncing (messages,
+  // orders). Showing "Connection lost" to anonymous visitors on every page
+  // reads as a site-wide outage and is pure noise.
+  if (!user) return null;
   if (status === 'connected') return null;
 
   return (

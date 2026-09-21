@@ -60,6 +60,12 @@ export const baseConfig = {
   resources,
   fallbackLng: 'en' as const,
   defaultNS,
+  // `common` holds shared strings (e.g. the `plantCare` block) that components
+  // reference without an explicit `common:` prefix while their primary
+  // namespace is something else (react-i18next binds `t` to `namespaces[0]`
+  // unless nsMode is 'fallback', so the second namespace would never be
+  // consulted and the raw key would render).
+  fallbackNS: defaultNS,
   interpolation: {
     // React escapes interpolated values when rendering text nodes, so i18next
     // must not escape them again. Leaving this `true` double-escapes values

@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   title: { default: 'Roots — Thai Plant Marketplace', template: '%s | Roots' },
   description: 'Buy and sell rare plants in Thailand.',
   metadataBase: new URL('https://root.market'),
+  icons: { icon: '/favicon.svg' },
 };
 
 export const viewport: Viewport = {
