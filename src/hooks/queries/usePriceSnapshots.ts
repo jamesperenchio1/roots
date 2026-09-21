@@ -5,7 +5,7 @@ import type { PriceSnapshot } from '@/types';
 
 export function usePriceSnapshots(speciesId: string | undefined, sizeCategory?: string, days = 90) {
   return useQuery<PriceSnapshot[]>({
-    queryKey: publicKeys.priceSnapshots(speciesId, sizeCategory),
+    queryKey: publicKeys.priceSnapshots(speciesId, sizeCategory, days),
     queryFn: () => (speciesId ? fetchPriceSnapshotsForSpecies(speciesId, sizeCategory, days) : []),
     enabled: !!speciesId,
     staleTime: 5 * 60 * 1000,

@@ -168,6 +168,17 @@ export default function MessagesPage() {
     return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   }, []);
 
+  /**
+   * Scroll the message pane itself rather than calling scrollIntoView on the
+   * end marker: scrollIntoView walks up and scrolls EVERY scrollable ancestor,
+   * including the document, which yanked the whole page down on send.
+   */
+  const scrollMessagesToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
   const handleMessagesScroll = useCallback(() => {
     setIsAtBottom(checkIsAtBottom());
   }, [checkIsAtBottom]);
@@ -192,17 +203,17 @@ export default function MessagesPage() {
 
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      scrollMessagesToBottom('auto');
       setIsAtBottom(true);
       prevMessageCountRef.current = messages.length;
       return;
     }
 
     if (messages.length > prevMessageCountRef.current && !searchOpen && isAtBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollMessagesToBottom('smooth');
     }
     prevMessageCountRef.current = messages.length;
-  }, [activeConversationId, messages, isAtBottom, searchOpen]);
+  }, [activeConversationId, messages, isAtBottom, searchOpen, scrollMessagesToBottom]);
 
   const activeConversation = conversations.find((c) => c.conversation.id === activeConversationId);
   const otherUser = activeConversation?.otherUser;

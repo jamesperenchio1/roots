@@ -61,7 +61,10 @@ export const baseConfig = {
   fallbackLng: 'en' as const,
   defaultNS,
   interpolation: {
-    escapeValue: true,
+    // React escapes interpolated values when rendering text nodes, so i18next
+    // must not escape them again. Leaving this `true` double-escapes values
+    // such as dates ("24/08/2026" -> "24&#x2F;08&#x2F;2026").
+    escapeValue: false,
   },
 };
 

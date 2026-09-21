@@ -3,6 +3,7 @@
 // and follows the existing in-memory-store + version-pubsub pattern from api.ts.
 
 import { supabase } from './supabase/client';
+import { getProfileFromCache } from './api';
 import {
   MESSAGES,
   CONVERSATIONS,
@@ -52,7 +53,10 @@ function upsertById<T extends { id: string }>(arr: T[], row: T) {
 // ---------- profile resolution ----------
 function resolveProfile(id: string | undefined | null): Profile | undefined {
   if (!id) return undefined;
-  return getUserById(id);
+  // `USERS` (mockData) is an empty array in production: the real profiles live
+  // in api.ts's profileCache. Falling back to it is what stops conversation
+  // headers from rendering "Unknown user" for everyone.
+  return getUserById(id) ?? getProfileFromCache(id);
 }
 
 // ---------- mappers ----------
@@ -201,34 +205,60 @@ export function _mapEmailQueueItem(r: DbRow): EmailQueueItem {
 }
 
 // ---------- hydration ----------
+
+const HYDRATE_TIMEOUT_MS = 8000;
+
+/**
+ * Race a Supabase request against a timeout. Without this, a stalled request
+ * leaves the conversations query permanently `pending`, which the UI renders
+ * as "Loading conversations…" forever.
+ */
+function withTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${HYDRATE_TIMEOUT_MS}ms`)), HYDRATE_TIMEOUT_MS)
+    ),
+  ]);
+}
+
 export async function hydrateUserConversations(userId: string): Promise<void> {
   try {
-    const { data, error } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', userId)
-      .is('left_at', null)
-      .order('joined_at', { ascending: false })
-      .limit(CONVERSATIONS_LIMIT);
+    const { data, error } = await withTimeout(
+      supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .is('left_at', null)
+        .order('joined_at', { ascending: false })
+        .limit(CONVERSATIONS_LIMIT),
+      'loadConversationParticipants'
+    );
     if (error) throw error;
 
     const conversationIds = (data || []).map((r) => r.conversation_id as string);
     if (conversationIds.length === 0) return;
 
-    const { data: convRows, error: convError } = await supabase
-      .from('conversations')
-      .select('*')
-      .in('id', conversationIds)
-      .order('last_message_at', { ascending: false, nullsFirst: false });
+    const { data: convRows, error: convError } = await withTimeout(
+      supabase
+        .from('conversations')
+        .select('*')
+        .in('id', conversationIds)
+        .order('last_message_at', { ascending: false, nullsFirst: false }),
+      'loadConversations'
+    );
     if (convError) throw convError;
 
     CONVERSATIONS.length = 0;
     CONVERSATIONS.push(...(convRows || []).map(mapConversation));
 
-    const { data: partRows, error: partError } = await supabase
-      .from('conversation_participants')
-      .select('*')
-      .in('conversation_id', conversationIds);
+    const { data: partRows, error: partError } = await withTimeout(
+      supabase
+        .from('conversation_participants')
+        .select('*')
+        .in('conversation_id', conversationIds),
+      'loadConversationParticipantsDetail'
+    );
     if (partError) throw partError;
 
     CONVERSATION_PARTICIPANTS.length = 0;
@@ -237,7 +267,12 @@ export async function hydrateUserConversations(userId: string): Promise<void> {
     // Hydrate messages for these conversations (latest N each, capped total)
     await hydrateConversationMessages(conversationIds, MESSAGES_LIMIT);
   } catch (e) {
-    logger.warn('hydrateUserConversations failed', { error: e instanceof Error ? e.message : String(e) });
+    // Logged at error level so real failures reach Sentry instead of looking
+    // like an account with no conversations.
+    logger.error(
+      'hydrateUserConversations failed',
+      e instanceof Error ? e : new Error(String(e))
+    );
   }
 }
 

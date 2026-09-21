@@ -627,10 +627,12 @@ async function fetchPublicDataRaw(): Promise<PublicData> {
     .order('created_at', { ascending: false })
     .limit(PUBLIC_DATA_REVIEW_LIMIT)
     .then((r) => r);
+  // Completed sales are read from a public projection: RLS on `transactions`
+  // only allows the buyer/seller/admin, so anonymous visitors previously got
+  // an empty list here. The view embeds the listing as JSON under `listings`.
   const transactionsReq = supabase
-    .from('transactions')
-    .select('*, listings(*)')
-    .eq('status', 'completed')
+    .from('public_completed_sales')
+    .select('*')
     .order('completed_at', { ascending: false })
     .limit(PUBLIC_DATA_TRANSACTION_LIMIT)
     .then((r) => r);
@@ -685,7 +687,10 @@ async function fetchPriceSnapshots(days = 365): Promise<PriceSnapshot[]> {
     if (error) throw error;
     return (data || []).map((r) => mapPriceSnapshot(r));
   } catch (e) {
-    logger.warn('fetchPriceSnapshots failed', { error: e instanceof Error ? e.message : String(e) });
+    // Surface this instead of silently degrading to an empty market: a
+    // missing/unreadable price_snapshots table used to look identical to a
+    // market with no history at all.
+    logger.error('fetchPriceSnapshots failed', e instanceof Error ? e : new Error(String(e)));
     return [];
   }
 }
@@ -825,10 +830,20 @@ export function getMarketOverviewFromData(data: PublicData): MarketOverview {
     .map((sid) => {
       const last30 = getSpeciesPriceStatsFromData(priceSnapshots, listings, sid, 30);
       const last60 = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 60);
-      const prevMedian =
-        last60.length > 30
-          ? Math.round(last60.slice(0, last60.length - 30).reduce((s, p) => s + p.median_price_thb, 0) / (last60.length - 30))
-          : last30?.median || 0;
+      // Sparse-history aware baseline. Requiring >30 daily snapshots meant a
+      // young database could never surface any trend at all. Now:
+      //   - with a full window we keep comparing against the prior 30 days;
+      //   - with a partial window we compare against the oldest snapshot we
+      //     have (last60 is ordered oldest -> newest);
+      //   - with a single data point there is no trend to report.
+      const prevMedian = (() => {
+        if (last60.length > 30) {
+          const prior = last60.slice(0, last60.length - 30);
+          return Math.round(prior.reduce((s, p) => s + p.median_price_thb, 0) / prior.length);
+        }
+        if (last60.length >= 2) return Math.round(last60[0].median_price_thb);
+        return last30?.median || 0;
+      })();
       const sales30d = last30?.totalSales || 0;
       const sparkline = getPriceSnapshotsForSpeciesFromData(priceSnapshots, sid, undefined, 30).map(
         (d) => d.median_price_thb
@@ -1771,7 +1786,12 @@ export async function fetchListingById(id: string): Promise<Listing | null> {
       .maybeSingle();
     if (error) throw error;
     if (!data) return null;
-    const profiles = await fetchProfileMap();
+    // Fetch only the seller's profile instead of the whole profiles table on
+    // every client refetch of a single listing.
+    const sellerId = (data as { seller_id?: string }).seller_id;
+    const profiles = sellerId
+      ? await fetchProfilesByIds([sellerId])
+      : {};
     profileCache = { ...profileCache, ...profiles };
     return await mapListing(data, profiles);
   } catch (e) {
@@ -2045,6 +2065,20 @@ export function subscribeToWatchlist(userId: string): () => void {
       )
       .subscribe()
   );
+}
+
+/**
+ * Record a real listing view. Best-effort and fire-and-forget: the counter is
+ * incremented server-side by a SECURITY DEFINER RPC because RLS forbids a
+ * visitor from updating someone else's listing row.
+ */
+export async function recordListingView(listingId: string): Promise<void> {
+  if (!listingId) return;
+  try {
+    await supabase.rpc('increment_listing_view', { p_listing_id: listingId });
+  } catch (e) {
+    logger.warn('recordListingView failed', { error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 export async function toggleWatch(
@@ -2337,7 +2371,8 @@ export function subscribeToPriceSnapshots(): () => void {
         { event: '*', schema: 'public', table: 'price_snapshots' },
         () => {
           bumpPriceSnapshots();
-          queryClient.invalidateQueries({ queryKey: publicKeys.priceSnapshots(undefined, undefined) });
+          // Prefix-match every cached priceSnapshots window (species/size/days).
+          queryClient.invalidateQueries({ queryKey: ['public', 'priceSnapshots'] });
           queryClient.invalidateQueries({ queryKey: publicKeys.marketOverview() });
         }
       )

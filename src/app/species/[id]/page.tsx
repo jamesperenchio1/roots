@@ -80,7 +80,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
       queryFn: () => Promise.resolve(listings),
     }),
     queryClient.prefetchQuery({
-      queryKey: publicKeys.priceSnapshots(id, undefined),
+      queryKey: publicKeys.priceSnapshots(id, undefined, 180),
       queryFn: () => Promise.resolve(snapshots),
     }),
   ]);

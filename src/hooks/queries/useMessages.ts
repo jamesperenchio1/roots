@@ -21,7 +21,9 @@ export function useConversations(userId: string | undefined) {
       await hydrateUserConversations(userId);
       return getUserConversations(userId);
     },
-    enabled: !!userId,
+    // Intentionally NOT gated on `!!userId`: a disabled query keeps
+    // status === 'pending' forever, which the UI renders as an endless
+    // "Loading conversations…" spinner. The queryFn already short-circuits.
     ...defaultOptions,
   });
 }

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { recordListingView } from '@/lib/api';
 
 const STORAGE_KEY = 'recently_viewed';
 const MAX_ITEMS = 12;
 
 export function useRecentlyViewed() {
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>([]);
+  const recordedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     try {
@@ -24,6 +26,12 @@ export function useRecentlyViewed() {
       });
     } catch {
       // Ignore private mode / quota errors.
+    }
+
+    // Count the view once per session per listing.
+    if (!recordedRef.current.has(listingId)) {
+      recordedRef.current.add(listingId);
+      void recordListingView(listingId);
     }
   }, []);
 

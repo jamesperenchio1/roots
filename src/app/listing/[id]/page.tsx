@@ -13,23 +13,19 @@ type Params = { id: string };
 
 const fetchListing = cache(async (id: string) => {
   const supabase = await createSupabaseServerClient();
+  // Single round-trip: embed the seller profile rather than awaiting the
+  // listing and then the profile sequentially, which doubled TTFB on this route.
   const { data: row, error } = await supabase
     .from('listings')
-    .select('*')
+    .select('*, seller:profiles(*)')
     .eq('id', id)
     .maybeSingle();
   if (error || !row) return null;
 
-  const sellerId = (row as { seller_id?: string }).seller_id;
   const profiles: Record<string, ReturnType<typeof mapProfile>> = {};
-  if (sellerId) {
-    const { data: profileRows } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', sellerId);
-    (profileRows || []).forEach((r) => {
-      profiles[(r as { id: string }).id] = mapProfile(r as Record<string, unknown>);
-    });
+  const embeddedSeller = (row as { seller?: Record<string, unknown> | null }).seller;
+  if (embeddedSeller && typeof embeddedSeller.id === 'string') {
+    profiles[embeddedSeller.id] = mapProfile(embeddedSeller);
   }
 
   return await mapListing(row as Record<string, unknown>, profiles);

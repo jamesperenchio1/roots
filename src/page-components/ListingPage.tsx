@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useListing } from '@/hooks/queries/useListings';
 import { usePriceSnapshots } from '@/hooks/queries/usePriceSnapshots';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
+import { LazyMount } from '@/components/LazyMount';
 import { StatsPanel } from '@/components/StatsPanel';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -268,13 +269,17 @@ export default function ListingPage() {
 
             <p className="text-zinc-400 leading-relaxed">{listing.description}</p>
 
-            <PlantCareCard speciesName={listing.species?.scientific_name || listing.species?.common_name_en || ''} compact />
+            <LazyMount>
+              <PlantCareCard speciesName={listing.species?.scientific_name || listing.species?.common_name_en || ''} compact />
+            </LazyMount>
 
             {listing.pickup_province && (
-              <WeatherWidget
-                cityName={PROVINCE_CITIES[listing.pickup_province] ?? listing.pickup_province}
-                compact
-              />
+              <LazyMount>
+                <WeatherWidget
+                  cityName={PROVINCE_CITIES[listing.pickup_province] ?? listing.pickup_province}
+                  compact
+                />
+              </LazyMount>
             )}
 
             <div className="space-y-3">

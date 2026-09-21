@@ -201,7 +201,9 @@ export function useMessageActions({
   const handleJump = (messageId: string) => {
     const el = document.getElementById(`message-${messageId}`);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // `block: 'nearest'` keeps the scroll inside the messages pane; the
+      // previous 'center' scrolled every ancestor, including the page.
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       el.classList.add('ring-2', 'ring-emerald-500', 'rounded-2xl');
       setTimeout(() => el.classList.remove('ring-2', 'ring-emerald-500', 'rounded-2xl'), 2000);
     }

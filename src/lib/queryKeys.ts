@@ -3,8 +3,8 @@ export const publicKeys = {
   listings: (filters?: Record<string, unknown>) => ['public', 'listings', filters ?? {}] as const,
   listing: (id?: string) => ['public', 'listings', id] as const,
   marketOverview: () => ['public', 'marketOverview'] as const,
-  priceSnapshots: (speciesId?: string, sizeCategory?: string) =>
-    ['public', 'priceSnapshots', speciesId ?? 'all', sizeCategory ?? 'all'] as const,
+  priceSnapshots: (speciesId?: string, sizeCategory?: string, days?: number) =>
+    ['public', 'priceSnapshots', speciesId ?? 'all', sizeCategory ?? 'all', days ?? 'default'] as const,
   seller: (id?: string) => ['public', 'sellers', id] as const,
   sellerReviews: (sellerId?: string) => ['public', 'sellerReviews', sellerId ?? 'all'] as const,
 };

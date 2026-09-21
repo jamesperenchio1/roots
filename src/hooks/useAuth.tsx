@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import type { Profile } from '@/types';
-import { supabase } from '@/lib/supabase/client';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 import type { Provider } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 import i18n from '@/i18n/config';
@@ -134,6 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+
+    // Without Supabase configuration there is nothing to restore and every
+    // `supabase.auth.*` call would throw. Bail out with an explicit error
+    // instead of blanking the entire app through the global error boundary.
+    if (!isSupabaseConfigured) {
+      logger.error(
+        'Supabase is not configured: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are missing. Auth is disabled for this build.'
+      );
+      setIsRestoring(false);
+      return;
+    }
+
     const restore = async () => {
       try {
         // Respect "Remember me" preference: if the user unchecked it, clear
@@ -157,7 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (active && p) {
             setUser(p);
-            queryClient.invalidateQueries({ queryKey: publicKeys.all() });
+            // NOTE: deliberately NOT invalidating publicKeys here. Doing so on
+            // every session restore wiped and refetched the listing, market and
+            // stats queries, which is what made the listing page feel slow.
             queryClient.invalidateQueries({ queryKey: userKeys.all(uid) });
             hydrateUserMessages(uid);
             startSubscriptions(uid);
@@ -181,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (p) {
             setUser(p);
-            queryClient.invalidateQueries({ queryKey: publicKeys.all() });
             queryClient.invalidateQueries({ queryKey: userKeys.all(session.user.id) });
             startSubscriptions(session.user.id);
             const returnPath = consumeOAuthReturnPath();

@@ -23,6 +23,13 @@ interface MakeOfferModalProps {
 }
 
 export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }: MakeOfferModalProps) {
+  // Hooks live in an inner component so that a closed modal does not fire the
+  // price-snapshot, species-stats and provenance queries on every listing page.
+  if (!isOpen) return null;
+  return <MakeOfferModalContent listing={listing} onClose={onClose} onSubmitted={onSubmitted} />;
+}
+
+function MakeOfferModalContent({ listing, onClose, onSubmitted }: Omit<MakeOfferModalProps, 'isOpen'>) {
   const { user } = useAuth();
   const router = useRouter();
   const { t } = useTranslation(['marketplace', 'common']);
@@ -34,8 +41,6 @@ export default function MakeOfferModal({ listing, isOpen, onClose, onSubmitted }
   const { data: snapshots = [] } = usePriceSnapshots(speciesId || undefined, undefined, 90);
   const stats = useSpeciesPriceStats(speciesId || undefined, 30);
   const { data: provenance = null } = useProvenanceSummary(listing.plant_id);
-
-  if (!isOpen) return null;
 
   const chartData = snapshots.map(ps => ({
     date: ps.snapshot_date,
