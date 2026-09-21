@@ -17,7 +17,7 @@ const fetchListing = cache(async (id: string) => {
   // listing and then the profile sequentially, which doubled TTFB on this route.
   const { data: row, error } = await supabase
     .from('listings')
-    .select('*, seller:profiles(*)')
+    .select('*, seller:profiles!listings_seller_id_fkey(*)')
     .eq('id', id)
     .maybeSingle();
   if (error || !row) return null;
