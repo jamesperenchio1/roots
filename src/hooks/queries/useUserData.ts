@@ -7,10 +7,12 @@ import {
   fetchUserWatchlist,
   fetchUserPriceAlerts,
   fetchUserDisputes,
+  fetchListingsByIds,
   getNotifications,
   getOffersForBuyer,
   getOffersForSeller,
   getUserPriceAlerts,
+  getProfileFromCache,
 } from '@/lib/api';
 import {
   getTransactionsWithDetails,
@@ -27,12 +29,19 @@ const defaultOptions = {
   retry: 1,
 } as const;
 
+// The in-memory mock arrays are empty in production, so fall back to the real
+// profile cache hydrated by fetchPublicData/fetchProfile.
+function resolveProfile(id: string | undefined) {
+  if (!id) return undefined;
+  return getUserById(id) ?? getProfileFromCache(id);
+}
+
 function enrichOffer(o: Offer): Offer {
   return {
     ...o,
     listing: getListingById(o.listing_id),
-    buyer: getUserById(o.buyer_id),
-    seller: getUserById(o.seller_id),
+    buyer: resolveProfile(o.buyer_id),
+    seller: resolveProfile(o.seller_id),
   };
 }
 
@@ -67,7 +76,15 @@ export function useOffers(userId: string | undefined) {
     queryKey: userKeys.offers(keyUserId),
     queryFn: async () => {
       const offers = await fetchUserOffers();
-      return offers.map(enrichOffer);
+      // Resolve the listings from Supabase; the mock LISTINGS array is empty in
+      // production, so getListingById alone left every offer without a listing.
+      const listingIds = Array.from(new Set(offers.map((o) => o.listing_id).filter(Boolean)));
+      const listings = await fetchListingsByIds(listingIds);
+      const listingMap = new Map(listings.map((l) => [l.id, l]));
+      return offers.map((o) => ({
+        ...enrichOffer(o),
+        listing: listingMap.get(o.listing_id) ?? getListingById(o.listing_id),
+      }));
     },
     enabled: !!userId,
     initialData: () => {

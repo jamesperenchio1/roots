@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import PrintTag from '@/components/PrintTag';
 import { getSpeciesById, USERS } from '@/data/mockData';
-import { fetchProvenance, recordQRScan, generateQrProvenance } from '@/lib/api';
+import { fetchProvenance, recordQRScan, generateQrProvenance, getProfileFromCache } from '@/lib/api';
 import { generateQR } from '@/lib/promptpay';
 import ShareButtons from '@/components/ShareButtons';
 import { LazyPriceChart } from '@/components/LazyPriceChart';
@@ -28,6 +28,14 @@ interface ProvenanceEvent {
   to: string | null;
   price: number | null;
   type: 'origin' | 'sale' | 'current';
+}
+
+// Resolve a display name from the in-memory mock users first (tests), then from
+// the real profile cache hydrated by fetchPublicData. The mock USERS array is
+// empty in production, which previously rendered every owner as "unknown".
+function displayName(id: string | null | undefined, t: (k: string) => string): string {
+  if (!id) return t('common:plantQr.unknown');
+  return USERS.find(u => u.id === id)?.display_name || getProfileFromCache(id)?.display_name || t('common:plantQr.unknown');
 }
 
 function buildEvents(transfers: Transfer[], plant: Plant | null, listing: Listing | null, t: (k: string) => string): ProvenanceEvent[] {
@@ -55,15 +63,12 @@ function buildEvents(transfers: Transfer[], plant: Plant | null, listing: Listin
   }
 
   transfers.forEach((tr, i) => {
-    const fromUser = tr.from_user_id ? USERS.find(u => u.id === tr.from_user_id) : null;
-    const toUser = tr.to_user_id ? USERS.find(u => u.id === tr.to_user_id) : null;
-
     if (i === 0 && !tr.from_user_id) {
       events.push({
         date: tr.transferred_at.slice(0, 10),
         eventKey: 'common:plantQr.events.registered',
         from: null,
-        to: toUser?.display_name || t('common:plantQr.unknown'),
+        to: displayName(tr.to_user_id, t),
         price: null,
         type: 'origin',
       });
@@ -71,8 +76,8 @@ function buildEvents(transfers: Transfer[], plant: Plant | null, listing: Listin
       events.push({
         date: tr.transferred_at.slice(0, 10),
         eventKey: tr.sale_price_thb ? 'common:plantQr.events.sale' : 'common:plantQr.events.transfer',
-        from: fromUser?.display_name || t('common:plantQr.unknown'),
-        to: toUser?.display_name || t('common:plantQr.unknown'),
+        from: displayName(tr.from_user_id, t),
+        to: displayName(tr.to_user_id, t),
         price: tr.sale_price_thb || null,
         type: 'sale',
       });
@@ -80,12 +85,12 @@ function buildEvents(transfers: Transfer[], plant: Plant | null, listing: Listin
   });
 
   const last = transfers[transfers.length - 1];
-  const lastOwner = last.to_user_id ? USERS.find(u => u.id === last.to_user_id) : null;
+  const lastOwner = displayName(last.to_user_id, t);
   events.push({
     date: new Date().toISOString().slice(0, 10),
     eventKey: 'common:plantQr.events.currentOwnership',
-    from: lastOwner?.display_name || t('common:plantQr.unknown'),
-    to: lastOwner?.display_name || t('common:plantQr.unknown'),
+    from: lastOwner,
+    to: lastOwner,
     price: null,
     type: 'current',
   });

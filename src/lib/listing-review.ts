@@ -1,8 +1,7 @@
-import { uploadListingPhoto, mapListing } from './api';
+import { uploadListingPhoto, mapListing, fetchProfilesByIds } from './api';
 import { supabase } from './supabase/client';
 import { verifyQrFromFile, type QrVerifyResult } from './qr-verify';
-import { USERS } from '@/data/mockData';
-import type { Listing, Profile } from '@/types';
+import type { Listing } from '@/types';
 
 export async function submitListingQrVerification(
   listing: Listing,
@@ -54,6 +53,11 @@ export async function fetchPendingListings(): Promise<Listing[]> {
     .eq('status', 'pending_review')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  const profiles: Record<string, Profile> = Object.fromEntries(USERS.map((u) => [u.id, u]));
+  // Resolve the sellers from Supabase (the in-memory mock USERS array is empty
+  // in production, which previously left every row without seller details).
+  const sellerIds = Array.from(
+    new Set((data || []).map((r) => (r as { seller_id?: string }).seller_id).filter(Boolean))
+  ) as string[];
+  const profiles = await fetchProfilesByIds(sellerIds);
   return Promise.all((data || []).map(async (r: Record<string, unknown>) => mapListing(r, profiles)));
 }

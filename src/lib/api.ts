@@ -285,7 +285,7 @@ async function fetchProfileMap(): Promise<Record<string, Profile>> {
   }
 }
 
-async function fetchProfilesByIds(ids: string[]): Promise<Record<string, Profile>> {
+export async function fetchProfilesByIds(ids: string[]): Promise<Record<string, Profile>> {
   if (ids.length === 0) return {};
   try {
     const { data, error } = await supabase.from('profiles').select('*').in('id', ids);
