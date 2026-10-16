@@ -1,6 +1,7 @@
+import { PUBLIC_PROFILE_COLUMNS } from '@/lib/profile-columns';
 import { cache } from 'react';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabasePublicClient } from '@/lib/supabase/public';
 import { publicKeys } from '@/lib/queryKeys';
 import { mapListing, mapProfile } from '@/lib/api';
 import SellerPage from '@/page-components/SellerPage';
@@ -12,10 +13,10 @@ export const revalidate = 120;
 type Params = { id: string };
 
 const fetchSellerData = cache(async (id: string) => {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data: profileRow, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PUBLIC_PROFILE_COLUMNS)
     .eq('id', id)
     .maybeSingle();
   if (error || !profileRow) return null;
@@ -35,6 +36,11 @@ const fetchSellerData = cache(async (id: string) => {
 
   return { profile, listings };
 });
+
+// Render on first request, then serve from the ISR cache (no params pre-rendered at build time).
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { id } = await params;

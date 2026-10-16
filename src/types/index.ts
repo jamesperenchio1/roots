@@ -21,6 +21,8 @@ export interface Profile {
   id: string;
   display_name: string;
   promptpay_id?: string | null;
+  /** True when the user has a PromptPay ID on file (the ID itself is private to its owner). */
+  has_promptpay?: boolean;
   stripe_account_id?: string | null;
   stripe_onboarding_complete?: boolean | null;
   payout_bank_last_digits?: string | null;

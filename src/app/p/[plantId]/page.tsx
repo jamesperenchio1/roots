@@ -1,15 +1,22 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabasePublicClient } from '@/lib/supabase/public';
 import { mapListing } from '@/lib/api';
 import PlantQRPage from '@/page-components/PlantQRPage';
 
 type Params = { plantId: string };
 
+export const revalidate = 300;
+
+// Render on first request, then serve from the ISR cache (no params pre-rendered at build time).
+export function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { plantId } = await params;
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data: plantRow } = await supabase
     .from('plants')
     .select('*, listings(*)')

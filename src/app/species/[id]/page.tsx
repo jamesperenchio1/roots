@@ -1,5 +1,6 @@
+import { PUBLIC_PROFILE_COLUMNS } from '@/lib/profile-columns';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabasePublicClient } from '@/lib/supabase/public';
 import { publicKeys } from '@/lib/queryKeys';
 import { mapListing, mapProfile, mapPriceSnapshot } from '@/lib/api';
 import { getSpeciesById } from '@/data/mockData';
@@ -16,7 +17,7 @@ export function generateStaticParams() {
 type Params = { id: string };
 
 async function fetchSpeciesData(id: string) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
 
   const { data: listingRows } = await supabase
     .from('listings')
@@ -28,7 +29,7 @@ async function fetchSpeciesData(id: string) {
   const sellerIds = new Set((listingRows || []).map((r) => (r as { seller_id: string }).seller_id));
   const { data: profileRows } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PUBLIC_PROFILE_COLUMNS)
     .in('id', Array.from(sellerIds));
 
   const profileMap = Object.fromEntries(

@@ -7,6 +7,7 @@ import { ALL_SPECIES } from '@/data/speciesDatabase';
 import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies, DashboardStats } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
 import { logger } from './logger';
+import { PUBLIC_PROFILE_COLUMNS } from './profile-columns';
 import { queryClient } from './queryClient';
 import { publicKeys, userKeys, commentKeys } from './queryKeys';
 import i18n from '@/i18n/config';
@@ -51,6 +52,7 @@ export function mapProfile(r: DbRow): Profile {
     id,
     display_name: (r.display_name as string | undefined) ?? 'Plant Lover',
     promptpay_id: (r.promptpay_id as string | undefined) ?? null,
+    has_promptpay: (r.has_promptpay as boolean | undefined) ?? !!r.promptpay_id,
     stripe_account_id: (r.stripe_account_id as string | undefined) ?? null,
     stripe_onboarding_complete: (r.stripe_onboarding_complete as boolean | undefined) ?? false,
     is_admin: !!r.is_admin,
@@ -69,10 +71,17 @@ export function mapProfile(r: DbRow): Profile {
 
 export async function fetchProfile(id: string): Promise<Profile | null> {
   try {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
+    // Own profile: full row through the RPC. Anyone else's: public columns only.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session?.user.id === id) {
+      const { data, error } = await supabase.rpc('get_my_profile');
+      if (error) throw error;
+      return data ? mapProfile(data) : null;
+    }
+    const { data, error } = await supabase.from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', id).single();
     if (error) throw error;
     if (!data) return null;
-    return mapProfile(data);
+    return mapProfile(data as unknown as DbRow);
   } catch (e) {
     logger.warn('fetchProfile failed', { error: e instanceof Error ? e.message : String(e) });
     return null;
@@ -268,30 +277,33 @@ export async function fetchPublicData(): Promise<PublicData> {
   return data;
 }
 
-async function fetchProfileMap(): Promise<Record<string, Profile>> {
-  try {
-    const { data, error } = await supabase.from('profiles').select('*');
-    if (error) throw error;
-    const map: Record<string, Profile> = {};
-    (data || []).forEach((r) => {
-      const p = mapProfile(r);
-      map[p.id] = p;
-    });
-    return map;
-  } catch (e) {
-    logger.warn('fetchProfileMap failed', { error: e instanceof Error ? e.message : String(e) });
-    return {};
-  }
+/** Resolve the profiles referenced by a set of rows (never the whole table). */
+async function fetchProfileMapFor(rows: DbRow[]): Promise<Record<string, Profile>> {
+  const ids = new Set<string>();
+  const collect = (r: DbRow | null | undefined) => {
+    if (!r) return;
+    for (const key of ['buyer_id', 'seller_id', 'current_owner_id'] as const) {
+      const v = r[key];
+      if (typeof v === 'string') ids.add(v);
+    }
+  };
+  rows.forEach((r) => {
+    collect(r);
+    const nested = r.listings as DbRow | DbRow[] | null | undefined;
+    if (Array.isArray(nested)) nested.forEach(collect);
+    else collect(nested);
+  });
+  return fetchProfilesByIds(Array.from(ids));
 }
 
 export async function fetchProfilesByIds(ids: string[]): Promise<Record<string, Profile>> {
   if (ids.length === 0) return {};
   try {
-    const { data, error } = await supabase.from('profiles').select('*').in('id', ids);
+    const { data, error } = await supabase.from('profiles').select(PUBLIC_PROFILE_COLUMNS).in('id', ids);
     if (error) throw error;
     const map: Record<string, Profile> = {};
     (data || []).forEach((r) => {
-      const p = mapProfile(r);
+      const p = mapProfile(r as unknown as DbRow);
       map[p.id] = p;
     });
     return map;
@@ -602,9 +614,9 @@ export async function fetchPriceSnapshotsForSpecies(
 
 export async function fetchProfiles(): Promise<Profile[]> {
   try {
-    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.rpc('admin_list_users');
     if (error) throw error;
-    return (data || []).map((r) => mapProfile(r));
+    return ((data || []) as DbRow[]).map((r) => mapProfile(r));
   } catch (e) {
     logger.warn('fetchProfiles failed', { error: e instanceof Error ? e.message : String(e) });
     return [];
@@ -723,7 +735,7 @@ export async function fetchUserTransactions(): Promise<Transaction[]> {
       .from('transactions')
       .select('*, listings(*)')
       .order('created_at', { ascending: false });
-    const profiles = await fetchProfileMap();
+    const profiles = await fetchProfileMapFor((data || []) as DbRow[]);
     profileCache = { ...profileCache, ...profiles };
     return await Promise.all((data || []).map(async (r) => mapTransaction(r, profiles)));
   } catch (e) {
@@ -741,7 +753,7 @@ export async function fetchTransactionById(id: string): Promise<Transaction | nu
       .single();
     if (error) throw error;
     if (!data) return null;
-    const profiles = await fetchProfileMap();
+    const profiles = await fetchProfileMapFor([data as DbRow]);
     profileCache = { ...profileCache, ...profiles };
     return await mapTransaction(data, profiles);
   } catch (e) {
@@ -912,7 +924,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const DAY = 24 * 60 * 60 * 1000;
   try {
     const [profilesCount, activeListingsCount, openDisputesCount, transactionsRes] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
       supabase.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase
@@ -1649,7 +1661,7 @@ export async function fetchListingByPlantId(plantId: string): Promise<Listing | 
       .maybeSingle();
     if (error) throw error;
     if (!data) return null;
-    const profiles = await fetchProfileMap();
+    const profiles = await fetchProfileMapFor([data as DbRow]);
     profileCache = { ...profileCache, ...profiles };
     return await mapListing(data, profiles);
   } catch (e) {
@@ -1774,7 +1786,7 @@ export async function ensureProfile(
   metadata: Record<string, unknown> = {}
 ): Promise<Profile | null> {
   try {
-    const { data: existing } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    const { data: existing } = await supabase.rpc('get_my_profile');
     if (existing) {
       const patch: Record<string, unknown> = {};
       const displayName = String((metadata.display_name as string | undefined) ?? '').trim();
@@ -1785,7 +1797,8 @@ export async function ensureProfile(
       if (location && !existing.location) patch.location = location;
       if (Object.keys(patch).length > 0) {
         patch.updated_at = new Date().toISOString();
-        const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').single();
+        const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
+        const { data } = await supabase.rpc('get_my_profile');
         if (!error && data) {
           const merged = mapProfile(data);
           upsertById(USERS, merged);
@@ -1811,8 +1824,9 @@ export async function ensureProfile(
   };
 
   try {
-    const { data, error } = await supabase.from('profiles').insert(payload).select('*').single();
+    const { error } = await supabase.from('profiles').insert(payload);
     if (error) throw error;
+    const { data } = await supabase.rpc('get_my_profile');
     if (data) {
       const mapped = mapProfile(data);
       upsertById(USERS, mapped);
@@ -1862,7 +1876,7 @@ export async function fetchSellerListings(sellerId: string): Promise<Listing[]> 
       .eq('seller_id', sellerId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    const profiles = await fetchProfileMap();
+    const profiles = await fetchProfileMapFor((data || []) as DbRow[]);
     profileCache = { ...profileCache, ...profiles };
     return await Promise.all((data || []).map((r) => mapListing(r, profiles)));
   } catch (e) {

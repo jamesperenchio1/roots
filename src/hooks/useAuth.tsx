@@ -92,9 +92,9 @@ function applyOAuthReturnPath(path: string) {
   window.location.replace(target);
 }
 
-async function fetchProfile(id: string): Promise<Profile | null> {
+async function fetchMyProfile(): Promise<Profile | null> {
   try {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
+    const { data, error } = await supabase.rpc('get_my_profile');
     if (error) {
       logger.warn('fetchProfile failed', { error: error.message });
       return null;
@@ -162,10 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { user } } = await supabase.auth.getUser();
         const uid = user?.id;
         if (uid && active) {
-          let p = await fetchProfile(uid);
+          let p = await fetchMyProfile();
           if (!p && user) {
             await ensureProfile(uid, user.user_metadata);
-            p = await fetchProfile(uid);
+            p = await fetchMyProfile();
           }
           if (active && p) {
             setUser(p);
@@ -188,10 +188,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         if (session?.user) {
-          let p = await fetchProfile(session.user.id);
+          let p = await fetchMyProfile();
           if (!p) {
             await ensureProfile(session.user.id, session.user.user_metadata);
-            p = await fetchProfile(session.user.id);
+            p = await fetchMyProfile();
           }
           if (p) {
             setUser(p);
@@ -233,10 +233,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data.user) {
         return { ok: false, error: i18n.t('auth:login.error') };
       }
-      let p = await fetchProfile(data.user.id);
+      let p = await fetchMyProfile();
       if (!p) {
         await ensureProfile(data.user.id, data.user.user_metadata);
-        p = await fetchProfile(data.user.id);
+        p = await fetchMyProfile();
       }
       if (p) {
         setUser(p);
@@ -386,7 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshProfile = useCallback(async () => {
     if (user) {
       try {
-        const p = await fetchProfile(user.id);
+        const p = await fetchMyProfile();
         if (p) setUser(p);
       } catch (err) {
         logger.warn('refreshProfile failed', { error: err instanceof Error ? err.message : String(err) });

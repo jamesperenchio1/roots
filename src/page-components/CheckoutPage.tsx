@@ -210,7 +210,7 @@ export default function CheckoutPage() {
               <p className="text-xs text-zinc-500">{t('checkout:labels.size')}: {listing.size_category} {listing.pot_size_cm && `| ${t('checkout:labels.pot')}: ${listing.pot_size_cm}cm`}</p>
               <p className="text-xs text-zinc-500 flex items-center gap-1.5">
                 <span>{t('checkout:labels.seller')}: {listing.seller?.display_name}</span>
-                {listing.seller?.promptpay_id && <PromptPayVerifiedBadge />}
+                {listing.seller?.has_promptpay && <PromptPayVerifiedBadge />}
               </p>
             </div>
           </div>

@@ -56,7 +56,7 @@ export default function SellerPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-2xl font-light tracking-tight">{seller.display_name}</h1>
-                {seller.promptpay_id && <PromptPayVerifiedBadge />}
+                {seller.has_promptpay && <PromptPayVerifiedBadge />}
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 mb-3">
                 {seller.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {getProvinceLabel(seller.location, i18n.language)}</span>}

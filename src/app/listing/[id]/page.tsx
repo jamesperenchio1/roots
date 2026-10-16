@@ -1,6 +1,7 @@
+import { PUBLIC_PROFILE_COLUMNS } from '@/lib/profile-columns';
 import { cache } from 'react';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabasePublicClient } from '@/lib/supabase/public';
 import { publicKeys } from '@/lib/queryKeys';
 import { mapListing, mapProfile } from '@/lib/api';
 import ListingPage from '@/page-components/ListingPage';
@@ -12,12 +13,12 @@ export const revalidate = 60;
 type Params = { id: string };
 
 const fetchListing = cache(async (id: string) => {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   // Single round-trip: embed the seller profile rather than awaiting the
   // listing and then the profile sequentially, which doubled TTFB on this route.
   const { data: row, error } = await supabase
     .from('listings')
-    .select('*, seller:profiles!listings_seller_id_fkey(*)')
+    .select(`*, seller:profiles!listings_seller_id_fkey(${PUBLIC_PROFILE_COLUMNS})`)
     .eq('id', id)
     .maybeSingle();
   if (error || !row) return null;
@@ -30,6 +31,11 @@ const fetchListing = cache(async (id: string) => {
 
   return await mapListing(row as Record<string, unknown>, profiles);
 });
+
+// Render on first request, then serve from the ISR cache (no params pre-rendered at build time).
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { id } = await params;
