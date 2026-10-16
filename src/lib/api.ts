@@ -305,13 +305,20 @@ function escapeLikePattern(value: string): string {
   return value.replace(/[%_]/g, '\\$&');
 }
 
+/** Free-text search term made safe to embed in a PostgREST `.or()` filter string
+ *  (commas, parentheses and quotes would otherwise inject extra conditions). */
+function sanitizeSearchTerm(value: string): string {
+  return value.replace(/[,()"'\\*]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+}
+
 async function searchSellerIds(q: string): Promise<string[]> {
   const pattern = `%${escapeLikePattern(q)}%`;
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
-      .ilike('display_name', pattern);
+      .ilike('display_name', pattern)
+      .limit(20);
     if (error) throw error;
     return (data || []).map((r) => r.id as string);
   } catch (e) {
@@ -333,13 +340,14 @@ export async function fetchListings(
   const { page, pageSize, boostedIds: carriedBoostedIds = [] } = pagination;
   const { category, size, province, minPrice, maxPrice, q, sortBy } = filters;
 
-  const sellerIds = q && q.trim() ? await searchSellerIds(escapeLikePattern(q.trim())) : [];
+  const cleanQ = q ? sanitizeSearchTerm(q) : '';
+  const sellerIds = cleanQ ? await searchSellerIds(cleanQ) : [];
   const orConditions: string[] | null = (() => {
-    if (!q || !q.trim()) return null;
-    const term = escapeLikePattern(q.trim());
-    const pattern = `%${term}%`;
+    if (!cleanQ) return null;
+    const pattern = `%${escapeLikePattern(cleanQ)}%`;
     const conditions: string[] = [
       `species_common_en.ilike.${pattern}`,
+      `species_common_th.ilike.${pattern}`,
       `species_scientific.ilike.${pattern}`,
       `description.ilike.${pattern}`,
       `pickup_province.ilike.${pattern}`,
@@ -354,7 +362,7 @@ export async function fetchListings(
   // active right now" computed expression via a single .order() call, so for
   // that one case we run two queries and concatenate boosted-first. Every
   // other page/sort combination just runs the normal single query, unboosted.
-  const isDefaultSort = !sortBy;
+  const isDefaultSort = !sortBy || sortBy === 'newest';
   if (page === 0 && isDefaultSort) {
     const nowIso = new Date().toISOString();
     const BOOSTED_CAP = 8;
@@ -375,7 +383,7 @@ export async function fetchListings(
     const boostedRows = (boostedData || []) as DbRow[];
     const boostedIds = boostedRows.map((r) => r.id as string);
 
-    let normalQuery = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+    let normalQuery = supabase.from('listings').select('*', { count: 'estimated' }).eq('status', 'active');
     if (category) normalQuery = normalQuery.eq('category', category);
     if (size) normalQuery = normalQuery.eq('size_category', size);
     if (province) normalQuery = normalQuery.eq('pickup_province', province);
@@ -409,7 +417,7 @@ export async function fetchListings(
     };
   }
 
-  let query = supabase.from('listings').select('*', { count: 'exact' }).eq('status', 'active');
+  let query = supabase.from('listings').select('*', { count: 'estimated' }).eq('status', 'active');
   if (category) query = query.eq('category', category);
   if (size) query = query.eq('size_category', size);
   if (province) query = query.eq('pickup_province', province);

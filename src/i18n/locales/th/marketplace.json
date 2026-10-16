@@ -31,7 +31,12 @@
     "listingAlt": "รายการต้นไม้",
     "remaining": "เหลืออีก {{count}} รายการ",
     "noListings": "ไม่พบรายการ",
-    "adjustFilters": "ลองปรับตัวกรองดู"
+    "adjustFilters": "ลองปรับตัวกรองดู",
+    "removeFilter": "ลบตัวกรอง: {{label}}",
+    "loadError": "โหลดรายการต้นไม้ไม่สำเร็จ",
+    "loadErrorHint": "ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+    "searchResultsFor": "ผลการค้นหา “{{query}}”",
+    "filtersActive": "ใช้อยู่ {{count}}"
   },
   "categories": {
     "aroid": "ไม้ใบอารอยด์",

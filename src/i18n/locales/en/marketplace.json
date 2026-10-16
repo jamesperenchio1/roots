@@ -31,7 +31,12 @@
     "listingAlt": "Plant listing",
     "remaining": "{{count}} remaining",
     "noListings": "No listings found",
-    "adjustFilters": "Try adjusting your filters"
+    "adjustFilters": "Try adjusting your filters",
+    "removeFilter": "Remove filter: {{label}}",
+    "loadError": "We couldn't load the plants",
+    "loadErrorHint": "Check your connection and try again.",
+    "searchResultsFor": "Results for “{{query}}”",
+    "filtersActive": "{{count}} active"
   },
   "categories": {
     "aroid": "Aroids",

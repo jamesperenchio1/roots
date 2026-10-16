@@ -12,13 +12,16 @@ export const metadata: Metadata = {
   description: 'Find rare plants for sale in Thailand.',
 };
 
+const PAGE_SIZE = 12;
+
 export default async function Page() {
+  // Prefetch the unfiltered first page. Its key mirrors BrowsePage's client key for an empty URL.
   const queryClient = new QueryClient();
-  const filters = {};
-  const pageSize = 12;
-  await queryClient.prefetchQuery({
-    queryKey: [...publicKeys.listings(filters), pageSize],
-    queryFn: () => fetchListings(filters, { page: 0, pageSize }),
+  const filters = { category: '' as const, size: '' as const, province: '', minPrice: undefined, maxPrice: undefined, q: '', sortBy: 'newest' as const };
+  await queryClient.prefetchInfiniteQuery({
+    queryKey: [...publicKeys.listings(filters), PAGE_SIZE],
+    queryFn: () => fetchListings(filters, { page: 0, pageSize: PAGE_SIZE }),
+    initialPageParam: { page: 0, boostedIds: [] as string[] },
   });
 
   return (
