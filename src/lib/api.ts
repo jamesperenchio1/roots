@@ -6,7 +6,6 @@ import { USERS, LISTINGS, TRANSACTIONS, NOTIFICATIONS, SELLER_REVIEWS, COMMENTS,
 import { ALL_SPECIES } from '@/data/speciesDatabase';
 import type { Profile, Listing, Transaction, TransactionEvent, TransactionStatus, Species, Category, SizeCategory, DeliveryOption, Notification, SellerReview, Comment, CommentImage, CommentReaction, Offer, PriceAlert, Dispute, PriceSnapshot, Plant, QRScan, WatchlistItem, WatchType, MarketOverview, TrendingSpecies, DashboardStats } from '@/types';
 import { validateImageFile, sanitizeText } from './validation';
-import { calculatePlatformFees } from './platform-config';
 import { logger } from './logger';
 import { queryClient } from './queryClient';
 import { publicKeys, userKeys, commentKeys } from './queryKeys';
@@ -1257,71 +1256,39 @@ export async function processPayout(orderId: string): Promise<void> {
   }
 }
 
+/** PostgREST errors aren't `Error` instances; wrap so callers can surface `.message`. */
+function rpcError(error: { message?: string }, fallback: string): Error {
+  return new Error(error.message || fallback);
+}
+
+function refreshOrderCaches(tx: Transaction) {
+  upsertById(TRANSACTIONS, tx);
+  invalidateTransactionDetail(tx.id);
+  invalidateUserQueries(tx.buyer_id);
+  invalidateUserQueries(tx.seller_id);
+}
+
+/** Creates an order via the `create_order` RPC. Price, fee, seller and status are
+ *  all derived server-side from the listing; the client only picks how to receive it. */
 export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
   if (userData.user.id !== input.buyer.id) throw new Error(i18n.t('common:errors.unauthorized'));
-
-  const price = input.listing.price_thb;
-  const shipping = input.listing.shipping_cost_thb || 0;
-  const total = price + shipping;
-  const { platformFeeThb: fee, sellerPayoutThb: sellerPayout } = calculatePlatformFees(total);
-  const sellerId = input.listing.seller_id;
-  if (input.buyer.id === sellerId) {
+  if (input.buyer.id === input.listing.seller_id) {
     throw new Error(i18n.t('checkout:errors.ownListing'));
   }
 
-  const { data: listingCheck, error: listingCheckError } = await supabase
-    .from('listings')
-    .select('status, seller_id')
-    .eq('id', input.listing.id)
-    .single();
-  if (listingCheckError || !listingCheck) throw listingCheckError || new Error('Listing not found');
-  if (listingCheck.status !== 'active') {
-    throw new Error(i18n.t('checkout:errors.listingUnavailable'));
-  }
-  if (listingCheck.seller_id !== sellerId) {
-    throw new Error(i18n.t('common:errors.unauthorized'));
-  }
-
-  const cover = input.listing.photos?.[0]?.storage_path;
-
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert({
-      listing_id: input.listing.id,
-      buyer_id: input.buyer.id,
-      seller_id: sellerId,
-      species_label: input.listing.species?.common_name_en || 'Plant',
-      image_url: cover || null,
-      sale_price_thb: total,
-      platform_fee_thb: fee,
-      seller_payout_thb: sellerPayout,
-      shipping_cost_thb: shipping,
-      status: 'pending_payment',
-      payment_method: input.payment_method || 'stripe',
-      delivery_method: input.delivery_method,
-      shipping_address: input.shipping_address || null,
-      payment_confirmed: false,
-    })
-    .select('*')
-    .single();
+  const { data, error } = await supabase.rpc('create_order', {
+    p_listing_id: input.listing.id,
+    p_delivery_method: input.delivery_method,
+    p_shipping_address: input.shipping_address ?? null,
+    p_payment_method: input.payment_method || 'direct',
+  });
   if (error) {
     logger.error('createOrder failed', error as Error);
-    throw error;
+    throw rpcError(error, i18n.t('checkout:errors.listingUnavailable'));
   }
 
-  // Mark the listing sold via the atomic RPC so concurrent checkouts can't race.
-  const { error: rpcError } = await supabase.rpc('mark_listing_sold_for_order', {
-    p_listing_id: input.listing.id,
-    p_buyer_id: input.buyer.id,
-  });
-  if (rpcError) {
-    logger.error('createOrder: mark_listing_sold_for_order failed', rpcError as Error);
-    throw rpcError;
-  }
-
-  // Update local LISTINGS so the sold item disappears from browse immediately
   const localListing = LISTINGS.find(l => l.id === input.listing.id);
   if (localListing) localListing.status = 'sold';
 
@@ -1329,152 +1296,72 @@ export async function createOrder(input: NewOrderInput): Promise<Transaction> {
   upsertById(TRANSACTIONS, tx);
   invalidatePublicQueries();
   invalidateUserQueries(input.buyer.id);
-  // Always notify the seller a sale came in — wired here so no call site can forget.
-  notifyNewOrder(sellerId, tx.id, input.listing.species?.common_name_en || 'plant', total);
+  notifyNewOrder(tx.seller_id, tx.id, input.listing.species?.common_name_en || 'plant', tx.sale_price_thb);
   return tx;
 }
 
-const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  pending_payment: ['paid_in_escrow', 'cancelled'],
-  paid_in_escrow: ['shipped', 'disputed', 'cancelled'],
-  shipped: ['delivered', 'disputed', 'cancelled'],
-  delivered: ['completed', 'disputed'],
-  completed: ['disputed'],
-  disputed: ['refunded', 'completed', 'cancelled'],
-  refunded: [],
-  cancelled: [],
-};
+type OrderAction = 'ship' | 'deliver' | 'complete' | 'cancel' | 'admin_resolve';
 
-function canTransition(current: string, next: string): boolean {
-  return VALID_STATUS_TRANSITIONS[current]?.includes(next) ?? false;
+async function runOrderAction(
+  id: string,
+  action: OrderAction,
+  extra: Partial<{
+    p_courier: string; p_tracking_number: string; p_shipment_photo_url: string;
+    p_receipt_photo_path: string; p_resolution: string;
+  }> = {},
+): Promise<Transaction> {
+  const { data, error } = await supabase.rpc('order_action', { p_order_id: id, p_action: action, ...extra });
+  if (error) throw rpcError(error, i18n.t('common:errors.unauthorized'));
+  const tx = await mapTransaction(data, profileCache);
+  refreshOrderCaches(tx);
+  return tx;
 }
 
-const ALLOWED_ORDER_UPDATE_FIELDS = new Set([
-  'status',
-  'shipped_at',
-  'delivered_at',
-  'completed_at',
-  'courier',
-  'tracking_number',
-  'dispute_reason',
-  'receipt_photo_path',
-  'shipment_photo_url',
-]);
-
+/** Advance an order. Role and state rules are enforced by the `order_action` RPC. */
 export async function updateOrderStatus(id: string, patch: Partial<Record<string, unknown>>): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
-
-  const { data: tx, error: txError } = await supabase
-    .from('transactions')
-    .select('id, buyer_id, seller_id, listing_id, status')
-    .eq('id', id)
-    .single();
-  if (txError || !tx) throw txError || new Error('Transaction not found');
-
-  const profile = await fetchProfile(userData.user.id);
-  const isAdmin = !!profile?.is_admin;
-  const isBuyer = tx.buyer_id === userData.user.id;
-  const isSeller = tx.seller_id === userData.user.id;
-
-  if (!isBuyer && !isSeller && !isAdmin) {
-    throw new Error(i18n.t('common:errors.unauthorized'));
-  }
-
-  const newStatus = patch.status as string | undefined;
-  const currentStatus = tx.status as string;
-  if (newStatus && newStatus !== currentStatus) {
-    if (!canTransition(currentStatus, newStatus)) {
-      throw new Error(`Cannot transition order from ${currentStatus} to ${newStatus}`);
+  const status = patch.status as string | undefined;
+  let tx: Transaction;
+  switch (status) {
+    case 'shipped':
+      tx = await runOrderAction(id, 'ship', {
+        p_courier: String(patch.courier ?? ''),
+        p_tracking_number: String(patch.tracking_number ?? ''),
+        ...(patch.shipment_photo_url ? { p_shipment_photo_url: String(patch.shipment_photo_url) } : {}),
+      });
+      notifyOrderShipped(tx.buyer_id, id, tx.courier || 'courier');
+      return;
+    case 'delivered':
+      await runOrderAction(id, 'deliver');
+      return;
+    case 'completed': {
+      const { data: userData } = await supabase.auth.getUser();
+      const me = userData.user ? await fetchProfile(userData.user.id) : null;
+      if (me?.is_admin) {
+        await runOrderAction(id, 'admin_resolve', { p_resolution: 'completed' });
+      } else {
+        await runOrderAction(id, 'complete', {
+          ...(patch.receipt_photo_path ? { p_receipt_photo_path: String(patch.receipt_photo_path) } : {}),
+        });
+      }
+      processPayout(id).catch(() => {});
+      return;
     }
-    const roleAllowed = (() => {
-      if (isAdmin) return true;
-      if (isSeller && newStatus === 'shipped' && currentStatus === 'paid_in_escrow') return true;
-      if (isBuyer && newStatus === 'completed' && ['shipped', 'delivered'].includes(currentStatus)) return true;
-      if (isBuyer && newStatus === 'delivered' && currentStatus === 'shipped') return true;
-      if ((isBuyer || isSeller) && ['disputed', 'cancelled'].includes(newStatus)) return true;
-      return false;
-    })();
-    if (!roleAllowed) {
-      throw new Error(i18n.t('common:errors.unauthorized'));
-    }
-  }
-
-  const allowedPatch = Object.fromEntries(
-    Object.entries(patch).filter(([key]) => ALLOWED_ORDER_UPDATE_FIELDS.has(key))
-  );
-  if (Object.keys(allowedPatch).length === 0) {
-    throw new Error('No valid order fields provided');
-  }
-
-  const { error } = await supabase.from('transactions').update(allowedPatch).eq('id', id);
-  if (error) throw error;
-
-  const localTx = TRANSACTIONS.find((t) => t.id === id);
-  if (localTx) Object.assign(localTx, patch);
-  invalidateTransactionDetail(id);
-  invalidateUserQueries(tx.buyer_id as string);
-  invalidateUserQueries(tx.seller_id as string);
-  // Notify the buyer when their order is marked shipped.
-  if (newStatus === 'shipped' && localTx) {
-    const courier = (patch.courier as string | undefined) || localTx.courier || 'courier';
-    notifyOrderShipped(localTx.buyer_id, id, courier);
-  }
-
-  // Restore the listing when an order is cancelled so it can be relisted.
-  if (newStatus === 'cancelled' && tx.listing_id) {
-    await supabase.from('listings').update({ status: 'active' }).eq('id', tx.listing_id);
-    const localListing = LISTINGS.find((l) => l.id === tx.listing_id);
-    if (localListing) {
-      localListing.status = 'active';
+    case 'cancelled':
+      tx = await runOrderAction(id, 'cancel');
       invalidatePublicQueries();
-      invalidateUserQueries(localListing.seller_id);
-    }
-    notifyOrderCancelled(tx.buyer_id as string, id);
-  }
-
-  // Trigger seller payout when an order is completed.
-  if (newStatus === 'completed') {
-    processPayout(id).catch(() => {});
+      notifyOrderCancelled(tx.buyer_id, id);
+      return;
+    case 'refunded':
+      await runOrderAction(id, 'admin_resolve', { p_resolution: 'refunded' });
+      invalidatePublicQueries();
+      return;
+    default:
+      throw new Error('No valid order fields provided');
   }
 }
 
 export async function markOrderDelivered(id: string): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
-
-  const { data: tx, error: txError } = await supabase
-    .from('transactions')
-    .select('id, buyer_id, seller_id, status')
-    .eq('id', id)
-    .single();
-  if (txError || !tx) throw txError || new Error('Transaction not found');
-
-  const profile = await fetchProfile(userData.user.id);
-  const isSeller = tx.seller_id === userData.user.id;
-  const isAdmin = !!profile?.is_admin;
-  if (!isSeller && !isAdmin) {
-    throw new Error('Only the seller can mark an order delivered');
-  }
-
-  if (tx.status !== 'shipped') {
-    throw new Error('Only shipped orders can be marked delivered');
-  }
-
-  const deliveredAt = new Date().toISOString();
-  const { error } = await supabase
-    .from('transactions')
-    .update({ status: 'delivered', delivered_at: deliveredAt })
-    .eq('id', id);
-  if (error) throw error;
-  const localTx = TRANSACTIONS.find((t) => t.id === id);
-  if (localTx) {
-    localTx.status = 'delivered';
-    localTx.delivered_at = deliveredAt;
-  }
-  invalidateTransactionDetail(id);
-  invalidateUserQueries(tx.buyer_id as string);
-  invalidateUserQueries(tx.seller_id as string);
+  await runOrderAction(id, 'deliver');
 }
 
 // Direct/P2P payment: the buyer marks that they paid the seller directly.
@@ -1482,46 +1369,11 @@ export async function markOrderDelivered(id: string): Promise<void> {
 // (Binance-P2P style). This simply advances the order past payment so the
 // seller can ship.
 export async function confirmDirectPayment(id: string): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
-
-  const { data: tx, error: txError } = await supabase
-    .from('transactions')
-    .select('id, buyer_id, seller_id, status')
-    .eq('id', id)
-    .single();
-  if (txError || !tx) throw txError || new Error('Transaction not found');
-
-  const isBuyer = tx.buyer_id === userData.user.id;
-  const profile = await fetchProfile(userData.user.id);
-  const isAdmin = !!profile?.is_admin;
-  if (!isBuyer && !isAdmin) {
-    throw new Error('Only the buyer can confirm a direct payment');
-  }
-  if (tx.status !== 'pending_payment') {
-    throw new Error('Only pending orders can be confirmed as paid');
-  }
-
-  const confirmedAt = new Date().toISOString();
-  const { error } = await supabase
-    .from('transactions')
-    .update({
-      status: 'paid_in_escrow',
-      payment_confirmed: true,
-      payment_confirmed_at: confirmedAt,
-    })
-    .eq('id', id);
-  if (error) throw error;
-  const localTx = TRANSACTIONS.find((t) => t.id === id);
-  if (localTx) {
-    localTx.status = 'paid_in_escrow';
-    localTx.payment_confirmed = true;
-    localTx.payment_confirmed_at = confirmedAt;
-  }
-  notifyPaymentConfirmed(tx.buyer_id as string, id);
-  invalidateTransactionDetail(id);
-  invalidateUserQueries(tx.buyer_id as string);
-  invalidateUserQueries(tx.seller_id as string);
+  const { data, error } = await supabase.rpc('confirm_direct_payment', { p_order_id: id });
+  if (error) throw rpcError(error, 'Could not confirm payment');
+  const tx = await mapTransaction(data, profileCache);
+  refreshOrderCaches(tx);
+  notifyPaymentConfirmed(tx.buyer_id, id);
 }
 
 // Direct/P2P payment: the seller acknowledges they received the buyer's
@@ -1529,46 +1381,11 @@ export async function confirmDirectPayment(id: string): Promise<void> {
 // above — it does NOT change order status and is not a gate for shipping;
 // it just makes the trust/safety trail explicit and visible to both parties.
 export async function confirmDirectPaymentReceived(id: string): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error(i18n.t('common:errors.unauthorized'));
-
-  const { data: tx, error: txError } = await supabase
-    .from('transactions')
-    .select('id, buyer_id, seller_id, status, payment_method, seller_confirmed_received_at')
-    .eq('id', id)
-    .single();
-  if (txError || !tx) throw txError || new Error('Transaction not found');
-
-  const isSeller = tx.seller_id === userData.user.id;
-  const profile = await fetchProfile(userData.user.id);
-  const isAdmin = !!profile?.is_admin;
-  if (!isSeller && !isAdmin) {
-    throw new Error('Only the seller can confirm payment received');
-  }
-  if (tx.payment_method !== 'direct') {
-    throw new Error('This is only applicable to direct payment orders');
-  }
-  if (tx.status !== 'paid_in_escrow') {
-    throw new Error('Only orders the buyer has already marked as paid can be confirmed received');
-  }
-  if (tx.seller_confirmed_received_at) {
-    throw new Error('Payment receipt already confirmed');
-  }
-
-  const confirmedAt = new Date().toISOString();
-  const { error } = await supabase
-    .from('transactions')
-    .update({ seller_confirmed_received_at: confirmedAt })
-    .eq('id', id);
-  if (error) throw error;
-  const localTx = TRANSACTIONS.find((t) => t.id === id);
-  if (localTx) {
-    localTx.seller_confirmed_received_at = confirmedAt;
-  }
-  notifyPaymentReceivedBySeller(tx.buyer_id as string, id);
-  invalidateTransactionDetail(id);
-  invalidateUserQueries(tx.buyer_id as string);
-  invalidateUserQueries(tx.seller_id as string);
+  const { data, error } = await supabase.rpc('confirm_direct_payment_received', { p_order_id: id });
+  if (error) throw rpcError(error, 'Could not confirm payment received');
+  const tx = await mapTransaction(data, profileCache);
+  refreshOrderCaches(tx);
+  notifyPaymentReceivedBySeller(tx.buyer_id, id);
 }
 
 export async function getTransactionEvents(transactionId: string): Promise<TransactionEvent[]> {
