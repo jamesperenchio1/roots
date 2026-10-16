@@ -4,6 +4,7 @@ import { CheckCircle, Hammer, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { updateOrderStatus } from '@/lib/api';
+import { PrivateImage } from '@/components/PrivateImage';
 import { useAuth } from '@/hooks/useAuth';
 import { useDisputes } from '@/hooks/queries/useUserData';
 
@@ -41,9 +42,9 @@ export function DisputesSection() {
           {d.evidence_urls.length > 0 && (
             <div className="flex gap-2 mb-3">
               {d.evidence_urls.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
-                  <img src={url} alt={t('common:admin.disputes.evidenceAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                </a>
+                <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
+                  <PrivateImage bucket="dispute-evidence" path={url} alt={t('common:admin.disputes.evidenceAlt')} className="w-full h-full object-cover" />
+                </div>
               ))}
             </div>
           )}

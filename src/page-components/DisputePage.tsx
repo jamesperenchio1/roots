@@ -8,6 +8,7 @@ import { ArrowLeft, AlertTriangle, Upload, Camera, Loader2, X } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { createDispute, uploadDisputeEvidence } from '@/lib/api';
+import { PrivateImage } from '@/components/PrivateImage';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransaction } from '@/hooks/queries/useTransaction';
 import { toast } from 'sonner';
@@ -221,7 +222,7 @@ export default function DisputePage() {
               <div className="flex gap-2 flex-wrap">
                 {evidenceUrls.map((url, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-zinc-800">
-                    <img src={url} alt={t('checkout:dispute.evidenceAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <PrivateImage bucket="dispute-evidence" path={url} alt={t('checkout:dispute.evidenceAlt')} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeEvidence(i)}

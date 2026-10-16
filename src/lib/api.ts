@@ -1178,19 +1178,30 @@ export interface NewOrderInput {
 
 const RECEIPT_BUCKET = 'receipt-photos';
 
-// Upload a receipt photo to the receipt-photos bucket; returns the public URL.
-export async function uploadReceiptPhoto(file: File, userId: string): Promise<string> {
+function privateObjectPath(bucket: string, value: string): string {
+  return value.replace(new RegExp(`^.*/${bucket}/`), '').split('?')[0];
+}
+
+/** Short-lived signed URL for a file in a private bucket (accepts a bare path or a legacy URL). */
+export async function getPrivateFileUrl(bucket: string, pathOrUrl: string, expiresInSec = 600): Promise<string> {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(privateObjectPath(bucket, pathOrUrl), expiresInSec);
+  if (error || !data) throw error || new Error('Could not load file');
+  return data.signedUrl;
+}
+
+async function uploadPrivateImage(bucket: string, file: File, userId: string): Promise<string> {
   const validation = validateImageFile(file, 5);
   if (!validation.ok) throw new Error(validation.error);
   const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
   const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  let uploadError = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { upsert: false }).then(r => r.error);
-  if (uploadError && (uploadError.message?.includes('Bucket') || uploadError.message?.includes('not found'))) {
-    await supabase.storage.createBucket(RECEIPT_BUCKET, { public: true, fileSizeLimit: 10485760 });
-    uploadError = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { upsert: false }).then(r => r.error);
-  }
-  if (uploadError) throw uploadError;
-  return supabase.storage.from(RECEIPT_BUCKET).getPublicUrl(path).data.publicUrl;
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+/** Upload a receipt photo to the private receipt-photos bucket; returns the object path. */
+export async function uploadReceiptPhoto(file: File, userId: string): Promise<string> {
+  return uploadPrivateImage(RECEIPT_BUCKET, file, userId);
 }
 
 // Create a Stripe PaymentIntent for an order. Must be called after createOrder.
@@ -1684,19 +1695,9 @@ export async function fetchProvenance(
   }
 }
 
+/** Upload dispute evidence to the private dispute-evidence bucket; returns the object path. */
 export async function uploadDisputeEvidence(file: File, userId: string): Promise<string> {
-  const validation = validateImageFile(file, 5);
-  if (!validation.ok) throw new Error(validation.error);
-  const bucket = 'dispute-evidence';
-  const ext = file.type.split('/').pop()?.replace('jpeg', 'jpg') || 'jpg';
-  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-  let uploadError = await supabase.storage.from(bucket).upload(path, file, { upsert: false }).then(r => r.error);
-  if (uploadError && (uploadError.message?.includes('Bucket') || uploadError.message?.includes('not found'))) {
-    await supabase.storage.createBucket(bucket, { public: true, fileSizeLimit: 10485760 });
-    uploadError = await supabase.storage.from(bucket).upload(path, file, { upsert: false }).then(r => r.error);
-  }
-  if (uploadError) throw uploadError;
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  return uploadPrivateImage('dispute-evidence', file, userId);
 }
 
 export async function createDispute(input: {
