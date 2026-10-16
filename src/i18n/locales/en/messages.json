@@ -60,13 +60,14 @@
     "unarchive": "Unarchive",
     "mute": "Mute",
     "unmute": "Unmute",
-    "call": "Call"
+    "call": "Call",
+    "addReaction": "Add reaction",
+    "reactWith": "React with {{reaction}}"
   },
   "read": "Read",
   "delivered": "Delivered",
   "searchButton": "Search",
   "searchEmpty": "No messages found.",
-  "addEmoji": "Add emoji",
   "attachments": {
     "video": "Video",
     "audio": "Audio"

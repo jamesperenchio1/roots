@@ -8,6 +8,7 @@ import { ArrowLeft, Shield, CreditCard, MessagesSquare, Truck, Lock, CheckCircle
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useListing } from '@/hooks/queries/useListings';
+import { PageLoader } from '@/components/PageLoader';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { createOrder, createStripePaymentIntent, updateOrderStatus } from '@/lib/api';
@@ -64,7 +65,7 @@ function StripePaymentForm({ onPaid, totalLabel }: { onPaid: () => void; totalLa
 
 export default function CheckoutPage() {
   const { listingId } = useParams<{ listingId?: string }>() ?? { listingId: '' };
-  const { data: listing } = useListing(listingId);
+  const { data: listing, isPending: listingPending } = useListing(listingId);
   const { user } = useAuth();
   const { t } = useTranslation(['checkout', 'common']);
   const router = useRouter();
@@ -89,6 +90,8 @@ export default function CheckoutPage() {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, []);
+
+  if (listingPending) return <PageLoader />;
 
   if (!listing) {
     return (
@@ -271,9 +274,9 @@ export default function CheckoutPage() {
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <CreditCard className={`w-4 h-4 ${paymentMethod === 'stripe' ? 'text-emerald-400' : 'text-zinc-400'}`} />
-                  <p className="text-sm font-medium">{t('checkout:paymentMethod.stripe')}</p>
+                  <p className="text-sm font-medium">{t('checkout:checkout.paymentMethod.stripe')}</p>
                 </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:paymentMethod.stripeDescription')}</p>
+                <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:checkout.paymentMethod.stripeDescription')}</p>
               </button>
             )}
             <button
@@ -283,16 +286,16 @@ export default function CheckoutPage() {
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <MessagesSquare className={`w-4 h-4 ${paymentMethod === 'direct' ? 'text-amber-400' : 'text-zinc-400'}`} />
-                <p className="text-sm font-medium">{t('checkout:paymentMethod.direct')}</p>
+                <p className="text-sm font-medium">{t('checkout:checkout.paymentMethod.direct')}</p>
               </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:paymentMethod.directDescription')}</p>
+              <p className="text-xs text-zinc-500 leading-relaxed">{t('checkout:checkout.paymentMethod.directDescription')}</p>
             </button>
           </div>
 
           {paymentMethod === 'direct' && (
             <div className="flex items-start gap-3 text-sm text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 mb-5">
               <Shield className="w-5 h-5 shrink-0 mt-0.5" />
-              <p>{t('checkout:paymentMethod.directWarning')}</p>
+              <p>{t('checkout:checkout.paymentMethod.directWarning')}</p>
             </div>
           )}
 
@@ -313,13 +316,13 @@ export default function CheckoutPage() {
 
           {paymentMethod === 'stripe' && !clientSecret && (
             <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-zinc-400">
-              {t('checkout:qrWillAppear')}
+              {t('checkout:checkout.qrWillAppear')}
             </div>
           )}
 
           {paymentMethod === 'direct' && (
             <div className="text-center py-4 bg-zinc-800/30 rounded-lg border border-white/5 text-sm text-zinc-400">
-              {t('checkout:paymentMethod.directDescription')}
+              {t('checkout:checkout.paymentMethod.directDescription')}
             </div>
           )}
         </div>
@@ -346,7 +349,7 @@ export default function CheckoutPage() {
           disabled={paying || isOwnListing || !!clientSecret}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium h-12 rounded-xl text-base"
         >
-          {paying ? t('checkout:confirming') : clientSecret ? t('checkout:completePayment') : t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}
+          {paying ? t('checkout:confirming') : clientSecret ? t('checkout:checkout.completePayment') : t('checkout:confirmPaid', { total: total.toLocaleString(), currency: t('common:currency') })}
         </Button>
 
         <p className="text-xs text-zinc-500 text-center mt-3">

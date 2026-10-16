@@ -45,6 +45,9 @@ function enrichOffer(o: Offer): Offer {
   };
 }
 
+/** Seed from the in-memory store only when it has data; an empty seed would be treated as fresh and skip the fetch. */
+const nonEmpty = <T,>(items: T[]): T[] | undefined => (items.length > 0 ? items : undefined);
+
 export function useUserTransactions(userId: string | undefined) {
   const keyUserId = userId ?? '';
   return useQuery<Transaction[]>({
@@ -53,8 +56,8 @@ export function useUserTransactions(userId: string | undefined) {
     enabled: !!userId,
     initialData: () =>
       userId
-        ? getTransactionsWithDetails().filter((t) => t.buyer_id === userId || t.seller_id === userId)
-        : [],
+        ? nonEmpty(getTransactionsWithDetails().filter((t) => t.buyer_id === userId || t.seller_id === userId))
+        : undefined,
     ...defaultOptions,
   });
 }
@@ -65,7 +68,7 @@ export function useNotifications(userId: string | undefined) {
     queryKey: userKeys.notifications(keyUserId),
     queryFn: () => fetchUserNotifications(userId!),
     enabled: !!userId,
-    initialData: () => (userId ? getNotifications(userId) : []),
+    initialData: () => (userId ? nonEmpty(getNotifications(userId)) : undefined),
     ...defaultOptions,
   });
 }
@@ -88,11 +91,11 @@ export function useOffers(userId: string | undefined) {
     },
     enabled: !!userId,
     initialData: () => {
-      if (!userId) return [];
+      if (!userId) return undefined;
       const map = new Map<string, Offer>();
       getOffersForBuyer(userId).forEach((o) => map.set(o.id, enrichOffer(o)));
       getOffersForSeller(userId).forEach((o) => map.set(o.id, enrichOffer(o)));
-      return Array.from(map.values());
+      return nonEmpty(Array.from(map.values()));
     },
     ...defaultOptions,
   });
@@ -104,7 +107,7 @@ export function useWatchlist(userId: string | undefined) {
     queryKey: userKeys.watchlist(keyUserId),
     queryFn: () => fetchUserWatchlist(userId!),
     enabled: !!userId,
-    initialData: () => (userId ? WATCHLIST.filter((w) => w.user_id === userId) : []),
+    initialData: () => (userId ? nonEmpty(WATCHLIST.filter((w) => w.user_id === userId)) : undefined),
     ...defaultOptions,
   });
 }
@@ -118,7 +121,7 @@ export function usePriceAlerts(userId: string | undefined) {
       return alerts.map((a) => ({ ...a, species: getSpeciesById(a.species_id) }));
     },
     enabled: !!userId,
-    initialData: () => (userId ? getUserPriceAlerts(userId) : []),
+    initialData: () => (userId ? nonEmpty(getUserPriceAlerts(userId)) : undefined),
     ...defaultOptions,
   });
 }

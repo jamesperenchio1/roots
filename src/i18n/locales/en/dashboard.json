@@ -45,7 +45,8 @@
     "promptpayIdLabel": "PromptPay ID",
     "promptpayPlaceholder": "Phone or National ID",
     "languageLabel": "Language",
-    "settingsSaveFailed": "Failed to save settings."
+    "settingsSaveFailed": "Failed to save settings.",
+    "plantLabel": "Plant …{{id}}"
   },
   "seller": {
     "title": "Seller Dashboard",
@@ -149,10 +150,24 @@
     "connectStripeHint": "Connect a Stripe account to receive payouts for your sales.",
     "stripeConnected": "Stripe account connected. Payouts will be sent to your bank account.",
     "scoreOutOf": "{{score}} / 5.0",
-    "monthLabels": ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"],
+    "monthLabels": [
+      "J",
+      "F",
+      "M",
+      "A",
+      "M",
+      "J",
+      "J",
+      "A",
+      "S",
+      "O",
+      "N",
+      "D"
+    ],
     "promptpayPlaceholder": "Phone number or National ID",
     "qrVerifiedToast": "QR verified. Your listing is now in the admin review queue.",
     "qrVerifyFailed": "QR verification failed",
     "qrVerifyError": "Could not verify QR"
-  }
+  },
+  "verifyQr": "Verify QR"
 }

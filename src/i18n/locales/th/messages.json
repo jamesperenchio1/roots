@@ -31,7 +31,7 @@
   "reLabel": "ตอบกลับ: {{name}}",
   "noMessages": "ยังไม่มีข้อความ ส่งข้อความแรกเลย!",
   "sendAria": "ส่งข้อความ",
-  "addEmoji": "เพิ่มอิโมจิ",
+  "addEmoji": "เพิ่มอีโมจิ",
   "replyingTo": "กำลังตอบกลับ {{name}}",
   "edited": "แก้ไขแล้ว",
   "deleted": "ข้อความนี้ถูกลบ",
@@ -60,13 +60,14 @@
     "unarchive": "ยกเลิกเก็บถาวร",
     "mute": "ปิดเสียง",
     "unmute": "เปิดเสียง",
-    "call": "โทร"
+    "call": "โทร",
+    "addReaction": "เพิ่มรีแอคชัน",
+    "reactWith": "ตอบสนองด้วย {{reaction}}"
   },
   "read": "อ่านแล้ว",
   "delivered": "ส่งแล้ว",
   "searchButton": "ค้นหา",
   "searchEmpty": "ไม่พบข้อความ",
-  "addEmoji": "เพิ่มอีโมจิ",
   "attachments": {
     "video": "วิดีโอ",
     "audio": "เสียง"

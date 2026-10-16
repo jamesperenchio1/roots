@@ -9,7 +9,10 @@ export function useSellerListings(userId: string | undefined) {
   return useQuery<Listing[]>({
     queryKey: userKeys.sellerListings(keyUserId),
     queryFn: () => (userId ? fetchSellerListings(userId) : []),
-    initialData: () => (userId ? LISTINGS.filter((l) => l.seller_id === userId) : []),
+    initialData: () => {
+      const own = userId ? LISTINGS.filter((l) => l.seller_id === userId) : [];
+      return own.length > 0 ? own : undefined;
+    },
     enabled: !!userId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,

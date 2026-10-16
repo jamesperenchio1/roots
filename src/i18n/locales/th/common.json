@@ -60,7 +60,14 @@
     "rememberMe": "จดจำฉัน",
     "accept": "ยอมรับ",
     "reject": "ปฏิเสธ",
-    "counter": "ต่อรองราคา"
+    "counter": "ต่อรองราคา",
+    "tryAgain": "ลองอีกครั้ง",
+    "goHome": "กลับหน้าหลัก",
+    "upload": "อัปโหลด",
+    "more": "เพิ่มเติม",
+    "sending": "กำลังส่ง…",
+    "startOver": "เริ่มใหม่",
+    "search": "ค้นหา"
   },
   "unsavedChanges": {
     "title": "มีการเปลี่ยนแปลงที่ยังไม่บันทึก",
@@ -81,7 +88,14 @@
     "completed": "เสร็จสิ้น",
     "refunded": "คืนเงินแล้ว",
     "cancelled": "ยกเลิก",
-    "disputed": "ข้อพิพาท"
+    "disputed": "ข้อพิพาท",
+    "pending_payment": "รอชำระเงิน",
+    "paid_in_escrow": "ยืนยันการชำระเงินแล้ว",
+    "under_review": "กำลังตรวจสอบ",
+    "open": "เปิดอยู่",
+    "resolved_buyer": "ตัดสินให้ผู้ซื้อ",
+    "resolved_seller": "ตัดสินให้ผู้ขาย",
+    "resolved": "แก้ไขแล้ว"
   },
   "empty": {
     "title": "ยังไม่มีข้อมูล",
@@ -104,7 +118,9 @@
     "fileTooLarge": "ไฟล์ใหญ่เกินไป (สูงสุด {{size}}MB)",
     "invalidFileType": "กรุณาอัปโหลดไฟล์รูปภาพ",
     "passwordMismatch": "รหัสผ่านไม่ตรงกัน",
-    "redirecting": "กำลังเปลี่ยนหน้า…"
+    "redirecting": "กำลังเปลี่ยนหน้า…",
+    "somethingWentWrong": "เกิดข้อผิดพลาดบางอย่าง",
+    "tryAgainHint": "หน้านี้พบปัญหาที่ไม่คาดคิด ลองอีกครั้งหรือกลับหน้าหลัก"
   },
   "currency": "บาท",
   "language": {
@@ -672,6 +688,13 @@
     "disputes": {
       "resolved": "ระงับแล้ว",
       "transitDamage": "ข้อเรียกร้องความเสียหายจากการขนส่ง — ระงับให้ผู้ขาย"
+    },
+    "signatureValid": "ลายเซ็นถูกต้อง",
+    "signatureInvalid": "ไม่สามารถยืนยันลายเซ็นได้",
+    "counterfeitTitle": "แท็กนี้อาจเป็นของปลอม",
+    "counterfeitDescription": "ลายเซ็นของ QR นี้ไม่ตรงกับข้อมูลของเรา อย่าใช้เป็นหลักฐานยืนยันที่มาของต้นไม้",
+    "scans": {
+      "title": "การสแกนล่าสุด"
     }
   },
   "privacy": {
@@ -1052,5 +1075,7 @@
         }
       }
     }
-  }
+  },
+  "loading": "กำลังโหลด…",
+  "unknownPlant": "ไม่ทราบชนิดต้นไม้"
 }

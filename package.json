@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "seed": "node scripts/seed-database.cjs"
+    "seed": "node scripts/seed-database.cjs",
+    "i18n:check": "node scripts/check-i18n.cjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

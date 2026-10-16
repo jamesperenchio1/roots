@@ -8,7 +8,7 @@ export function useTransaction(id: string | undefined) {
   return useQuery<Transaction | null>({
     queryKey: transactionKeys.detail(id),
     queryFn: () => (id ? fetchTransactionById(id) : null),
-    initialData: () => (id ? getTransactionById(id) ?? null : null),
+    initialData: () => (id ? getTransactionById(id) ?? undefined : undefined),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,

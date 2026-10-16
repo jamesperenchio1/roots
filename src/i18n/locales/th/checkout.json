@@ -31,11 +31,11 @@
     "processing": "กำลังดำเนินการ...",
     "orderCreated": "สร้างคำสั่งซื้อแล้ว",
     "orderError": "ไม่สามารถสร้างคำสั่งซื้อได้",
-    "scanWithBankApp": "Scan with your banking app to pay",
-    "qrWillAppear": "Your PromptPay QR will appear here after you confirm.",
-    "waitingForPayment": "Waiting for payment confirmation…",
-    "paymentConfirmed": "Payment confirmed",
-    "completePayment": "Complete payment in your banking app"
+    "scanWithBankApp": "สแกนด้วยแอปธนาคารเพื่อชำระเงิน",
+    "qrWillAppear": "QR พร้อมเพย์ของคุณจะแสดงที่นี่หลังจากยืนยัน",
+    "waitingForPayment": "กำลังรอการยืนยันการชำระเงิน…",
+    "paymentConfirmed": "ยืนยันการชำระเงินแล้ว",
+    "completePayment": "ชำระเงินให้เสร็จในแอปธนาคารของคุณ"
   },
   "order": {
     "title": "คำสั่งซื้อ",
@@ -139,7 +139,12 @@
     "ownListing": "คุณไม่สามารถซื้อรายการของตัวเองได้",
     "listingUnavailable": "รายการนี้ไม่พร้อมจำหน่ายแล้ว"
   },
-  "supportedBanks": ["กรุงไทย", "ไทยพาณิชย์", "กสิกรไทย", "กรุงเทพ"],
+  "supportedBanks": [
+    "กรุงไทย",
+    "ไทยพาณิชย์",
+    "กสิกรไทย",
+    "กรุงเทพ"
+  ],
   "toast": {
     "paymentAutoVerified": "ตรวจสอบการชำระเงินอัตโนมัติสำเร็จ — คำสั่งซื้อของคุณได้รับการคุ้มครองเอสโครว",
     "paymentManual": "เราไม่สามารถตรวจสอบสลิปอัตโนมัติได้ ผู้ขายจะตรวจสอบด้วยตนเอง",

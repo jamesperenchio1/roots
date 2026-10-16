@@ -154,7 +154,7 @@ export function ListingCard({
 
   const src = listingImageSrc(listing);
   const srcSet = getSrcSet(listing.photos?.[0]?.storage_path, { widths: RESPONSIVE_WIDTHS, resize: 'cover' });
-  const alt = listing.species?.scientific_name || t('marketplace:listingAlt');
+  const alt = listing.species?.scientific_name || t('marketplace:browse.listingAlt');
   const commonName = listing.species?.common_name_en || listing.species?.common_name_th;
   const isBoosted = !!listing.boosted_until && new Date(listing.boosted_until).getTime() > Date.now();
 

@@ -51,7 +51,7 @@ export function ListingsTab({ listings, sales, onWithdraw, onMarkSold, onDuplica
             <div key={l.id} className="group bg-zinc-900/30 border border-white/5 rounded-xl p-4 hover:border-white/15 transition-all">
               <div className="flex items-start gap-4">
                 <Link href={`/listing/${l.id}`} className="w-20 h-20 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                  <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt={l.species?.scientific_name || t('marketplace:listingAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <img src={l.photos?.[0]?.storage_path || '/images/plants/monstera-thai.jpg'} alt={l.species?.scientific_name || t('marketplace:browse.listingAlt')} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">

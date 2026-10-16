@@ -60,7 +60,14 @@
     "rememberMe": "Remember me",
     "accept": "Accept",
     "reject": "Reject",
-    "counter": "Counter"
+    "counter": "Counter",
+    "tryAgain": "Try again",
+    "goHome": "Go home",
+    "upload": "Upload",
+    "more": "More",
+    "sending": "Sending…",
+    "startOver": "Start over",
+    "search": "Search"
   },
   "unsavedChanges": {
     "title": "Unsaved changes",
@@ -81,7 +88,14 @@
     "completed": "Completed",
     "refunded": "Refunded",
     "cancelled": "Cancelled",
-    "disputed": "Disputed"
+    "disputed": "Disputed",
+    "pending_payment": "Awaiting payment",
+    "paid_in_escrow": "Payment confirmed",
+    "under_review": "Under review",
+    "open": "Open",
+    "resolved_buyer": "Resolved for buyer",
+    "resolved_seller": "Resolved for seller",
+    "resolved": "Resolved"
   },
   "empty": {
     "title": "Nothing here yet",
@@ -104,7 +118,9 @@
     "fileTooLarge": "File is too large (max {{size}}MB)",
     "invalidFileType": "Please upload an image file",
     "passwordMismatch": "Passwords do not match",
-    "redirecting": "Redirecting…"
+    "redirecting": "Redirecting…",
+    "somethingWentWrong": "Something went wrong",
+    "tryAgainHint": "This page hit an unexpected problem. You can try again or head back home."
   },
   "currency": "THB",
   "language": {
@@ -672,7 +688,14 @@
       "resolved": "resolved",
       "transitDamage": "Transit damage claim — resolved for seller"
     },
-    "owners": "{{count}} owner(s)"
+    "owners": "{{count}} owner(s)",
+    "signatureValid": "Signature verified",
+    "signatureInvalid": "Signature could not be verified",
+    "counterfeitTitle": "Possible counterfeit tag",
+    "counterfeitDescription": "This QR code's signature does not match our records. Do not treat it as proof of provenance.",
+    "scans": {
+      "title": "Recent scans"
+    }
   },
   "privacy": {
     "title": "Privacy Policy",
@@ -1052,5 +1075,7 @@
         }
       }
     }
-  }
+  },
+  "loading": "Loading…",
+  "unknownPlant": "Unknown plant"
 }

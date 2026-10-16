@@ -104,7 +104,7 @@ export default function OrderPage() {
     setDirectConfirming(true);
     try {
       await confirmDirectPayment(tx.id);
-      toast.success(t('checkout:paymentConfirmed'));
+      toast.success(t('checkout:checkout.paymentConfirmed'));
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('checkout:order.confirmError'));
@@ -276,9 +276,9 @@ export default function OrderPage() {
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6 mb-6">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-amber-400" />
-              {t('checkout:paymentMethod.direct')}
+              {t('checkout:checkout.paymentMethod.direct')}
             </h3>
-            <p className="text-sm text-zinc-500 mb-4">{t('checkout:paymentMethod.directDescription')}</p>
+            <p className="text-sm text-zinc-500 mb-4">{t('checkout:checkout.paymentMethod.directDescription')}</p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href="/dashboard/messages" className="flex-1">
                 <Button variant="outline" className="w-full border-white/10 hover:bg-white/5">

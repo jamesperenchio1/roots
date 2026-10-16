@@ -125,9 +125,9 @@ export function useListing(id: string | undefined) {
     queryKey: publicKeys.listing(id),
     queryFn: () => (id ? fetchListingById(id) : null),
     initialData: () => {
-      if (!id) return null;
+      if (!id) return undefined;
       const cached = queryClient.getQueryData<PublicData>(publicKeys.all());
-      return cached?.listings.find((l) => l.id === id) ?? null;
+      return cached?.listings.find((l) => l.id === id) ?? undefined;
     },
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
