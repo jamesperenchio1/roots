@@ -1,5 +1,6 @@
 'use client'
 
+import { sanitizeRedirect } from '@/lib/navigation';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
@@ -48,7 +49,7 @@ export default function IdentifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const returnTo = searchParams?.get('returnTo') || '/browse';
+  const returnTo = sanitizeRedirect(searchParams?.get('returnTo'), '/browse');
 
   const [requestId, setRequestId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);

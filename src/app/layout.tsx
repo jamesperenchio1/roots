@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE } from '@/i18n/config';
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { Providers } from './providers';
@@ -34,7 +35,7 @@ function NavbarSkeleton() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={DEFAULT_LANGUAGE} suppressHydrationWarning>
       <body className="min-h-screen bg-black text-white">
         <Providers>
           <Suspense fallback={<NavbarSkeleton />}>

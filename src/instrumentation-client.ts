@@ -30,3 +30,6 @@ if (process.env.NODE_ENV === 'production' && sentryDsn) {
     }, { once: true });
   }
 }
+
+// Lets Sentry trace client-side route transitions (App Router).
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

@@ -25,7 +25,7 @@ const searchParams = useSearchParams();
   if (!user) {
     return (
       <Redirect
-        to={`/login?redirect=${encodeURIComponent(pathname + (searchParams?.toString() ?? ''))}`}
+        to={`/login?redirect=${encodeURIComponent(pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : ''))}`}
       />
     );
   }

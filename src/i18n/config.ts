@@ -56,9 +56,15 @@ export async function loadThaiResources() {
 
 export type SupportedLanguage = 'en' | 'th';
 
+/** Language shown to visitors who haven't chosen one. Change this single line to switch the site default. */
+export const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
+
+/** When true, a visitor's browser language (e.g. Thai) wins over DEFAULT_LANGUAGE on their first visit. */
+export const DETECT_BROWSER_LANGUAGE = false;
+
 export const baseConfig = {
   resources,
-  fallbackLng: 'en' as const,
+  fallbackLng: DEFAULT_LANGUAGE === 'en' ? (['en'] as string[]) : ([DEFAULT_LANGUAGE, 'en'] as string[]),
   defaultNS,
   // `common` holds shared strings (e.g. the `plantCare` block) that components
   // reference without an explicit `common:` prefix while their primary

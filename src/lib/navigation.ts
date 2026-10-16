@@ -19,5 +19,17 @@ export function sanitizeRedirect(redirect: string | null | undefined, fallback =
   // Reject newline-based header injection attempts.
   if (/[\r\n]/.test(trimmed)) return fallback;
 
+  // Browsers treat backslashes as slashes ("/\\evil.com" -> "//evil.com"), and encoded
+  // variants can sneak past the checks above. Resolve against a dummy origin and make
+  // sure we are still on it.
+  if (trimmed.includes('\\')) return fallback;
+  try {
+    const base = 'http://roots.invalid';
+    const resolved = new URL(trimmed, base);
+    if (resolved.origin !== base) return fallback;
+  } catch {
+    return fallback;
+  }
+
   return trimmed;
 }

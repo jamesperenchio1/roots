@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import '@/i18n/config';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import i18n, { baseConfig, loadThaiResources } from '@/i18n/config';
+import i18n, { baseConfig, loadThaiResources, DEFAULT_LANGUAGE, DETECT_BROWSER_LANGUAGE } from '@/i18n/config';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -23,13 +23,17 @@ function LanguageDetectorSync() {
           .init({
             ...baseConfig,
             detection: {
-              order: ['localStorage', 'navigator', 'htmlTag'],
+              // A visitor's explicit choice (localStorage) always wins; browser language only if enabled.
+              order: DETECT_BROWSER_LANGUAGE ? ['localStorage', 'navigator', 'htmlTag'] : ['localStorage'],
               caches: ['localStorage'],
               lookupLocalStorage: 'roots-language',
             },
           });
         if (cancelled) return;
-        if (i18n.language?.startsWith('th')) {
+        const syncHtmlLang = (lng: string) => { document.documentElement.lang = lng || DEFAULT_LANGUAGE; };
+        syncHtmlLang(i18n.language);
+        i18n.on('languageChanged', syncHtmlLang);
+        if (i18n.language?.startsWith('th') || DEFAULT_LANGUAGE === 'th') {
           loadThaiResources().catch(() => {});
         }
       })
