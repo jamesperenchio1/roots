@@ -13,14 +13,10 @@ export async function submitListingQrVerification(
   if (!verifyResult.ok) return verifyResult;
 
   const photoUrl = await uploadListingPhoto(photoFile, sellerId);
-  const { error } = await supabase
-    .from('listings')
-    .update({
-      qr_verification_photo_url: photoUrl,
-      qr_verified_at: new Date().toISOString(),
-      qr_verified_by: sellerId,
-    })
-    .eq('id', listing.id);
+  const { error } = await supabase.rpc('submit_listing_qr_verification', {
+    p_listing_id: listing.id,
+    p_photo_url: photoUrl,
+  });
   if (error) throw error;
   return { ...verifyResult, photoUrl };
 }

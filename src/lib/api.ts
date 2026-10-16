@@ -1925,23 +1925,18 @@ export async function updateProfile(userId: string, patch: Partial<Profile>): Pr
   invalidatePublicQueries();
 }
 
-/** Admin-only profile update. Persists strike/ban/admin flags and normal fields. */
+/** Admin-only moderation update (ban / strikes / admin flag). Enforced server-side by the
+ *  `admin_update_user` RPC; plain profile fields can only be edited by their owner. */
 export async function adminUpdateUser(userId: string, patch: Partial<Profile>): Promise<void> {
-  const cleanPatch: Record<string, unknown> = {};
-  if (patch.display_name !== undefined) cleanPatch.display_name = sanitizeText(patch.display_name, 50);
-  if (patch.promptpay_id !== undefined) cleanPatch.promptpay_id = patch.promptpay_id ? sanitizeText(patch.promptpay_id, 20) : null;
-  if (patch.language_preference !== undefined) cleanPatch.language_preference = patch.language_preference;
-  if (patch.location !== undefined) cleanPatch.location = patch.location ? sanitizeText(patch.location, 50) : null;
-  if (patch.avatar_url !== undefined) cleanPatch.avatar_url = patch.avatar_url;
-  if (patch.is_banned !== undefined) cleanPatch.is_banned = patch.is_banned;
-  if (patch.strike_count !== undefined) cleanPatch.strike_count = patch.strike_count;
-  if (patch.is_admin !== undefined) cleanPatch.is_admin = patch.is_admin;
-  cleanPatch.updated_at = new Date().toISOString();
-
-  const { error } = await supabase.from('profiles').update(cleanPatch).eq('id', userId);
+  const { error } = await supabase.rpc('admin_update_user', {
+    p_user_id: userId,
+    p_is_banned: patch.is_banned ?? null,
+    p_strike_count: patch.strike_count ?? null,
+    p_is_admin: patch.is_admin ?? null,
+  });
   if (error) throw error;
   const user = USERS.find(u => u.id === userId);
-  if (user) Object.assign(user, cleanPatch);
+  if (user) Object.assign(user, patch);
   queryClient.invalidateQueries({ queryKey: userKeys.profile(userId) });
   invalidatePublicQueries();
 }
@@ -1985,9 +1980,6 @@ export async function ensureProfile(
     promptpay_id: (metadata.promptpay_id as string | null | undefined) ?? null,
     location: (metadata.location as string | null | undefined) ?? null,
     language_preference: (metadata.language_preference as 'th' | 'en' | undefined) ?? 'en',
-    is_admin: false,
-    strike_count: 0,
-    is_banned: false,
     created_at: now,
     updated_at: now,
   };
